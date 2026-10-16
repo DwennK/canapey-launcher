@@ -73,7 +73,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          $files = @(Get-ChildItem src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe)
+          gh release download $env:RELEASE_TAG --pattern '*.exe' --dir release-checksums --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Installer download verification failed' }
+          $files = @(Get-ChildItem release-checksums/*.exe)
           if ($files.Count -ne 1) { throw 'Expected exactly one Windows installer' }
           $lines = $files | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
           $lines | Set-Content SHA256SUMS.txt -Encoding utf8NoBOM
