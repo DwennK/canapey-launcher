@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-16",
+  "host": "macOS ARM64",
+  "target": "x86_64-pc-windows-msvc",
+  "checks": {
+    "frontend_build": "passed",
+    "typescript_tests": 5,
+    "rust_host_tests": 12,
+    "windows_clippy_all_targets": "passed",
+    "macos_clippy_all_targets": "passed",
+    "browser_desktop": "1440x900",
+    "browser_mobile": "390x844",
+    "browser_errors": 0,
+    "browser_external_requests": 0,
+    "npm_audit_vulnerabilities": 0,
+    "spotify_internet_import_persistence_deduplication": "passed"
+  },
+  "native_windows_execution": "not performed",
+  "windows_hardware_tests": "pending",
+  "updater_release_test": "pending repository and signing secrets",
+  "performance_ms": {
+    "cold": null,
+    "warm": null,
+    "return": null
+  },
+  "source_sha256": {
+    "src/App.vue": "325bdd50aa5555d9a854eeb53e77c7d109e8404479a7568d8d0af525fc2c48e2",
+    "src/main.ts": "a9a77d229d3df173585188d0cfcdeb479cf61b5a0028b67353b4f5998c9e3ad9",
+    "src/style.css": "bdef4e3d679e732a6446253d3aa4f2060d2db9395834eef2a2c2a928bc1f87df",
+    "src/components/Icon.vue": "f622ad4434a255dabb815133dae395c18e09545d15544800aedbfcc69d78569c",
+    "src/components/AppCard.vue": "72c764883a0ca3a595adbbae6cd397402aaea8e4286780e272620a4fbf89918b",
+    "src/lib/navigation.ts": "d469a537834fe96b399c5d2129e5b74fa3495d64628f7b15d2e4d8a95f3921df",
+    "src/lib/types.ts": "de05fb41c2757006fb3c35195d995204cef34ec3c6ab08690ac4b45dcca36d91",
+    "src/lib/bridge.ts": "e8de3c83fdd9cbbc895773bb40cf436e4a7c3ce6348b3131379753343d853dd7",
+    "src-tauri/src/runtime.rs": "15989be1f8041b42285ebf0ea2c418278c1b496782f3d5fb24413b878b9651e1",
+    "src-tauri/src/config.rs": "8ab8293bf64ef37258ee36105744d1122f2348c80f1f16d09315634e8e1b0da8",
+    "src-tauri/src/lib.rs": "6ee0a7755e79859ffaff707c9ca872ffdf95d078b9e1e82a3bd9aa969ae0152e",
+    "src-tauri/src/tracking.rs": "c8fb5747f2cfa60b4f2e3ffb214068cd7bbe5568af01be0ef241255cd631b20f",
+    "src-tauri/src/main.rs": "1912281f3eb8ea6f3a65e71c2047cc81c432663f5f376c659c5793ac6956df40",
+    "src-tauri/src/input.rs": "49f0ac7fa57b899335e0417b3176cc3b3a070e7f812bde6771bb6fe206363e09",
+    "src-tauri/src/model.rs": "bea2a59d754441ae82470f26ab3641be3f58f0e96357dd61b0354e3e54edc968",
+    "src-tauri/src/platform/unsupported.rs": "d2bd3e0cceae8ef320aca0e0f7ef661c5af0eb2dde784d7ca8cf5ff9f5f43dd7",
+    "src-tauri/src/platform/discover.ps1": "861cdb75669c546cc4b322fcd98a569046cb38a74202117bb375431937ac083d",
+    "src-tauri/src/platform/mod.rs": "097b1a780d3652ca9f541cc40210cb21842388e96bc5899b79c9ce45a1b4e422",
+    "src-tauri/src/platform/windows.rs": "8b983218447bdfb9190f1dd77f180dcfb39bdeefc6d4a8bbfb792fa48932b081"
+  },
+  "installer": {
+    "path": "release/Canapey-Launcher-0.1.0-windows-x64-setup.exe",
+    "bytes": 5652996,
+    "sha256": "78733d6f0b09b67de3b9c218edfea8bf7b825a08111aff50e07bbc923a9fd71e",
+    "authenticode_signed": false,
+    "updater_configured": false
+  },
+  "artwork_sha256": {
+    "public/art/spotify.webp": "83cc9b21e3dc49f4bd366ea7bb70491e034f33e93b49825a8d2d982de2088ccd",
+    "public/art/spotify-card.webp": "deaecafc6a0af78ca8201c526cb036e09320e58dfa12ebab00f4d9c49841f48d",
+    "public/art/internet.webp": "d78aacb1bbe6d1722b21d85f46e263f1024ff705908c78294fae0c29512c33e8",
+    "public/art/internet-card.webp": "078016b41bea420d52fd387eed62c57422b6c2e9fa4a6c6bf9dce2dc20629c7f"
+  }
+}

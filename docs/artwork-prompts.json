@@ -1,0 +1,46 @@
+[
+  {
+    "name": "home",
+    "prompt": "An extraordinary cinematic photograph of the rugged Scottish highlands at blue hour, still dark lake in foreground, an immense jagged mountain filling right half with a very subtle golden sunset line on horizon, charcoal blue and muted amber palette, atmospheric mist, natural film grain, deep shadows and clean empty dark left half for interface text. Full bleed wide 16:9 landscape. No text, no logos, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "netflix",
+    "prompt": "Cinematic editorial photograph inside an empty premium movie theater, sweeping rows of deep crimson velvet seats, a luminous ivory screen partially seen at upper right casting atmospheric beams in slight haze, dramatic shadow, black and dark red palette. Very wide landscape 16:9, full bleed background for a television launcher, no text, no logos, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "youtube",
+    "prompt": "Original high end 3D editorial artwork about online video: a monumental translucent red glass play triangle on a glossy dark red stage with red rectangular light frames in perspective, sharp minimal composition, vivid vermilion reflected light, large dark negative space left, sculptural physically realistic materials. Cinematic wide 16:9, full bleed, no words, no letters, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "plezy",
+    "prompt": "Beautiful cinematic still life of a home film library: neatly arranged rows of blank unlettered film cases and vinyl records, a subtle amber lamp illuminating their edges, dark oak furniture, a record player and a shaft of warm light, deep green shadow. Luxury editorial photography wide 16:9, full bleed, no text, no logos, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "steam",
+    "prompt": "Epic cinematic video game concept environment, a solitary tiny astronaut exploring an immense alien planet, monolithic black stone cliffs and a huge pale planet above a teal horizon, cold blue light, reflective wet rock, striking scale, photorealistic AAA game art, dark negative space on left. Wide 16:9 background, no text, no logos, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "silo",
+    "prompt": "Cinematic architectural photograph of a secret archive in a massive cylindrical concrete silo, curving shelves of film canisters and books climbing toward a soft circular skylight, warm gold slivers of light, deep dark sepia and charcoal, sophisticated minimal brutalist architecture, realistic textures. Wide 16:9 background, full bleed, no text, no logos, no UI.",
+    "method": "Built-in image_gen"
+  },
+  {
+    "name": "spotify",
+    "prompt": "Cinematic editorial photograph for a premium dark television music launcher. Sculptural black vinyl record spinning on a minimal brushed metal turntable on the right, vivid emerald green light grazing the grooves, deep forest green atmospheric shadows and a subtle green light beam, elegant analog listening room, realistic tactile materials. The left half is dark negative space for interface text. Wide 16:9 full bleed landscape, no text, no logos, no UI, no watermark.",
+    "method": "Built-in image_gen",
+    "background": "public/art/spotify.webp",
+    "card": "public/art/spotify-card.webp"
+  },
+  {
+    "name": "internet",
+    "prompt": "Cinematic original editorial 3D artwork for a premium dark television web browser launcher. A magnificent translucent blue glass globe on the right, illuminated by a thin icy cyan horizon, subtle etched meridians catching light, deep midnight navy background and restrained silver blue reflections on a dark polished surface. Minimal sophisticated sculpture, physically realistic materials, spacious dark negative space on the left for interface text. Wide 16:9 full bleed landscape. No text, no letters, no logos, no UI, no watermark.",
+    "method": "Built-in image_gen",
+    "background": "public/art/internet.webp",
+    "card": "public/art/internet-card.webp"
+  }
+]

@@ -1,0 +1,1719 @@
+<script setup lang="ts">
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import Icon from "./components/Icon.vue";
+import AppCard from "./components/AppCard.vue";
+import * as api from "./lib/bridge";
+import {
+  defaults,
+  themeFor,
+  targetKey,
+  type AppEntry,
+  type Action,
+  type Theme,
+  type Session,
+  type Monitor,
+  type UpdateInfo,
+} from "./lib/types";
+import { navigate, reconcileSelection, focusDirection } from "./lib/navigation";
+
+type Panel = "" | "settings" | "add" | "edit" | "power" | "session" | "confirm";
+interface Tile {
+  id: string;
+  name: string;
+  theme: Theme;
+  special?: string;
+  suggestion?: boolean;
+  entry?: AppEntry;
+}
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+const osReducedMotion = ref(motionPreference.matches);
+const motionChanged = (event: MediaQueryListEvent) => {
+  osReducedMotion.value = event.matches;
+};
+motionPreference.addEventListener("change", motionChanged);
+const config = ref(defaults()),
+  loaded = ref(false),
+  native = ref(false),
+  version = ref("0.1.0");
+const selected = ref(0),
+  view = ref<"carousel" | "grid">("carousel"),
+  panel = ref<Panel>(""),
+  previousPanel = ref<Panel>("");
+const clock = ref(new Date()),
+  controller = ref<string | null>(null),
+  sessions = ref<Session[]>([]),
+  toast = ref(""),
+  working = ref("");
+const panelRoot = ref<HTMLElement>(),
+  cardsRoot = ref<HTMLElement>(),
+  width = ref(window.innerWidth),
+  height = ref(window.innerHeight);
+const settingsTab = ref("general"),
+  monitorList = ref<Monitor[]>([]),
+  found = ref<AppEntry[]>([]),
+  query = ref(""),
+  scanned = ref(false),
+  scanBusy = ref(false),
+  scanError = ref(""),
+  chosen = ref(new Set<string>());
+const editing = ref<AppEntry | null>(null),
+  argumentsText = ref(""),
+  webName = ref(""),
+  webUrl = ref(""),
+  update = ref<UpdateInfo | null>(null),
+  updateError = ref("");
+const confirmTitle = ref(""),
+  confirmText = ref(""),
+  confirmLabel = ref("Confirmer");
+let confirmAction: () => Promise<unknown> = async () => {};
+let toastTimer: ReturnType<typeof setTimeout>,
+  saveTimer: ReturnType<typeof setTimeout>,
+  clockTimer: ReturnType<typeof setInterval>,
+  updateTimer: ReturnType<typeof setTimeout>;
+let stopNative = () => {};
+let resizeObserver: ResizeObserver;
+let saveChain: Promise<boolean> = Promise.resolve(true);
+let lastSaved = defaults();
+let audioContext: AudioContext | undefined;
+const examples: Tile[] = [
+  {
+    id: "suggest-netflix",
+    name: "Netflix",
+    theme: "netflix",
+    suggestion: true,
+  },
+  {
+    id: "suggest-youtube",
+    name: "YouTube",
+    theme: "youtube",
+    suggestion: true,
+  },
+  {
+    id: "suggest-spotify",
+    name: "Spotify",
+    theme: "spotify",
+    suggestion: true,
+  },
+  {
+    id: "suggest-internet",
+    name: "Internet",
+    theme: "internet",
+    suggestion: true,
+  },
+  { id: "suggest-steam", name: "Steam", theme: "steam", suggestion: true },
+  { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
+  { id: "suggest-silo", name: "Silo", theme: "silo", suggestion: true },
+];
+const tiles = computed<Tile[]>(() =>
+  config.value.apps.length
+    ? [
+        ...config.value.apps.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          theme: entry.theme,
+          entry,
+        })),
+        {
+          id: "windows",
+          name: "Retour Windows",
+          theme: "windows",
+          special: "windows",
+        },
+        { id: "add", name: "Ajouter", theme: "home", special: "add" },
+      ]
+    : [
+        {
+          id: "add",
+          name: "Ajouter des applications",
+          theme: "home",
+          special: "add",
+        },
+        ...examples,
+        {
+          id: "windows",
+          name: "Retour Windows",
+          theme: "windows",
+          special: "windows",
+        },
+      ],
+);
+const current = computed(
+  () => tiles.value[Math.min(selected.value, tiles.value.length - 1)]!,
+);
+const empty = computed(() => config.value.apps.length === 0);
+const columns = computed(() =>
+  Math.max(
+    2,
+    Math.floor((width.value - 100) / (280 * config.value.settings.scale)),
+  ),
+);
+const selectedSession = computed(() =>
+  sessions.value.find((s) => s.appId === current.value.id),
+);
+const ps = computed(() =>
+  /sony|playstation|dualshock|dualsense|wireless controller/i.test(
+    controller.value ?? "",
+  ),
+);
+const time = computed(() =>
+  clock.value.toLocaleTimeString("fr-CH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }),
+);
+const date = computed(() =>
+  clock.value.toLocaleDateString("fr-CH", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }),
+);
+const filtered = computed(() =>
+  found.value.filter((a) =>
+    a.name.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()),
+  ),
+);
+const heroTitle = computed(() =>
+  current.value.special === "add"
+    ? "Installez-vous."
+    : current.value.special === "windows"
+      ? "Retour au bureau."
+      : current.value.name,
+);
+const subtitle = computed(() =>
+  current.value.special === "add"
+    ? "Vos applications préférées. À portée de manette."
+    : current.value.special === "windows"
+      ? "Retrouvez votre PC. Canapey reste à portée de main."
+      : current.value.suggestion
+        ? "Ajoutez cette application à votre espace."
+        : {
+            netflix: "Le grand écran, à la maison.",
+            youtube: "Une nouvelle vidéo. Un nouvel univers.",
+            spotify: "La bande-son de votre salon.",
+            internet: "Tout le web, depuis votre canapé.",
+            steam: "Votre prochaine aventure vous attend.",
+            plezy: "Toute votre médiathèque, réunie.",
+            silo: "Votre collection, simplement.",
+            home: "Votre application, sur grand écran.",
+            windows: "",
+          }[current.value.theme],
+);
+const heroBg = ref("/art/home.webp"),
+  oldBg = ref("");
+let imageTicket = 0;
+let bgTimer: ReturnType<typeof setTimeout>;
+function trapFocus(e: KeyboardEvent) {
+  const list = [
+    ...panelRoot.value!.querySelectorAll<HTMLElement>(
+      "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)",
+    ),
+  ].filter((x) => x.getClientRects().length && !x.closest("[inert]"));
+  if (e.shiftKey && document.activeElement === list[0]) {
+    e.preventDefault();
+    list.at(-1)?.focus();
+  } else if (!e.shiftKey && document.activeElement === list.at(-1)) {
+    e.preventDefault();
+    list[0]?.focus();
+  }
+}
+const sleepPc = () => api.power("sleep"),
+  restartPc = () => api.power("restart"),
+  shutdownPc = () => api.power("shutdown");
+const resumeCurrent = () => api.resume(current.value.id),
+  closeCurrent = () => api.closeApp(current.value.id),
+  forceCurrent = () => api.closeApp(current.value.id, true);
+const resumeSession = (id: string) => run("Reprise", () => api.resume(id));
+const closeSession = (id: string) => run("Fermeture", () => api.closeApp(id));
+const forceSession = (id: string) =>
+  confirm(
+    "Forcer la fermeture ?",
+    "Les données non enregistrées de cette application peuvent être perdues.",
+    "Forcer",
+    () => api.closeApp(id, true),
+  );
+function notify(message: unknown) {
+  toast.value = message instanceof Error ? message.message : String(message);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (toast.value = ""), 6500);
+}
+async function run(label: string, fn: () => Promise<unknown>) {
+  if (working.value) return;
+  working.value = label;
+  try {
+    await fn();
+  } catch (e) {
+    notify(e);
+  } finally {
+    working.value = "";
+  }
+}
+function persist() {
+  const snapshot = JSON.parse(JSON.stringify(config.value));
+  saveChain = saveChain.then(async () => {
+    try {
+      await api.save(snapshot);
+      lastSaved = snapshot;
+      return true;
+    } catch (e) {
+      if (JSON.stringify(config.value) === JSON.stringify(snapshot))
+        config.value = JSON.parse(JSON.stringify(lastSaved));
+      notify(e);
+      return false;
+    }
+  });
+  return saveChain;
+}
+
+function selectionChanged() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    config.value.selectedId = current.value.entry?.id ?? null;
+    void persist();
+  }, 350);
+}
+function sound() {
+  if (!config.value.settings.sound) return;
+  try {
+    audioContext ??= new AudioContext();
+    void audioContext.resume();
+    const oscillator = audioContext.createOscillator(),
+      gain = audioContext.createGain();
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.frequency.setValueAtTime(620, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.018, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      audioContext.currentTime + 0.035,
+    );
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.04);
+  } catch {
+    /* audio is optional */
+  }
+}
+async function focusCard() {
+  await nextTick();
+  const card = cardsRoot.value?.querySelector<HTMLElement>(
+    '[aria-pressed="true"]',
+  );
+  card?.focus({ preventScroll: true });
+  card?.scrollIntoView({
+    block: "nearest",
+    inline: "nearest",
+    behavior:
+      config.value.settings.motion && !osReducedMotion.value
+        ? "smooth"
+        : "instant",
+  });
+}
+function select(index: number) {
+  if (index === selected.value) return;
+  selected.value = index;
+  sound();
+  selectionChanged();
+}
+async function openPanel(p: Panel) {
+  panel.value = p;
+  await nextTick();
+  panelRoot.value
+    ?.querySelector<HTMLElement>("button:not(:disabled),input")
+    ?.focus();
+}
+function closePanel() {
+  if (panel.value === "confirm") {
+    panel.value = previousPanel.value;
+    nextTick(() =>
+      panelRoot.value?.querySelector<HTMLElement>("button")?.focus(),
+    );
+    return;
+  }
+  if (panel.value === "edit") {
+    void openPanel("settings");
+    return;
+  }
+  panel.value = "";
+  void focusCard();
+}
+function confirm(
+  title: string,
+  text: string,
+  label: string,
+  action: () => Promise<unknown>,
+) {
+  previousPanel.value = panel.value;
+  confirmTitle.value = title;
+  confirmText.value = text;
+  confirmLabel.value = label;
+  confirmAction = action;
+  void openPanel("confirm");
+}
+async function acceptConfirm() {
+  await run(confirmLabel.value, async () => {
+    await confirmAction();
+    panel.value = previousPanel.value;
+    await nextTick();
+    panelRoot.value?.querySelector<HTMLElement>("button")?.focus();
+  });
+}
+async function activate(tile = current.value) {
+  if (tile.special === "add") {
+    query.value = "";
+    void openPanel("add");
+    return;
+  }
+  if (tile.special === "windows") {
+    await run("Retour Windows", api.desktop);
+    return;
+  }
+  if (tile.suggestion) {
+    query.value = tile.name;
+    void openPanel("add");
+    if (native.value && !scanned.value) void scan();
+    return;
+  }
+  if (selectedSession.value) {
+    void openPanel("session");
+    return;
+  }
+  await run("Lancement", async () => {
+    clearTimeout(saveTimer);
+    config.value.selectedId = tile.id;
+    if (!(await persist())) return;
+    const session = await api.launch(tile.id);
+    sessions.value = [
+      ...sessions.value.filter((s) => s.appId !== session.appId),
+      session,
+    ];
+  });
+}
+function dispatch(action: Action) {
+  if (working.value && action !== "back") return;
+  if (action === "home") {
+    panel.value = "";
+    view.value = "carousel";
+    void focusCard();
+    return;
+  }
+  if (panel.value) {
+    if (action === "back") {
+      closePanel();
+      return;
+    }
+    if (action === "accept") {
+      const e = document.activeElement as HTMLElement;
+      if (e instanceof HTMLSelectElement) {
+        e.selectedIndex = (e.selectedIndex + 1) % e.options.length;
+        e.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (
+        e instanceof HTMLInputElement &&
+        ["checkbox", "range"].includes(e.type)
+      ) {
+        if (e.type === "range") {
+          e.stepUp();
+          e.dispatchEvent(new Event("input", { bubbles: true }));
+          e.dispatchEvent(new Event("change", { bubbles: true }));
+        } else e.click();
+      } else e?.click();
+      return;
+    }
+    if (panelRoot.value && ["up", "down", "left", "right"].includes(action)) {
+      const e = document.activeElement;
+      if (
+        e instanceof HTMLInputElement &&
+        e.type === "range" &&
+        ["left", "right"].includes(action)
+      ) {
+        action === "left" ? e.stepDown() : e.stepUp();
+        e.dispatchEvent(new Event("input", { bubbles: true }));
+        e.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (
+        e instanceof HTMLSelectElement &&
+        ["left", "right"].includes(action)
+      ) {
+        e.selectedIndex = Math.max(
+          0,
+          Math.min(
+            e.options.length - 1,
+            e.selectedIndex + (action === "left" ? -1 : 1),
+          ),
+        );
+        e.dispatchEvent(new Event("change", { bubbles: true }));
+      } else focusDirection(panelRoot.value, action);
+    }
+    return;
+  }
+  if (action === "menu") {
+    void openSettings();
+    return;
+  }
+  if (action === "accept") {
+    void activate();
+    return;
+  }
+  const next = navigate(
+    selected.value,
+    tiles.value.length,
+    columns.value,
+    view.value,
+    action,
+  );
+  select(next.index);
+  view.value = next.view;
+  void focusCard();
+}
+function keyboard(e: KeyboardEvent) {
+  if (e.ctrlKey && e.shiftKey && e.code === "KeyQ") {
+    e.preventDefault();
+    confirm(
+      "Quitter Canapey ?",
+      "Vos applications resteront ouvertes.",
+      "Quitter",
+      api.quit,
+    );
+    return;
+  }
+  const target = e.target as HTMLElement;
+  const editingText =
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLInputElement &&
+      !["checkbox", "range"].includes(target.type));
+  if (editingText && e.key !== "Escape") return;
+  const keys: Record<string, Action> = {
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    ArrowUp: "up",
+    ArrowDown: "down",
+    Enter: "accept",
+    Escape: "back",
+    F1: "menu",
+  };
+  if (e.key === "Tab") return;
+  if (keys[e.key]) {
+    if (
+      !panel.value &&
+      (target.closest("header") || target.closest("footer")) &&
+      e.key === "Enter"
+    )
+      return;
+    e.preventDefault();
+    if (e.repeat && ["Enter", "Escape", "F1"].includes(e.key)) return;
+    dispatch(keys[e.key]);
+  }
+}
+async function openSettings() {
+  settingsTab.value = "general";
+  void openPanel("settings");
+  try {
+    monitorList.value = await api.monitors();
+  } catch (e) {
+    notify(e);
+  }
+}
+async function scan() {
+  if (scanBusy.value) return;
+  scanBusy.value = true;
+  scanError.value = "";
+  try {
+    found.value = await api.scan();
+    scanned.value = true;
+    chosen.value = new Set();
+  } catch (e) {
+    scanError.value = String(e instanceof Error ? e.message : e);
+  } finally {
+    scanBusy.value = false;
+  }
+}
+function toggleChoice(id: string) {
+  const set = new Set(chosen.value);
+  set.has(id) ? set.delete(id) : set.add(id);
+  chosen.value = set;
+}
+async function addEntries(entries: AppEntry[]) {
+  const keys = new Set(config.value.apps.map((a) => targetKey(a.target)));
+  const fresh = entries.filter((a) => !keys.has(targetKey(a.target)));
+  config.value.apps.push(...fresh);
+  if (fresh[0]) {
+    selected.value = tiles.value.findIndex((t) => t.id === fresh[0]!.id);
+    config.value.selectedId = fresh[0].id;
+  }
+  if (!(await persist())) return;
+  panel.value = "";
+  await focusCard();
+  notify(
+    fresh.length
+      ? `${fresh.length} application${fresh.length > 1 ? "s ajoutées" : " ajoutée"}.`
+      : "Déjà dans votre bibliothèque.",
+  );
+}
+async function manual() {
+  await run("Choix de l’application", async () => {
+    const app = await api.pickTarget();
+    if (app) {
+      editing.value = app;
+      argumentsText.value = app.target.args.join("\n");
+      void openPanel("edit");
+    }
+  });
+}
+async function addWeb(name = webName.value, url = webUrl.value) {
+  try {
+    const u = new URL(url);
+    if (
+      !["https:", "http:", "steam:", "spotify:", "ms-xbox:"].includes(
+        u.protocol,
+      )
+    )
+      throw new Error("Protocole non autorisé.");
+    if (!name.trim()) throw new Error("Indiquez un nom.");
+    await addEntries([
+      {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        theme: themeFor(name),
+        target: { kind: "uri", value: u.href, args: [], workingDir: null },
+        card: null,
+        background: null,
+        icon: null,
+        source: "Raccourci web explicite",
+      },
+    ]);
+    webName.value = "";
+    webUrl.value = "";
+  } catch (e) {
+    notify(e);
+  }
+}
+function edit(app: AppEntry) {
+  editing.value = JSON.parse(JSON.stringify(app));
+  argumentsText.value = app.target.args.join("\n");
+  void openPanel("edit");
+}
+async function saveEditing() {
+  const app = editing.value;
+  if (!app) return;
+  app.name = app.name.trim();
+  if (!app.name) {
+    notify("Indiquez un nom.");
+    return;
+  }
+  app.target.args = argumentsText.value ? argumentsText.value.split("\n") : [];
+  const index = config.value.apps.findIndex((a) => a.id === app.id);
+  if (index >= 0) {
+    config.value.apps[index] = app;
+    if (await persist()) void openPanel("settings");
+  } else await addEntries([app]);
+}
+function moveApp(index: number, delta: number) {
+  const to = index + delta;
+  if (to < 0 || to >= config.value.apps.length) return;
+  const id = current.value.id;
+  const [item] = config.value.apps.splice(index, 1);
+  config.value.apps.splice(to, 0, item!);
+  selected.value = reconcileSelection(
+    tiles.value.map((t) => t.id),
+    id,
+  );
+  void persist();
+}
+async function removeApp() {
+  if (!editing.value) return;
+  const id = editing.value.id;
+  config.value.apps = config.value.apps.filter((a) => a.id !== id);
+  selected.value = Math.min(selected.value, tiles.value.length - 1);
+  if (!(await persist()))
+    throw new Error("La suppression n’a pas été enregistrée.");
+  previousPanel.value = "settings";
+}
+async function imagePick(kind: "card" | "background") {
+  await run("Choix du visuel", async () => {
+    const path = await api.pickImage(kind);
+    if (path && editing.value) editing.value[kind] = path;
+  });
+}
+async function checkUpdates() {
+  updateError.value = "";
+  await run("Recherche de mises à jour", async () => {
+    try {
+      update.value = await api.checkUpdate();
+    } catch (e) {
+      updateError.value = e instanceof Error ? e.message : String(e);
+    }
+  });
+}
+function tileImage(t: Tile) {
+  if (t.special === "add" || t.special === "windows") return "";
+  return api.imageUrl(t.entry?.card) || `/art/${t.theme}-card.webp`;
+}
+watch(
+  () => [current.value.id, current.value.entry?.background],
+  async () => {
+    const ticket = ++imageTicket;
+    const target =
+      api.imageUrl(current.value.entry?.background) ||
+      `/art/${current.value.theme === "windows" ? "home" : current.value.theme}.webp`;
+    if (target === heroBg.value) return;
+    const image = new Image();
+    image.src = target;
+    try {
+      await image.decode();
+    } catch {
+      return;
+    }
+    if (ticket !== imageTicket) return;
+    oldBg.value = heroBg.value;
+    heroBg.value = target;
+    clearTimeout(bgTimer);
+    bgTimer = setTimeout(() => (oldBg.value = ""), 650);
+  },
+);
+watch(
+  () => current.value.id,
+  () => {
+    const next = tiles.value[selected.value + 1];
+    if (next && !next.special) {
+      const img = new Image();
+      img.src = tileImage(next);
+    }
+  },
+);
+watch(panel, async (value) => {
+  document.body.classList.toggle("panel-open", !!value);
+});
+watch(selectedSession, (session) => {
+  if (!session && panel.value === "session") {
+    panel.value = "";
+    void focusCard();
+  }
+});
+watch(
+  () => config.value.settings.scale,
+  () => {
+    if (!panel.value) void focusCard();
+  },
+);
+watch(
+  () => tiles.value.length,
+  () => {
+    selected.value = Math.min(selected.value, tiles.value.length - 1);
+  },
+);
+onMounted(async () => {
+  document.addEventListener("keydown", keyboard);
+  resizeObserver = new ResizeObserver(() => {
+    width.value = window.innerWidth;
+    height.value = window.innerHeight;
+    if (!panel.value) void focusCard();
+  });
+  resizeObserver.observe(document.documentElement);
+  clockTimer = setInterval(() => {
+    if (!document.hidden) clock.value = new Date();
+  }, 1000);
+  try {
+    const b = await api.boot();
+    config.value = b.config;
+    lastSaved = JSON.parse(JSON.stringify(b.config));
+    version.value = b.version;
+    native.value = b.native;
+    controller.value = b.controller;
+    sessions.value = b.sessions;
+    selected.value = reconcileSelection(
+      tiles.value.map((t) => t.id),
+      b.config.selectedId,
+    );
+    if (b.warning) notify(b.warning);
+    stopNative = await api.subscribe({
+      action: dispatch,
+      controller: (v) => (controller.value = v),
+      sessions: (v) => (sessions.value = v),
+      home: () => {
+        dispatch("home");
+        clock.value = new Date();
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => void api.returnReady()),
+        );
+      },
+      error: notify,
+    });
+  } catch (e) {
+    notify(e);
+  } finally {
+    loaded.value = true;
+    await nextTick();
+    await focusCard();
+    void api.ready();
+  }
+  updateTimer = setTimeout(async () => {
+    if (native.value && !sessions.value.length)
+      try {
+        update.value = await api.checkUpdate();
+        if (update.value.state === "available")
+          notify(
+            `Canapey ${update.value.version} est disponible dans les paramètres.`,
+          );
+      } catch {
+        /* offline must not disturb home */
+      }
+  }, 15000);
+});
+onUnmounted(() => {
+  document.removeEventListener("keydown", keyboard);
+  motionPreference.removeEventListener("change", motionChanged);
+  resizeObserver?.disconnect();
+  clearInterval(clockTimer);
+  clearTimeout(updateTimer);
+  clearTimeout(saveTimer);
+  clearTimeout(toastTimer);
+  clearTimeout(bgTimer);
+  stopNative();
+});
+</script>
+
+<template>
+  <main
+    class="launcher"
+    :class="{
+      'reduce-motion': !config.settings.motion || osReducedMotion,
+      'grid-mode': view === 'grid',
+      ready: loaded,
+    }"
+    :style="{
+      '--ui-scale': config.settings.scale,
+      '--columns': columns,
+      '--screen-height': height + 'px',
+    }"
+  >
+    <div class="backdrop" aria-hidden="true">
+      <img v-if="oldBg" :src="oldBg" class="backdrop-old" alt="" /><img
+        :key="heroBg"
+        :src="heroBg"
+        class="backdrop-current"
+        alt=""
+      />
+      <div class="backdrop-scrim" />
+    </div>
+    <header class="topbar">
+      <button
+        class="brand"
+        aria-label="Canapey — Accueil"
+        @click="
+          view = 'carousel';
+          panel = '';
+          focusCard();
+        "
+      >
+        <Icon name="sofa" :size="31" /><span
+          >canapey<span class="brand-dot">.</span></span
+        >
+      </button>
+      <nav aria-label="Navigation principale">
+        <button
+          :class="{ active: view === 'carousel' }"
+          @click="
+            view = 'carousel';
+            focusCard();
+          "
+        >
+          Accueil</button
+        ><button
+          :class="{ active: view === 'grid' }"
+          @click="
+            view = 'grid';
+            focusCard();
+          "
+        >
+          Bibliothèque
+        </button>
+      </nav>
+      <div class="top-right">
+        <span
+          class="controller-status"
+          :title="controller ?? 'Navigation au clavier'"
+          ><Icon :name="controller ? 'controller' : 'monitor'" :size="20" /><i
+            v-if="controller" /></span
+        ><time>{{ time }}</time
+        ><button
+          class="icon-button"
+          aria-label="Paramètres"
+          @click="openSettings"
+        >
+          <Icon name="settings" :size="22" />
+        </button>
+      </div>
+    </header>
+    <section v-if="view === 'carousel'" class="hero" aria-live="polite">
+      <div class="eyebrow">
+        <span class="tiny-line" />{{
+          current.suggestion
+            ? "À DÉCOUVRIR"
+            : empty
+              ? "BIENVENUE CHEZ VOUS"
+              : current.entry?.target.kind === "uri"
+                ? "RACCOURCI WEB"
+                : selectedSession
+                  ? "EN COURS"
+                  : "VOTRE ESPACE"
+        }}
+      </div>
+      <h1 :key="heroTitle">{{ heroTitle }}</h1>
+      <p>{{ subtitle }}</p>
+      <button class="hero-action" @click="activate()">
+        <span class="keycap light">{{
+          controller ? (ps ? "×" : "A") : "↵"
+        }}</span
+        >{{
+          current.special === "add"
+            ? "Personnaliser mon espace"
+            : current.suggestion
+              ? "Ajouter à mon espace"
+              : current.special === "windows"
+                ? "Afficher le bureau"
+                : selectedSession
+                  ? "Reprendre"
+                  : "Ouvrir"
+        }}<Icon name="right" :size="17" />
+      </button>
+    </section>
+    <section class="library" :class="view" aria-label="Applications">
+      <div class="library-heading">
+        <div>
+          <span class="section-label">{{
+            view === "grid"
+              ? "Votre bibliothèque"
+              : empty
+                ? "Faites comme chez vous"
+                : "Vos applications"
+          }}</span
+          ><span class="section-count">{{
+            empty
+              ? "Quelques idées pour commencer"
+              : `${config.apps.length} application${config.apps.length > 1 ? "s" : ""}`
+          }}</span>
+        </div>
+        <button
+          v-if="view === 'carousel'"
+          class="text-button"
+          @click="
+            view = 'grid';
+            focusCard();
+          "
+        >
+          <Icon name="grid" :size="16" />Tout voir</button
+        ><button
+          v-else
+          class="text-button"
+          @click="
+            view = 'carousel';
+            focusCard();
+          "
+        >
+          <Icon name="back" :size="18" />Accueil
+        </button>
+      </div>
+      <div
+        ref="cardsRoot"
+        class="cards"
+        :class="view"
+        role="group"
+        aria-label="Choisir une application"
+      >
+        <AppCard
+          v-for="(tile, i) in tiles"
+          :key="tile.id"
+          :name="tile.name"
+          :theme="tile.theme"
+          :special="tile.special"
+          :web="tile.entry?.target.kind === 'uri'"
+          :suggestion="tile.suggestion"
+          :image="tileImage(tile)"
+          :icon="api.imageUrl(tile.entry?.icon)"
+          :selected="selected === i"
+          :running="sessions.some((s) => s.appId === tile.id)"
+          @select="select(i)"
+          @activate="
+            select(i);
+            activate(tile);
+          "
+        />
+      </div>
+    </section>
+    <footer class="bottom-bar">
+      <div class="hints">
+        <span
+          ><kbd>{{ controller ? (ps ? "×" : "A") : "↵" }}</kbd
+          >Sélectionner</span
+        ><span
+          ><kbd>{{ controller ? (ps ? "○" : "B") : "esc" }}</kbd
+          >Retour</span
+        ><span
+          ><kbd>{{ controller ? "☰" : "F1" }}</kbd
+          >Options</span
+        >
+      </div>
+      <span v-if="!native" class="preview-badge"
+        >Aperçu interface · fonctions Windows indisponibles</span
+      ><span v-else class="footer-date">{{ date }}</span
+      ><button
+        class="icon-button power-button"
+        aria-label="Alimentation"
+        @click="openPanel('power')"
+      >
+        <Icon name="power" :size="21" />
+      </button>
+    </footer>
+    <div v-if="working" class="busy-pill" role="status">
+      <span class="spinner" />{{ working }}
+    </div>
+    <Transition name="toast"
+      ><div v-if="toast" class="toast-message" role="status">
+        <Icon name="info" :size="20" /><span>{{ toast }}</span
+        ><button
+          class="icon-button"
+          aria-label="Fermer le message"
+          @click="toast = ''"
+        >
+          <Icon name="close" :size="18" />
+        </button></div
+    ></Transition>
+    <Transition name="panel">
+      <div v-if="panel" class="overlay" @click.self="closePanel">
+        <section
+          ref="panelRoot"
+          class="panel"
+          :class="{ compact: ['power', 'confirm', 'session'].includes(panel) }"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="
+            panel === 'settings'
+              ? 'Paramètres'
+              : panel === 'add'
+                ? 'Ajouter des applications'
+                : panel === 'edit'
+                  ? 'Personnaliser une application'
+                  : panel === 'power'
+                    ? 'Alimentation'
+                    : panel === 'session'
+                      ? 'Application en cours'
+                      : confirmTitle
+          "
+          @keydown.tab="trapFocus"
+        >
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">CANAPEY LAUNCHER</span>
+              <h2>
+                {{
+                  panel === "settings"
+                    ? "À votre façon."
+                    : panel === "add"
+                      ? "Un peu plus vous."
+                      : panel === "edit"
+                        ? "Personnaliser"
+                        : panel === "power"
+                          ? "À bientôt."
+                          : panel === "session"
+                            ? current.name
+                            : confirmTitle
+                }}
+              </h2>
+            </div>
+            <button class="icon-button" aria-label="Fermer" @click="closePanel">
+              <Icon name="close" />
+            </button>
+          </div>
+          <template v-if="panel === 'settings'">
+            <div class="settings-layout">
+              <nav class="settings-nav" aria-label="Catégories des paramètres">
+                <button
+                  v-for="(label, key) in {
+                    general: 'Écran & démarrage',
+                    apps: 'Applications',
+                    controls: 'Manette & ambiance',
+                    updates: 'Mises à jour',
+                    diagnostic: 'Diagnostic',
+                  }"
+                  :key="key"
+                  :class="{ active: settingsTab === key }"
+                  @click="settingsTab = key"
+                >
+                  {{ label }}<Icon name="right" :size="16" /></button
+                ><button @click="openPanel('power')">
+                  <span>Alimentation</span
+                  ><Icon name="power" :size="16" /></button
+                ><small>Canapey {{ version }}<br />Le PC, côté canapé.</small>
+              </nav>
+              <div class="settings-content">
+                <template v-if="settingsTab === 'general'"
+                  ><h3>Votre salon, vos réglages.</h3>
+                  <label class="setting-row"
+                    ><span
+                      >Plein écran au démarrage<small
+                        >Pour profiter de toute la TV.</small
+                      ></span
+                    ><input
+                      v-model="config.settings.fullscreen"
+                      type="checkbox"
+                      role="switch"
+                      @change="persist" /></label
+                  ><label class="setting-row"
+                    ><span
+                      >Démarrer avec Windows<small
+                        >À l’ouverture de votre session.</small
+                      ></span
+                    ><input
+                      v-model="config.settings.autostart"
+                      :disabled="!native"
+                      type="checkbox"
+                      role="switch"
+                      @change="persist" /></label
+                  ><label class="setting-row"
+                    ><span
+                      >Écran préféré<small
+                        >Écran principal si la TV est absente.</small
+                      ></span
+                    ><select
+                      v-model="config.settings.monitor"
+                      @change="persist"
+                    >
+                      <option :value="null">Écran principal</option>
+                      <option
+                        v-for="m in monitorList"
+                        :key="m.id"
+                        :value="m.id"
+                      >
+                        {{ m.name }}
+                      </option>
+                    </select></label
+                  ><label class="setting-row"
+                    ><span
+                      >Taille de l’interface<small
+                        >{{ Math.round(config.settings.scale * 100) }} %</small
+                      ></span
+                    ><input
+                      v-model.number="config.settings.scale"
+                      type="range"
+                      min="0.8"
+                      max="1.4"
+                      step="0.1"
+                      @change="persist" /></label
+                ></template>
+                <template v-if="settingsTab === 'apps'"
+                  ><div class="content-heading">
+                    <h3>Vos applications</h3>
+                    <button
+                      class="small-button"
+                      @click="
+                        query = '';
+                        openPanel('add');
+                      "
+                    >
+                      <Icon name="plus" :size="18" />Ajouter
+                    </button>
+                  </div>
+                  <p v-if="!config.apps.length" class="muted">
+                    Votre espace est encore libre. Ajoutez votre première
+                    application.
+                  </p>
+                  <div
+                    v-for="(a, i) in config.apps"
+                    :key="a.id"
+                    class="manage-app"
+                  >
+                    <button class="manage-name" @click="edit(a)">
+                      <span class="order-number">{{
+                        String(i + 1).padStart(2, "0")
+                      }}</span
+                      ><span
+                        >{{ a.name
+                        }}<small>{{
+                          a.target.kind === "uri"
+                            ? "Raccourci web / URI"
+                            : a.source
+                        }}</small></span
+                      ></button
+                    ><button
+                      class="icon-button"
+                      :disabled="i === 0"
+                      :aria-label="`Avancer ${a.name}`"
+                      @click="moveApp(i, -1)"
+                    >
+                      <Icon name="up" :size="18" /></button
+                    ><button
+                      class="icon-button"
+                      :disabled="i === config.apps.length - 1"
+                      :aria-label="`Reculer ${a.name}`"
+                      @click="moveApp(i, 1)"
+                    >
+                      <Icon name="down" :size="18" /></button
+                    ><button
+                      class="icon-button"
+                      :aria-label="`Modifier ${a.name}`"
+                      @click="edit(a)"
+                    >
+                      <Icon name="edit" :size="18" />
+                    </button></div
+                ></template>
+                <template v-if="settingsTab === 'controls'"
+                  ><h3>Tout, depuis le canapé.</h3>
+                  <div class="device-line">
+                    <Icon name="controller" :size="28" />
+                    <div>
+                      {{ controller ?? "Aucune manette connectée"
+                      }}<small
+                        >Xbox et PlayStation compatibles avec Windows</small
+                      >
+                    </div>
+                  </div>
+                  <label class="setting-row"
+                    ><span
+                      >Retour global à l’accueil<small
+                        >Maintenir les boutons, sans fermer
+                        l’application.</small
+                      ></span
+                    ><select
+                      v-model="config.settings.returnShortcut"
+                      @change="persist"
+                    >
+                      <option value="startBack">Start + Back</option>
+                      <option value="shouldersStart">LB + RB + Start</option>
+                      <option value="disabled">Désactivé</option>
+                    </select></label
+                  ><label class="setting-row"
+                    ><span
+                      >Durée de maintien<small
+                        >{{
+                          (config.settings.holdMs / 1000).toFixed(1)
+                        }}
+                        s</small
+                      ></span
+                    ><input
+                      v-model.number="config.settings.holdMs"
+                      type="range"
+                      min="600"
+                      max="4000"
+                      step="200"
+                      @change="persist" /></label
+                  ><label class="setting-row"
+                    ><span
+                      >Zone neutre du stick<small
+                        >{{
+                          Math.round(config.settings.deadzone * 100)
+                        }}
+                        %</small
+                      ></span
+                    ><input
+                      v-model.number="config.settings.deadzone"
+                      type="range"
+                      min="0.1"
+                      max="0.5"
+                      step="0.05"
+                      @change="persist" /></label
+                  ><label class="setting-row"
+                    ><span>Animations</span
+                    ><input
+                      v-model="config.settings.motion"
+                      type="checkbox"
+                      role="switch"
+                      @change="persist" /></label
+                  ><label class="setting-row"
+                    ><span>Sons de navigation</span
+                    ><input
+                      v-model="config.settings.sound"
+                      type="checkbox"
+                      role="switch"
+                      @change="persist"
+                  /></label>
+                  <p class="note">
+                    Steam Input peut intercepter ces boutons. Désactivez sa
+                    configuration Bureau ou choisissez une autre combinaison.
+                  </p></template
+                >
+                <template v-if="settingsTab === 'updates'"
+                  ><div class="version-art">
+                    <Icon name="sofa" :size="48" /><span>canapey.</span
+                    ><small>Version {{ version }}</small>
+                  </div>
+                  <h3>
+                    {{
+                      update?.state === "available"
+                        ? `La version ${update.version} vous attend.`
+                        : update?.state === "current"
+                          ? "Vous êtes à jour."
+                          : "Toujours à votre rythme."
+                    }}
+                  </h3>
+                  <p class="muted">
+                    Les mises à jour s’installent quand vos applications sont
+                    fermées.
+                  </p>
+                  <p v-if="update?.state === 'disabled'" class="note">
+                    Les mises à jour ne sont pas encore configurées pour cette
+                    distribution.
+                  </p>
+                  <p v-if="updateError" class="inline-error">
+                    {{ updateError }}
+                  </p>
+                  <pre v-if="update?.notes" class="release-notes">{{
+                    update.notes
+                  }}</pre>
+                  <button
+                    class="primary-button"
+                    :disabled="!!working"
+                    @click="checkUpdates"
+                  >
+                    <Icon name="refresh" :size="18" />Rechercher une mise à jour</button
+                  ><button
+                    v-if="update?.state === 'available'"
+                    class="small-button"
+                    :disabled="sessions.length > 0"
+                    @click="
+                      confirm(
+                        'Installer la mise à jour ?',
+                        'Canapey va redémarrer. Vos paramètres et vos visuels seront conservés.',
+                        'Télécharger et installer',
+                        api.installUpdate,
+                      )
+                    "
+                  >
+                    Télécharger et installer
+                  </button></template
+                >
+                <template v-if="settingsTab === 'diagnostic'"
+                  ><h3>Les détails utiles.</h3>
+                  <dl class="diagnostic">
+                    <div>
+                      <dt>Version</dt>
+                      <dd>{{ version }}</dd>
+                    </div>
+                    <div>
+                      <dt>Plateforme</dt>
+                      <dd>
+                        {{
+                          native ? "Windows 11 x64" : "Aperçu de l’interface"
+                        }}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Applications suivies</dt>
+                      <dd>{{ sessions.length }}</dd>
+                    </div>
+                    <div>
+                      <dt>Manette</dt>
+                      <dd>{{ controller ?? "Non connectée" }}</dd>
+                    </div>
+                  </dl>
+                  <div
+                    v-for="session in sessions"
+                    :key="session.appId"
+                    class="session-detail"
+                  >
+                    <span>{{ session.name }}</span
+                    ><button
+                      class="small-button"
+                      :disabled="session.status === 'untracked'"
+                      @click="resumeSession(session.appId)"
+                    >
+                      Reprendre</button
+                    ><button
+                      class="small-button"
+                      @click="closeSession(session.appId)"
+                    >
+                      {{
+                        session.status === "untracked"
+                          ? "Ne plus suivre"
+                          : "Fermer"
+                      }}</button
+                    ><button
+                      v-if="session.canForce"
+                      class="small-button danger"
+                      @click="forceSession(session.appId)"
+                    >
+                      Forcer
+                    </button>
+                  </div>
+                  <button
+                    class="small-button"
+                    @click="run('Ouverture des logs', api.logs)"
+                  >
+                    <Icon name="folder" :size="18" />Ouvrir les logs
+                  </button>
+                  <p class="note">
+                    Sortie de secours : <b>Ctrl + Maj + Q</b>.<br />Alt + F4
+                    ferme également Canapey.<br />Rouvrez-le depuis l’icône de
+                    notification ou son raccourci.
+                  </p>
+                  <button
+                    class="text-button danger"
+                    @click="
+                      confirm(
+                        'Quitter Canapey ?',
+                        'Vos applications resteront ouvertes.',
+                        'Quitter',
+                        api.quit,
+                      )
+                    "
+                  >
+                    Quitter Canapey
+                  </button></template
+                >
+              </div>
+            </div>
+          </template>
+          <template v-else-if="panel === 'add'">
+            <p class="panel-intro">
+              Retrouvez les applications de votre PC, ou ajoutez un raccourci
+              web.
+            </p>
+            <div class="import-toolbar">
+              <label class="search-field"
+                ><Icon name="search" :size="19" /><input
+                  v-model="query"
+                  type="search"
+                  placeholder="Rechercher une application"
+                  aria-label="Rechercher une application" /></label
+              ><button
+                class="small-button"
+                :disabled="scanBusy || !native"
+                @click="scan"
+              >
+                <Icon name="refresh" :size="18" />{{
+                  scanBusy
+                    ? "Recherche…"
+                    : scanned
+                      ? "Actualiser"
+                      : "Détecter mes applications"
+                }}</button
+              ><button class="small-button" :disabled="!native" @click="manual">
+                <Icon name="folder" :size="18" />Parcourir
+              </button>
+            </div>
+            <div class="quick-search" aria-label="Recherches rapides">
+              <button
+                v-for="name in [
+                  'YouTube',
+                  'Netflix',
+                  'Spotify',
+                  'Plezy',
+                  'Steam',
+                  'Silo',
+                ]"
+                :key="name"
+                :class="{ active: query === name }"
+                @click="query = query === name ? '' : name"
+              >
+                {{ name }}
+              </button>
+            </div>
+            <div class="detected-list">
+              <div v-if="scanBusy" class="empty-search">
+                <span class="spinner" />Recherche dans le menu Démarrer, le
+                bureau et les applications enregistrées…
+              </div>
+              <p v-else-if="scanError" class="inline-error">{{ scanError }}</p>
+              <div v-else-if="!native" class="empty-search">
+                <Icon name="monitor" :size="32" />
+                <p>
+                  La détection sera disponible sous Windows.<small
+                    >Vous pouvez déjà personnaliser l’interface avec des
+                    raccourcis web.</small
+                  >
+                </p>
+              </div>
+              <div v-else-if="!scanned" class="empty-search">
+                <Icon name="search" :size="30" />Lancez la détection pour
+                retrouver vos applications.
+              </div>
+              <div v-else-if="!filtered.length" class="empty-search">
+                Aucune application trouvée{{
+                  query ? ` pour « ${query} »` : ""
+                }}. Essayez l’ajout manuel.
+              </div>
+              <button
+                v-for="a in filtered"
+                :key="a.id"
+                class="detected-app"
+                :class="{ chosen: chosen.has(a.id) }"
+                :aria-pressed="chosen.has(a.id)"
+                @click="toggleChoice(a.id)"
+              >
+                <span class="checkbox"
+                  ><Icon
+                    v-if="chosen.has(a.id)"
+                    name="check"
+                    :size="16" /></span
+                ><img v-if="a.icon" :src="api.imageUrl(a.icon)" alt="" /><span
+                  >{{ a.name }}<small>{{ a.source }}</small></span
+                >
+              </button>
+            </div>
+            <div v-if="chosen.size" class="import-action">
+              <span
+                >{{ chosen.size }} sélectionnée{{
+                  chosen.size > 1 ? "s" : ""
+                }}</span
+              ><button
+                class="primary-button"
+                @click="addEntries(found.filter((a) => chosen.has(a.id)))"
+              >
+                Ajouter à mon espace<Icon name="plus" :size="18" />
+              </button>
+            </div>
+            <div class="web-section">
+              <div class="content-heading">
+                <div>
+                  <h3>Un raccourci vers le web</h3>
+                  <p>S’ouvre dans votre navigateur par défaut</p>
+                </div>
+                <Icon name="globe" :size="26" />
+              </div>
+              <div class="web-presets">
+                <button
+                  class="small-button"
+                  @click="addWeb('YouTube', 'https://www.youtube.com')"
+                >
+                  YouTube<Icon name="plus" :size="17" /></button
+                ><button
+                  class="small-button"
+                  @click="addWeb('Netflix', 'https://www.netflix.com')"
+                >
+                  Netflix<Icon name="plus" :size="17" />
+                </button>
+                <button
+                  class="small-button"
+                  @click="addWeb('Spotify', 'https://open.spotify.com')"
+                >
+                  Spotify<Icon name="plus" :size="17" />
+                </button>
+                <button
+                  class="small-button"
+                  @click="addWeb('Internet', 'https://www.google.com')"
+                >
+                  Internet<Icon name="plus" :size="17" />
+                </button>
+              </div>
+              <form class="web-form" @submit.prevent="addWeb()">
+                <input
+                  v-model="webName"
+                  placeholder="Nom"
+                  aria-label="Nom du raccourci"
+                  maxlength="100"
+                  required
+                /><input
+                  v-model="webUrl"
+                  placeholder="https://… ou URI autorisée"
+                  aria-label="Adresse du raccourci"
+                  required
+                /><button
+                  class="small-button"
+                  type="submit"
+                  :disabled="!webName.trim() || !webUrl.trim()"
+                >
+                  Ajouter<Icon name="plus" :size="18" />
+                </button>
+              </form>
+            </div>
+          </template>
+          <template v-else-if="panel === 'edit' && editing">
+            <div class="edit-layout">
+              <div class="edit-preview">
+                <AppCard
+                  inert
+                  :name="editing.name"
+                  :theme="editing.theme"
+                  :image="
+                    api.imageUrl(editing.card) ||
+                    `/art/${editing.theme}-card.webp`
+                  "
+                  selected
+                />
+                <div class="image-actions">
+                  <button class="small-button" @click="imagePick('card')">
+                    Image de carte</button
+                  ><button
+                    class="small-button"
+                    @click="imagePick('background')"
+                  >
+                    Fond d’écran</button
+                  ><button
+                    class="text-button"
+                    @click="
+                      editing.card = null;
+                      editing.background = null;
+                    "
+                  >
+                    Visuels d’origine
+                  </button>
+                </div>
+              </div>
+              <div class="edit-fields">
+                <label
+                  >Nom<input v-model="editing.name" maxlength="100" /></label
+                ><label
+                  >Ambiance<select v-model="editing.theme">
+                    <option
+                      v-for="t in [
+                        'home',
+                        'netflix',
+                        'youtube',
+                        'spotify',
+                        'internet',
+                        'steam',
+                        'plezy',
+                        'silo',
+                      ]"
+                      :key="t"
+                      :value="t"
+                    >
+                      {{ t === "home" ? "Canapey" : t }}
+                    </option>
+                  </select></label
+                ><label
+                  >Cible<input
+                    v-model="editing.target.value"
+                    spellcheck="false" /></label
+                ><template
+                  v-if="
+                    ['executable', 'shortcut'].includes(editing.target.kind)
+                  "
+                  ><label
+                    >Arguments<small
+                      >Un argument par ligne, sans guillemets
+                      supplémentaires.</small
+                    ><textarea
+                      v-model="argumentsText"
+                      rows="3"
+                      spellcheck="false"
+                    /></label
+                  ><label
+                    >Dossier de travail<input
+                      v-model="editing.target.workingDir"
+                      spellcheck="false" /></label
+                ></template>
+                <div class="edit-footer">
+                  <button
+                    v-if="config.apps.some((a) => a.id === editing?.id)"
+                    class="text-button danger"
+                    @click="
+                      confirm(
+                        'Retirer cette carte ?',
+                        'L’application restera installée sur votre PC.',
+                        'Retirer',
+                        removeApp,
+                      )
+                    "
+                  >
+                    <Icon name="trash" :size="18" />Retirer</button
+                  ><button class="primary-button" @click="saveEditing">
+                    Enregistrer<Icon name="check" :size="18" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else-if="panel === 'power'"
+            ><p class="panel-intro">Que souhaitez-vous faire ?</p>
+            <div class="power-options">
+              <button
+                @click="
+                  confirm(
+                    'Mettre le PC en veille ?',
+                    'Votre session sera conservée.',
+                    'Mettre en veille',
+                    sleepPc,
+                  )
+                "
+              >
+                <Icon name="moon" /><span>Mettre en veille</span
+                ><Icon name="right" :size="18" /></button
+              ><button
+                @click="
+                  confirm(
+                    'Redémarrer le PC ?',
+                    'Enregistrez votre travail dans les applications ouvertes.',
+                    'Redémarrer',
+                    restartPc,
+                  )
+                "
+              >
+                <Icon name="refresh" /><span>Redémarrer</span
+                ><Icon name="right" :size="18" /></button
+              ><button
+                @click="
+                  confirm(
+                    'Éteindre le PC ?',
+                    'Enregistrez votre travail dans les applications ouvertes.',
+                    'Éteindre',
+                    shutdownPc,
+                  )
+                "
+              >
+                <Icon name="power" /><span>Éteindre</span
+                ><Icon name="right" :size="18" />
+              </button></div
+          ></template>
+          <template v-else-if="panel === 'session'"
+            ><p class="panel-intro">
+              {{
+                selectedSession?.status === "untracked"
+                  ? "Ce lancement utilise une fenêtre partagée ou non identifiable. Reprenez-la avec Alt + Tab."
+                  : "Votre application est toujours ouverte."
+              }}
+            </p>
+            <div class="power-options">
+              <button
+                :disabled="selectedSession?.status === 'untracked'"
+                @click="run('Reprise', resumeCurrent)"
+              >
+                <Icon name="play" /><span>Reprendre</span></button
+              ><button @click="run('Fermeture', closeCurrent)">
+                <Icon name="close" /><span>{{
+                  selectedSession?.status === "untracked"
+                    ? "Ne plus suivre ce lancement"
+                    : "Fermer normalement"
+                }}</span></button
+              ><button
+                v-if="selectedSession?.canForce"
+                class="danger"
+                @click="
+                  confirm(
+                    'Forcer la fermeture ?',
+                    'Les données non enregistrées de cette application peuvent être perdues. Seuls les processus lancés et identifiés par Canapey seront arrêtés.',
+                    'Forcer la fermeture',
+                    forceCurrent,
+                  )
+                "
+              >
+                <Icon name="power" /><span>Forcer la fermeture</span>
+              </button>
+            </div>
+            <p v-if="selectedSession?.status === 'closing'" class="note">
+              Fermeture demandée. Si l’application ne répond pas, une option de
+              fermeture forcée apparaît après 5 secondes.
+            </p></template
+          >
+          <template v-else-if="panel === 'confirm'"
+            ><p class="confirm-copy">{{ confirmText }}</p>
+            <div class="confirm-actions">
+              <button class="small-button" @click="closePanel">Annuler</button
+              ><button
+                class="primary-button"
+                :disabled="!!working"
+                @click="acceptConfirm"
+              >
+                {{ confirmLabel }}
+              </button>
+            </div></template
+          >
+          <div class="panel-footer">
+            <span
+              ><kbd>{{ controller ? (ps ? "○" : "B") : "esc" }}</kbd
+              >Retour</span
+            ><span v-if="controller">Croix directionnelle pour naviguer</span
+            ><span v-else>Flèches pour naviguer · Entrée pour choisir</span>
+          </div>
+        </section>
+      </div>
+    </Transition>
+  </main>
+</template>
