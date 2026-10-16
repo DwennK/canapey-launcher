@@ -730,6 +730,29 @@ kbd {
   padding-top: 12px;
   min-width: 0;
 }
+.panel.settings-panel {
+  display: flex;
+  flex-direction: column;
+  height: 720px;
+  max-height: 100%;
+  overflow: hidden;
+}
+.settings-panel > .panel-heading,
+.settings-panel > .panel-footer {
+  flex-shrink: 0;
+}
+.settings-panel .settings-layout {
+  flex: 1;
+  min-height: 0;
+}
+.settings-panel .settings-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 12px;
+  padding-inline: 6px;
+}
 .setting-row {
   display: flex;
   align-items: center;
@@ -1592,6 +1615,16 @@ textarea {
   }
   .settings-layout {
     display: block;
+  }
+  .settings-panel .settings-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .settings-panel .settings-nav {
+    flex-shrink: 0;
+  }
+  .settings-panel .settings-content {
+    flex: 1;
   }
   .settings-nav {
     flex-direction: row;

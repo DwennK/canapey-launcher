@@ -1322,6 +1322,7 @@ onUnmounted(() => {
           :class="{
             compact: ['power', 'confirm', 'session'].includes(panel),
             'audio-panel': panel === 'audio',
+            'settings-panel': panel === 'settings',
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
           :style="
@@ -1481,7 +1482,7 @@ onUnmounted(() => {
                   ><Icon name="power" :size="16" /></button
                 ><small>Canapey {{ version }}</small>
               </nav>
-              <div class="settings-content">
+              <div :key="settingsTab" class="settings-content">
                 <template v-if="settingsTab === 'general'"
                   ><h3>Écran et démarrage</h3>
                   <label class="setting-row"
