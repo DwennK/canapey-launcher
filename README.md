@@ -1,135 +1,257 @@
-# Canapey Launcher
+<p align="center">
+  <img src="src-tauri/icons/icon.png" alt="Canapey's sofa icon" width="88" height="88">
+</p>
 
-Un launcher de salon pour **Windows 11 x64**, développé avec **Tauri 2, Rust, Vue 3 et TypeScript**. Explorer reste actif. Aucun compte, serveur ou service distant n’est requis pour l’usage quotidien.
+<h1 align="center">Canapey Launcher</h1>
 
-L’accueil et les paramètres se pilotent au clavier, à la souris et à la manette. Toutes les images et la police sont embarquées. Les cartes proposées au premier démarrage sont étiquetées **À ajouter** : elles ne représentent pas des logiciels détectés.
+<p align="center">
+  <strong>Your PC. From the sofa.</strong>
+</p>
 
-**Version actuelle : 0.1.0 — prérelease de test.** [Télécharger l’installateur Windows](https://github.com/DwennK/canapey-launcher/releases/tag/v0.1.0) · [Toutes les releases](https://github.com/DwennK/canapey-launcher/releases) · [Notes de version](CHANGELOG.md).
+<p align="center">
+  A quiet, controller-first home for your Windows living-room PC.<br>
+  Browse your apps, pick something to play, watch or listen to, and settle in.
+</p>
 
-Les versions `0.x` restent expérimentales. L’installateur n’est pas signé Authenticode ; Windows peut afficher un avertissement SmartScreen. Les essais interactifs sur Windows et manettes physiques restent à effectuer.
+<p align="center">
+  <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.1.0-experimental-78664E?style=flat-square" alt="Version 0.1.0 — experimental"></a>
+  <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
+</p>
 
-## Démarrer
+<p align="center">
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><strong>Windows downloads</strong></a> ·
+  <a href="#quick-start">Build from source</a> ·
+  <a href="CHANGELOG.md">Release notes</a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
+</p>
 
-Prérequis Windows : Node.js 24 LTS (ou 22.12+), Rust stable 1.90+, Visual Studio Build Tools avec « Développement Desktop en C++ », Windows SDK et WebView2. Windows 10, x86 et ARM64 ne sont pas pris en charge.
+<br>
 
-```powershell
+<p align="center">
+  <img src="docs/images/home.png" alt="Canapey home screen with an alpine backdrop, a welcome message and a horizontal carousel of app suggestions" width="100%">
+  <br><sub><strong>Make yourself at home.</strong> A full-screen carousel, cinematic backdrops and your favourite apps within reach.</sub>
+</p>
+
+<p align="center">
+  <a href="#a-look-around">A look around</a> ·
+  <a href="#why-canapey">Why Canapey</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#downloads">Downloads</a> ·
+  <a href="#controls">Controls</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#under-the-hood">Under the hood</a>
+</p>
+
+## A look around
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/library.png" alt="Canapey library showing a grid of app suggestions, including Netflix, YouTube, Spotify, Internet and Steam" width="100%">
+      <p><strong>Your space, at a glance.</strong><br><sub>Move from the home carousel to the library grid without losing your selection.</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/ambience.png" alt="The Spotify suggestion selected in Canapey, with a green-lit turntable backdrop" width="100%">
+      <p><strong>A different mood for every app.</strong><br><sub>Bundled artwork sets the scene. Custom cards and backgrounds make it yours.</sub></p>
+    </td>
+  </tr>
+</table>
+
+<sub>Actual browser UI previews at 1440 × 900. The interface is currently in French; native Windows actions are unavailable in this preview. Cards marked “À ajouter” are suggestions to add, not detected installations. Screenshots show the development interface and may differ from a released installer.</sub>
+
+## Why Canapey
+
+- **Made for the sofa.** Large cards, clear focus and navigation with a controller, keyboard or mouse.
+- **Your apps, together.** Add Windows applications, Store apps and web shortcuts to one personal library.
+- **A home that works offline.** Artwork and fonts ship with the launcher. Everyday launcher use needs no account, server or remote service; web destinations still need a connection.
+- **Windows stays yours.** Explorer keeps running. Return to the desktop, use the system tray or reopen Canapey at any time. No shell replacement.
+- **Make it feel like home.** Reorder cards, import artwork, choose your screen, adjust interface size and turn motion or navigation sounds on or off.
+
+## What it does
+
+| Area | Available in the current implementation |
+| --- | --- |
+| **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
+| **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
+| **Shortcuts** | Executables, Windows shortcuts and supported URIs; ready-to-add YouTube, Netflix, Spotify and Internet web links |
+| **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
+| **App sessions** | Launch, resume and request a normal close for identifiable apps; return when their last tracked window closes |
+| **Personalisation** | Card ordering, bundled themes, custom card/background images and interface scaling |
+| **Desktop integration** | Optional start at login, single instance, tray access, preferred monitor and primary-screen fallback |
+| **Local storage** | Validated configuration, automatic backup, local artwork and rotating diagnostic logs |
+
+> [!IMPORTANT]
+> **Canapey is experimental.** The `0.x` installers are test prereleases without built-in updates or an Authenticode signature. Windows may show a SmartScreen warning. Interactive testing on a real Windows PC and physical controllers is still pending; builds and browser previews do not establish native compatibility. See the [validation record and hardware checklist](docs/VALIDATION.md).
+
+## Downloads
+
+**Current project version: 0.1.0.** Get published installers from [GitHub Releases](https://github.com/DwennK/canapey-launcher/releases), alongside their release notes and `SHA256SUMS.txt`. If no published build is listed, use the [source instructions](#quick-start) below.
+
+| Platform | Distribution | Status |
+| --- | --- | --- |
+| **Windows 11 · x64** | NSIS `.exe` installer, installed for the current user | Experimental target |
+| Windows 10, x86 or ARM64 | — | Unsupported |
+| macOS / Linux | Browser UI development preview | No native launcher support |
+
+WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
+
+On first launch, choose **Add applications** to import your own library. Web presets open in the default Windows browser; they do not install the named services. The Internet preset starts at Google, and its target can be edited in the application settings. An installed Spotify app can also be imported through Windows discovery.
+
+## Controls
+
+| Action | Keyboard | Controller |
+| --- | --- | --- |
+| Move between cards, buttons and fields | Arrow keys | D-pad / left stick |
+| Choose, open or resume | <kbd>Enter</kbd> | A / Cross |
+| Go back or cancel | <kbd>Esc</kbd> | B / Circle |
+| Open the library from the carousel | <kbd>↓</kbd> | Down |
+| Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
+| Open settings | <kbd>F1</kbd> | Start / Options, on release |
+| Return globally without closing the running app | — | Hold Start + Back for 1.2 seconds |
+| Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
+| Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
+
+The global shortcut can be disabled or changed to **LB + RB + Start** (L1 + R1 + Options on PlayStation), with an adjustable hold duration. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
+
+<details>
+<summary><strong>Controller navigation and compatibility</strong></summary>
+
+- Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Entering a path or URI and choosing files may still require a keyboard or a Windows dialog.
+- **Steam Input** can intercept Start/Back or map a controller to keyboard/mouse input through its Desktop Layout. Disable that mapping for Canapey or choose the alternative shortcut. Canapey does not automatically disable duplicate Steam Input and native input.
+- Controllers must be exposed to Windows in a format supported by gilrs / Windows Gaming Input. Canapey does not install PlayStation drivers.
+
+</details>
+
+## Quick start
+
+For native development: **Windows 11 x64**, Node.js **24 LTS** (or a supported version from `package.json`, including 22.12+ on the 22.x line), Rust **1.90+**, Visual Studio Build Tools with **Desktop development with C++**, the Windows SDK and WebView2.
+
+```sh
+git clone https://github.com/DwennK/canapey-launcher.git
+cd canapey-launcher
 npm ci
+```
+
+**Run the Windows desktop app:**
+
+```sh
 npm run desktop
 ```
 
-Lancer uniquement l’interface dans un navigateur, notamment sur macOS :
+**Preview the interface in a browser**, including on macOS or Linux:
 
 ```sh
-npm ci
 npm run dev
 ```
 
-Ouvrir http://127.0.0.1:1420. Ce mode est explicitement indiqué **Aperçu interface**. Il utilise un stockage navigateur isolé, autorise l’édition de raccourcis web, et **ne simule pas** un lancement Windows, une détection, une manette Rust ni une mise à jour réussie. Ne pas utiliser ces essais pour conclure sur les fonctions natives.
+Open [127.0.0.1:1420](http://127.0.0.1:1420). The preview uses isolated browser storage and allows web-shortcut editing. Its visible preview label identifies the mode: it does not simulate Windows launches, discovery, Rust controller input or successful updates.
 
-## Compiler l’installateur Windows
-
-Sur Windows 11 x64 :
+**Build the Windows installer** on Windows 11 x64:
 
 ```powershell
 npm run tauri -- build --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
-Résultat : `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`. Installation par utilisateur, sans modifier le shell Windows. WebView2 est généralement présent sous Windows 11 ; le bootstrapper embarqué nécessite Internet uniquement s’il manque. **Après installation, l’accueil fonctionne hors ligne.**
+Output: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
 
-Compilation croisée de secours depuis macOS, avec `cargo-xwin`, LLVM et NSIS :
+<details>
+<summary><strong>Cross-compiling from macOS</strong></summary>
+
+With `cargo-xwin`, LLVM and NSIS installed:
 
 ```sh
 PATH="/opt/homebrew/opt/llvm/bin:$PATH" npm run tauri -- build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
-Un installateur compilé n’est pas une preuve d’exécution sur un PC Windows. La CI `.github/workflows/ci.yml` compile également l’installateur et le conserve en artefact de test.
+This produces a Windows installer; it does not prove that the app runs correctly on Windows. The [Windows CI workflow](.github/workflows/ci.yml) also builds an installer and retains it as a test artifact.
 
-## Utilisation
+</details>
 
-| Commande | Action |
+## Under the hood
+
+**Tauri 2 + Rust** handle Windows integration. **Vue 3 + TypeScript** render the interface. Bundled artwork and Manrope keep the home screen self-contained.
+
+| Location | Responsibility |
 | --- | --- |
-| Flèches / D-pad / stick gauche | Déplacer la sélection |
-| Entrée / A / Croix | Choisir, ouvrir, reprendre |
-| Bas depuis l’accueil | Ouvrir la grille |
-| Haut depuis la première ligne | Revenir au carrousel |
-| Escape / B / Rond | Retour, annuler |
-| F1 / Start / Options (relâchement) | Paramètres |
-| Start + Back maintenus 1,2 s | Retour global, sans fermer l’application |
-| Ctrl + Maj + Q | Confirmation pour quitter Canapey |
-| Alt + F4 | Fermer Canapey, sortie Windows de secours |
+| [`src/App.vue`](src/App.vue), [`src/components/`](src/components/), [`src/lib/`](src/lib/) | Interface, spatial focus, navigation and IPC bridge |
+| [`model.rs`](src-tauri/src/model.rs), [`config.rs`](src-tauri/src/config.rs), [`input.rs`](src-tauri/src/input.rs), [`tracking.rs`](src-tauri/src/tracking.rs) | Core logic that can be tested without a desktop runtime |
+| [`runtime.rs`](src-tauri/src/runtime.rs) | Validated commands, app sessions, displays, single instance, logs and updates |
+| [`platform/windows.rs`](src-tauri/src/platform/windows.rs), [`discover.ps1`](src-tauri/src/platform/discover.ps1) | Windows app discovery, activation, process and window integration |
+| [`public/art/`](public/art/), [`public/fonts/`](public/fonts/) | Bundled artwork, thumbnails and fonts |
 
-La combinaison globale peut être désactivée ou remplacée par **LB + RB + Start**, et sa durée est réglable. La combinaison alternative utilise les boutons d’épaule L1/R1 sur PlayStation. Les autres entrées manette sont ignorées quand Canapey n’est pas au premier plan. Le retour global exige un relâchement avant de reprendre la navigation.
+<details>
+<summary><strong>Discovery, launching and session tracking</strong></summary>
 
-**Steam Input** peut intercepter Start/Back et la configuration Bureau peut convertir la manette en clavier/souris. Désactiver cette configuration pour Canapey ou choisir l’autre combinaison. La double conversion Steam Input + entrée native n’est pas automatiquement désactivée par Canapey. Les manettes doivent être exposées à Windows dans un format reconnu par gilrs/Windows Gaming Input ; aucun pilote PlayStation n’est installé par le launcher.
+Discovery runs only when requested, after the home screen is visible. It examines user/common Start menus and desktops, **App Paths** registry keys and packaged identities returned by **Get-StartApps**. Searches are bounded to 600 shortcuts per root, 1,500 results and 60 seconds.
 
-Les paramètres, l’import multiple, l’ordre, le choix d’ambiance, les confirmations et l’alimentation sont navigables à la manette. La saisie d’un chemin/URI ou le choix initial de fichiers peut nécessiter le clavier et les dialogues Windows.
+A fixed PowerShell script uses WScript.Shell to resolve `.lnk` files while retaining arguments and working directories. `CommandLineToArgvW` parses arguments. Executables use `std::process::Command` with an argument list; unresolved shortcuts and URIs use `ShellExecuteExW`; Store identities use `IApplicationActivationManager`. User paths are never concatenated into shell commands or scripts. If AppLocker or PowerShell policy blocks discovery, manual `.exe` entry remains available.
 
-## Détection et lancement
+Allowed URI schemes: `http`, `https`, `steam`, `spotify`, `ms-xbox`. UNC paths, `.bat` / `.cmd` scripts and additional arguments for URI or packaged-app targets are deliberately rejected.
 
-La détection est déclenchée uniquement par l’utilisateur, après l’affichage de l’accueil. Elle examine les menus Démarrer utilisateur/commun, les bureaux utilisateur/commun, les clés **App Paths** et les identités packagées retournées par **Get-StartApps**. Elle ne parcourt jamais tous les disques.
+Tracking uses **PID + creation time**, follows descendants and recognises existing non-browser instances by exact executable path. When the last associated window disappears, Canapey returns after a short delay; the first process exiting alone does not trigger a return. Apps with no window after 20 seconds are marked untracked, or removed from tracking if no relevant process remains. No process is killed by name.
 
-Un script PowerShell fixe utilise WScript.Shell pour résoudre les `.lnk` et conserver leurs arguments/dossiers de travail. Les arguments sont décomposés avec `CommandLineToArgvW`. Les exécutables sont lancés avec `std::process::Command` et une liste d’arguments. Les raccourcis non résolus et les URI passent par `ShellExecuteExW`, les identités Store par `IApplicationActivationManager`. Aucun chemin utilisateur n’est concaténé dans un script ou une commande de shell. AppLocker ou une politique PowerShell restrictive peut bloquer la détection ; l’ajout manuel d’un `.exe` reste disponible. La recherche est bornée à 600 raccourcis par racine, 1 500 résultats et 60 secondes.
+Normal close requests use `WM_CLOSE`. After five seconds, the interface may offer an explicitly confirmed force close, restricted to processes started by Canapey and their identified descendants. Existing instances cannot be force-closed. Tracked sessions remain available in Diagnostics even after their card is removed.
 
-Les raccourcis web sont ajoutés explicitement et marqués **WEB**. Protocoles autorisés : `http`, `https`, `steam`, `spotify`, `ms-xbox`. Les chemins UNC, scripts `.bat/.cmd`, arguments supplémentaires pour URI et identités packagées sont refusés. Ces limites sont volontaires dans cette version.
+**Tracking limits:**
 
-Les raccourcis prêts à ajouter sont **YouTube**, **Netflix**, **Spotify** (`https://open.spotify.com/`) et **Internet** (`https://www.google.com/`). Ils s’ouvrent dans le navigateur Windows par défaut. Pour changer la page de départ d’Internet, modifier sa **Cible** dans Paramètres → Applications. Spotify installé peut aussi être importé depuis la détection Windows ; son ambiance musicale est attribuée automatiquement. Les deux nouvelles ambiances sont embarquées et disponibles dans l’éditeur de carte.
+- Browser and URI launches often share processes or windows. Their launch is real, but their session is not individually identifiable: use Alt + Tab to resume and the global shortcut to return. Force close is unavailable. Stopping tracking does not close the browser.
+- Very short-lived launcher chains, unrelated service activations and system-hosted windows can evade association. Canapey does not adopt arbitrary PIDs to compensate. Store apps, Steam and single-instance applications need testing with the installed versions.
+- Elevated, protected, windowless or exclusive-fullscreen applications may refuse inspection, closing or focus. If Windows denies focus, Canapey flashes its taskbar button.
+- An application opened outside Canapey is recognised when its card is activated, rather than through a blocking startup scan.
 
-Le suivi associe les fenêtres à des identités **PID + date de création**, suit les descendants et reconnaît une instance existante par le chemin exact d’un exécutable non navigateur. Une disparition de la dernière fenêtre déclenche le retour après une courte temporisation ; la fin du seul premier PID n’est pas interprétée comme la fermeture. Une application restée sans fenêtre après 20 s est signalée non suivie, ou retirée si aucun processus pertinent ne subsiste. Pas de destruction par nom de processus.
+</details>
 
-La fermeture normale utilise `WM_CLOSE`. Après 5 s, l’interface peut proposer explicitement une fermeture forcée, limitée aux processus démarrés par Canapey et à leurs descendants identifiés. Une instance déjà présente n’est pas tuée de force. Les applications suivies restent accessibles dans **Diagnostic**, même si leur carte a été retirée.
+<details>
+<summary><strong>Local data, artwork, logs and desktop behaviour</strong></summary>
 
-### Limites de suivi à connaître
+Windows data directory: `%APPDATA%\com.canapey.launcher\`.
 
-- Les URI et navigateurs partagent souvent des processus/fenêtres. Leur lancement est réel, mais Canapey les indique **non identifiables** : reprise via Alt+Tab, retour via le raccourci global, aucune fermeture forcée. « Ne plus suivre » enlève seulement le suivi, sans fermer le navigateur.
-- Une chaîne de lanceurs très rapides dont un processus intermédiaire disparaît avant le prochain instantané, une activation via un service non apparenté ou une fenêtre hébergée dans un processus système peut échapper à l’association. Aucun PID arbitraire n’est adopté pour compenser. Les applications Store, Steam et logiciels mono-instance doivent être validés sur les versions réellement installées.
-- Les applications élevées, protégées, sans fenêtre ou certains jeux en plein écran exclusif peuvent refuser l’inspection/la fermeture/le focus. Windows garde le dernier mot. En cas de refus de focus, Canapey fait clignoter son bouton dans la barre des tâches.
-- Une application lancée hors Canapey est reconnue à l’activation de sa carte, pas par un scan initial bloquant.
+| File or directory | Contents |
+| --- | --- |
+| `config.json` | Applications, ordering, selection and settings; validated on every write |
+| `config.backup.json` | Previous valid configuration; writes use a synced temporary file and atomic replacement in the same directory |
+| `config.invalid-<timestamp>.json` | Preserved invalid original before recovery |
+| `art/` | Imported images converted to WebP: 640 × 360 cards, 1920 × 1080 backgrounds; source limit 20 MB / 8,192 px, storage quota 128 MB |
+| `icons/` | Extracted icon cache, capped at 64 MB |
 
-## Données, images et logs
+Rotating logs are available under **Settings → Diagnostics → Open logs** (French UI: *Paramètres → Diagnostic → Ouvrir les logs*). They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
 
-Répertoire de données Windows : `%APPDATA%\com.canapey.launcher\`.
+Optional start at login uses Tauri's official autostart plugin. Starting a second instance brings back the first; the tray offers open and quit actions. **Return to Windows** shows the desktop while keeping Canapey available. The preferred monitor is saved, with fallback to the primary screen if the TV is disconnected. Display topology is checked periodically, including after sleep. Winlogon and Explorer are left unchanged.
 
-- `config.json` : applications, ordre, sélection et paramètres ; validation à chaque écriture.
-- `config.backup.json` : version valide précédente. Écriture temporaire dans le même dossier, synchronisation et remplacement atomique.
-- `config.invalid-<timestamp>.json` : original invalide conservé avant récupération.
-- `art/` : images personnalisées importées, converties en WebP ; cartes 640×360, fonds 1920×1080. Source limitée à 20 Mo / 8192 px. Quota 128 Mo.
-- `icons/` : cache d’icônes extraites, limité à 64 Mo.
+</details>
 
-Les logs rotatifs sont accessibles dans **Paramètres → Diagnostic → Ouvrir les logs**. Ils contiennent erreurs natives et mesures de temps ; aucun secret de mise à jour. Ne pas supprimer les fichiers personnels d’`art/` encore référencés. Retirer une carte ne désinstalle jamais le logiciel et ne supprime pas les images personnalisées.
+<details>
+<summary><strong>Versioning, prereleases and future signed updates</strong></summary>
 
-Démarrage avec Windows : plugin officiel autostart, à l’ouverture de la session utilisateur. Une seconde instance réaffiche la première. L’icône de notification permet d’ouvrir ou quitter Canapey. **Retour Windows** affiche le bureau avec le shell Windows ; le launcher reste disponible. Le moniteur préféré est conservé et l’écran principal sert de repli si la TV est déconnectée. La topologie des écrans est revérifiée périodiquement, y compris après veille. Aucune modification de Winlogon/Explorer.
+Development builds and `0.x` prereleases explicitly disable built-in updates. Download these installers from GitHub Releases. GitHub's `latest` endpoint excludes prereleases.
 
-## Mises à jour GitHub Releases
-
-Le code utilise le plugin officiel Tauri Updater : vérification différée de 15 s, vérification manuelle, version et notes, installation à la demande, vérification de signature et préservation du répertoire de données. Aucun téléchargement ni redémarrage automatique sans action utilisateur. Toute installation est bloquée tant qu’une session est suivie ou qu’un lancement est en cours. Les erreurs réseau ne bloquent pas l’accueil.
-
-Le dépôt public est [DwennK/canapey-launcher](https://github.com/DwennK/canapey-launcher). Les mises à jour intégrées restent **désactivées explicitement** dans la configuration de développement et les préreleases `0.x`. Ces installateurs se téléchargent depuis la page Releases. Le canal signé ci-dessous est réservé aux futures releases stables : l’endpoint GitHub `latest` ne distribue pas les préreleases.
-
-### Versions et publication expérimentale
-
-L’agent choisit le prochain numéro selon les changements, conformément à [AGENTS.md](AGENTS.md) : correctifs et petites améliorations en `0.1.1`, `0.1.2`, etc. ; fonctionnalités importantes en `0.2.0`, `0.3.0`, etc. Le passage en `1.0.0` nécessite une décision explicite de l’utilisateur.
+For an authorised publication, follow [AGENTS.md](AGENTS.md): use a patch for fixes and small improvements, a minor for substantial features or breaking changes during the experimental phase. Moving to `1.0.0` requires an explicit decision.
 
 ```sh
-npm run version:bump -- patch  # ou minor
+npm run version:bump -- patch  # or minor
 npm run version:check
 npm run check
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
 ```
 
-La commande synchronise `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` et `src-tauri/Cargo.lock`. Elle ne crée ni commit ni tag. Les deux workflows vérifient les versions ; celui de release vérifie aussi le tag. Après mise à jour de `CHANGELOG.md`, commit et push autorisés, pousser le tag annoté `vX.Y.Z` : GitHub Actions compile l’installateur Windows et prépare un brouillon de prérelease avec une empreinte SHA-256. L’agent vérifie les résultats, complète les notes et publie le brouillon dans le cadre de la livraison demandée.
+The bump command synchronises `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`; it creates no commit or tag. Update `CHANGELOG.md` and this README's version/download references, then create focused commits. Once delivery is authorised, push the commits and an annotated `vX.Y.Z` tag. Never move a published tag. Both workflows check version consistency; the release workflow also checks the tag. It creates a draft prerelease with a Windows installer and SHA-256 checksum. Review the assets and notes before publishing, and verify the public tag, commit, release and downloads.
 
-### Futur canal stable signé
+**Future stable channel:** the official Tauri Updater supports a check after 15 seconds, manual checks, release notes, signature verification and user-initiated installation with local data preserved. It never downloads or restarts automatically without user action. Installation is blocked while a session is tracked or a launch is in progress; network failures do not block the home screen.
 
-1. Utiliser le dépôt public existant et décider explicitement du passage en version stable.
-2. Générer une paire avec `npm run tauri -- signer generate -w <chemin-hors-du-depot>`. Le fichier privé est provisoire : après import et validation dans les secrets Actions, retirer sa copie locale. Ne jamais le committer ni l’incorporer dans l’application.
-3. Ajouter le contenu complet de la clé privée dans le secret Actions `TAURI_SIGNING_PRIVATE_KEY` et son mot de passe dans `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (chaîne vide si aucun).
-4. Ajouter le contenu **base64 complet** du fichier `.pub` dans la variable Actions `TAURI_UPDATER_PUBLIC_KEY`.
-5. Aligner les versions de `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, et les lockfiles. Créer le tag `vX.Y.Z`.
-6. Le workflow `release.yml` utilise automatiquement `GITHUB_REPOSITORY` et génère `tauri.release.conf.json` avec la clé publique et `https://github.com/OWNER/REPO/releases/latest/download/latest.json`. La clé publique est alors incorporée dans l’application compilée.
-7. Le workflow compile Windows x64, signe les artefacts de mise à jour et crée une **release brouillon** avec l’installateur, sa signature et `latest.json`. Vérifier sur un vrai PC, rédiger les notes, puis publier le brouillon. Un brouillon n’est pas une mise à jour distribuée.
+To configure that channel after an explicit stable-release decision:
 
-Secrets disponibles seulement dans Actions, jamais dans le frontend. `GITHUB_TOKEN` est fourni par GitHub. Le fichier de configuration de release généré est ignoré par Git. La signature **Tauri Updater** est distincte de la signature **Authenticode Windows** : sans certificat Authenticode configuré, SmartScreen peut avertir pour l’installateur. Le workflow ne prétend pas posséder ce certificat.
+1. Generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the application; remove its temporary local copy after import and verification in Actions secrets.
+2. Store the full private key in the Actions secret `TAURI_SIGNING_PRIVATE_KEY` and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty if none).
+3. Store the **complete base64 contents** of the `.pub` file in the Actions variable `TAURI_UPDATER_PUBLIC_KEY`.
+4. Align all five version files and create the release tag. The [release workflow](.github/workflows/release.yml) uses `GITHUB_REPOSITORY` to generate the ignored `tauri.release.conf.json`, embedding the public key and the endpoint `https://github.com/OWNER/REPO/releases/latest/download/latest.json`.
+5. The workflow creates a draft containing the installer, updater signature and `latest.json`. Test on a real PC, review the notes and publish. A draft does not distribute an update.
 
-## Validation et performance
+Secrets stay in Actions, never in the frontend; GitHub provides `GITHUB_TOKEN`. **Tauri Updater signing and Windows Authenticode signing are separate.** An updater signature does not remove SmartScreen warnings; the workflow does not claim an Authenticode certificate.
+
+</details>
+
+## Development & validation
 
 ```sh
 npm run check
@@ -137,29 +259,26 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
 
-Sur Windows, exécuter aussi les tests avec les fonctions desktop activées :
+On Windows, also run tests with desktop features enabled:
 
 ```powershell
 cargo test --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc
 ```
 
-Le protocole et les preuves disponibles sont dans [docs/VALIDATION.md](docs/VALIDATION.md). Le budget de moins d’une seconde est **un objectif**, pas un résultat annoncé. `startup_interactive_ms` mesure depuis l’entrée du runtime Rust jusqu’au signal frontend après deux images rendues ; `return_interactive_ms` mesure le retour jusqu’au même signal. Les mesures démarrage à froid, à chaud et retour doivent être recueillies séparément sur le PC cible. Rien ne mesure ni ne promet le temps complet de démarrage de Windows.
+The [validation record](docs/VALIDATION.md) documents the checks performed, browser test procedure and remaining Windows hardware tests. Current Windows build results are available in [GitHub Actions](https://github.com/DwennK/canapey-launcher/actions).
 
-## Organisation
+**Performance is measured, not assumed.** Sub-second interaction is a target, not a published result. `startup_interactive_ms` measures from Rust runtime entry to the frontend signal after two rendered frames; `return_interactive_ms` measures the return path to the same signal. Cold start, warm start and return must be measured separately on the target PC. Neither metric measures full Windows boot time.
 
-- `src/App.vue`, `src/components/`, `src/lib/` : interface, focus spatial, navigation, pont IPC sans moteur de carrousel.
-- `src-tauri/src/model.rs`, `config.rs`, `input.rs`, `tracking.rs` : logique pure testable sans bureau.
-- `src-tauri/src/runtime.rs` : commandes validées, sessions, écran, instance unique, logs, mises à jour.
-- `src-tauri/src/platform/windows.rs`, `discover.ps1` : intégration Windows ; séparation pour une future stratégie de shell, sans remplacement dans cette version.
-- `public/art/` : visuels embarqués et miniatures, environ 1,6 Mo au total.
-- `docs/artwork-prompts.json` : prompts exacts des six compositions, générées avec l’outil intégré ImageGen. Les noms de services sont des traitements typographiques, pas des logos officiels revendiqués. La carte Windows est une composition vectorielle locale. Les marques appartiennent à leurs titulaires ; aucune affiliation.
-- `public/fonts/` : Manrope, licence SIL OFL jointe.
+## Credits & references
 
-## Références officielles
+- **Artwork:** bundled scene prompts are recorded in [`docs/artwork-prompts.json`](docs/artwork-prompts.json). Scenes were generated with ImageGen; the Windows card is a local vector composition. Service names are typographic treatments, not a claim to official logos. Trademarks belong to their respective owners; no affiliation is implied.
+- **Typeface:** [Manrope](public/fonts/), distributed with its [SIL Open Font License](public/fonts/OFL.txt).
+- **Desktop runtime:** Tauri's [Updater](https://v2.tauri.app/plugin/updater/), [GitHub Actions pipeline](https://v2.tauri.app/distribute/pipelines/github/), [Windows installer](https://v2.tauri.app/distribute/windows-installer/), [Single Instance](https://v2.tauri.app/plugin/single-instance/) and [Autostart](https://v2.tauri.app/plugin/autostart/) documentation.
+- **Native integration:** [gilrs](https://docs.rs/gilrs/latest/gilrs/), Microsoft's [ShellExecute](https://learn.microsoft.com/en-us/windows/win32/shell/launch) and [SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow) documentation.
 
-- [Tauri Updater](https://v2.tauri.app/plugin/updater/)
-- [Tauri GitHub Actions](https://v2.tauri.app/distribute/pipelines/github/)
-- [Tauri Windows Installer et compilation croisée](https://v2.tauri.app/distribute/windows-installer/)
-- [Tauri Single Instance](https://v2.tauri.app/plugin/single-instance/) et [Autostart](https://v2.tauri.app/plugin/autostart/)
-- [gilrs](https://docs.rs/gilrs/latest/gilrs/)
-- [Microsoft : lancement ShellExecute](https://learn.microsoft.com/en-us/windows/win32/shell/launch) et [SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)
+<br>
+
+<p align="center">
+  <img src="src-tauri/icons/icon.png" alt="" width="32" height="32"><br>
+  <sub><strong>Canapey Launcher</strong> · Make yourself at home.</sub>
+</p>
