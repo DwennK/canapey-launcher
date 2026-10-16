@@ -83,6 +83,8 @@ async (page) => {
             sessions: [],
             controller: "Xbox Wireless Controller (QA fixture)",
           };
+        if (cmd === "audio_state")
+          return { outputs: [], defaultId: null, volume: null, muted: false };
         if (cmd === "save_config") {
           config = structuredClone(args.config);
           return config;
@@ -292,6 +294,13 @@ async (page) => {
     );
     await send("right");
     await send("right");
+    await send("right");
+    assert(
+      (await page.evaluate(() =>
+        document.activeElement.getAttribute("aria-label"),
+      )) === "Commandes rapides",
+      "Quick controls unreachable from header",
+    );
     await send("right");
     assert(
       (await page.evaluate(() =>

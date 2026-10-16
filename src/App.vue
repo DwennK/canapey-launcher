@@ -2,6 +2,8 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
+import AudioControls from "./components/AudioControls.vue";
+import { createAudioControls } from "./lib/audio";
 import AppCard from "./components/AppCard.vue";
 import * as api from "./lib/bridge";
 import {
@@ -29,6 +31,7 @@ import {
 
 type Panel =
   | ""
+  | "audio"
   | "settings"
   | "add"
   | "edit"
@@ -55,6 +58,19 @@ const config = ref(defaults()),
   loaded = ref(false),
   native = ref(false),
   version = ref("0.1.0");
+const audio = createAudioControls(api);
+const {
+  state: audioState,
+  error: audioError,
+  busy: audioBusy,
+  volume: audioVolume,
+  switching: audioSwitching,
+} = audio;
+let audioTimer: ReturnType<typeof setInterval>;
+async function openAudio() {
+  void openPanel("audio");
+  if (native.value) await audio.refresh(true);
+}
 const selected = ref(0),
   view = ref<"carousel" | "grid">("carousel"),
   panel = ref<Panel>("");
@@ -541,6 +557,31 @@ function dispatch(action: Action) {
   }
   if (working.value) return;
   const element = document.activeElement as HTMLElement;
+  if (
+    panel.value === "audio" &&
+    panelRoot.value &&
+    (action === "up" || action === "down")
+  ) {
+    const controls = focusableItems(panelRoot.value);
+    const index = controls.indexOf(element);
+    focusElement(
+      controls[
+        Math.max(
+          0,
+          Math.min(controls.length - 1, index + (action === "up" ? -1 : 1)),
+        )
+      ],
+    );
+    return;
+  }
+  if (panel.value === "audio" && element.matches("[data-audio-volume]")) {
+    editingControl.value = null;
+    if (action === "left" || action === "right") {
+      audio.setVolume(audioVolume.value + (action === "left" ? -2 : 2));
+      return;
+    }
+    if (action === "accept") return;
+  }
   if (editingControl.value && editingControl.value !== element)
     editingControl.value = null;
   if (editingControl.value) {
@@ -923,6 +964,19 @@ watch(selectedSession, (session) => {
     void closePanel();
   }
 });
+watch(audioState, async () => {
+  if (panel.value !== "audio" || !panelRoot.value) return;
+  const focused = document.activeElement as HTMLElement;
+  const bookmark = rememberFocus(panelRoot.value);
+  await nextTick();
+  if (
+    panel.value === "audio" &&
+    panelRoot.value &&
+    (!focused.isConnected || focused.matches(":disabled"))
+  ) {
+    restoreFocus(panelRoot.value, bookmark);
+  }
+});
 watch(
   () => config.value.settings.scale,
   () => {
@@ -987,6 +1041,12 @@ onMounted(async () => {
     await nextTick();
     await focusCard();
     void api.ready();
+    if (native.value) {
+      void audio.refresh();
+      audioTimer = setInterval(() => {
+        if (!document.hidden && document.hasFocus()) void audio.refresh();
+      }, 2000);
+    }
   }
   updateTimer = setTimeout(async () => {
     if (native.value && !sessions.value.length)
@@ -1012,6 +1072,7 @@ onUnmounted(() => {
   motionPreference.removeEventListener("change", motionChanged);
   resizeObserver?.disconnect();
   clearInterval(clockTimer);
+  clearInterval(audioTimer);
   clearTimeout(updateTimer);
   clearTimeout(saveTimer);
   clearTimeout(toastTimer);
@@ -1084,6 +1145,18 @@ onUnmounted(() => {
           :title="controller ?? 'Navigation au clavier'"
           ><Icon :name="controller ? 'controller' : 'monitor'" :size="20" /><i
             v-if="controller" /></span
+        ><button
+          class="icon-button audio-trigger"
+          title="Commandes rapides"
+          aria-label="Commandes rapides"
+          aria-haspopup="dialog"
+          :aria-expanded="panel === 'audio'"
+          @click="openAudio"
+        >
+          <Icon
+            :name="audioState?.muted ? 'muted' : 'volume'"
+            :size="22"
+          /></button
         ><time>{{ time }}</time
         ><button
           class="icon-button"
@@ -1237,7 +1310,10 @@ onUnmounted(() => {
       <div
         v-if="panel"
         class="overlay"
-        :class="{ 'quick-overlay': panel === 'quick' || panel === 'move' }"
+        :class="{
+          'quick-overlay': panel === 'quick' || panel === 'move',
+          'audio-overlay': panel === 'audio',
+        }"
         @click.self="closePanel"
       >
         <section
@@ -1245,6 +1321,7 @@ onUnmounted(() => {
           class="panel"
           :class="{
             compact: ['power', 'confirm', 'session'].includes(panel),
+            'audio-panel': panel === 'audio',
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
           :style="
@@ -1253,21 +1330,23 @@ onUnmounted(() => {
           role="dialog"
           aria-modal="true"
           :aria-label="
-            panel === 'quick'
-              ? `Actions pour ${quickApp?.name}`
-              : panel === 'move'
-                ? 'Déplacer la carte'
-                : panel === 'settings'
-                  ? 'Paramètres'
-                  : panel === 'add'
-                    ? 'Ajouter des applications'
-                    : panel === 'edit'
-                      ? 'Personnaliser une application'
-                      : panel === 'power'
-                        ? 'Alimentation'
-                        : panel === 'session'
-                          ? 'Application en cours'
-                          : confirmTitle
+            panel === 'audio'
+              ? 'Commandes rapides'
+              : panel === 'quick'
+                ? `Actions pour ${quickApp?.name}`
+                : panel === 'move'
+                  ? 'Déplacer la carte'
+                  : panel === 'settings'
+                    ? 'Paramètres'
+                    : panel === 'add'
+                      ? 'Ajouter des applications'
+                      : panel === 'edit'
+                        ? 'Personnaliser une application'
+                        : panel === 'power'
+                          ? 'Alimentation'
+                          : panel === 'session'
+                            ? 'Application en cours'
+                            : confirmTitle
           "
           @keydown.tab="trapFocus"
         >
@@ -1276,21 +1355,23 @@ onUnmounted(() => {
               <span class="eyebrow">CANAPEY LAUNCHER</span>
               <h2>
                 {{
-                  panel === "quick"
-                    ? quickApp?.name
-                    : panel === "move"
-                      ? "Déplacer la carte"
-                      : panel === "settings"
-                        ? "Paramètres"
-                        : panel === "add"
-                          ? "Ajouter des applications"
-                          : panel === "edit"
-                            ? "Personnaliser"
-                            : panel === "power"
-                              ? "Alimentation"
-                              : panel === "session"
-                                ? current.name
-                                : confirmTitle
+                  panel === "audio"
+                    ? "Commandes rapides"
+                    : panel === "quick"
+                      ? quickApp?.name
+                      : panel === "move"
+                        ? "Déplacer la carte"
+                        : panel === "settings"
+                          ? "Paramètres"
+                          : panel === "add"
+                            ? "Ajouter des applications"
+                            : panel === "edit"
+                              ? "Personnaliser"
+                              : panel === "power"
+                                ? "Alimentation"
+                                : panel === "session"
+                                  ? current.name
+                                  : confirmTitle
                 }}
               </h2>
             </div>
@@ -1298,7 +1379,28 @@ onUnmounted(() => {
               <Icon name="close" />
             </button>
           </div>
-          <template v-if="panel === 'quick' && quickApp">
+          <AudioControls
+            v-if="panel === 'audio'"
+            :state="audioState"
+            :volume="audioVolume"
+            :busy="audioBusy"
+            :switching="audioSwitching"
+            :error="audioError"
+            :native="native"
+            @volume="audio.setVolume"
+            @mute="audio.toggleMute"
+            @output="audio.setOutput"
+            @refresh="audio.refresh(true)"
+            @sleep="
+              confirm(
+                'Mettre le PC en veille ?',
+                'Votre session sera conservée.',
+                'Mettre en veille',
+                sleepPc,
+              )
+            "
+          />
+          <template v-else-if="panel === 'quick' && quickApp">
             <div class="quick-actions power-options">
               <template v-if="quickSession">
                 <button
@@ -2052,6 +2154,9 @@ onUnmounted(() => {
                 ? "Saisie · Entrée pour terminer · Maj+Entrée pour une nouvelle ligne"
                 : "Flèches pour régler · OK pour terminer"
             }}</span
+            ><span v-else-if="panel === 'audio'"
+              >↑ ↓ Naviguer · ← → Volume ·
+              {{ controller ? "A / Croix" : "Entrée" }} Choisir</span
             ><span v-else>{{
               controller
                 ? "Croix directionnelle : naviguer · A / Croix : OK"

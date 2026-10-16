@@ -121,3 +121,10 @@ export async function subscribe(handlers: {
   ]);
   return () => stops.forEach((f) => f());
 }
+
+export const audioState = (): Promise<import("./types").AudioState> =>
+  native ? invoke("audio_state") : unavailable();
+export const changeAudio = (
+  change: import("./types").AudioChange,
+): Promise<import("./types").AudioState> =>
+  native ? invoke("change_audio", { change }) : unavailable();

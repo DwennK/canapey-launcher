@@ -27,6 +27,7 @@ const paths: Record<string, string> = {
   refresh:
     "M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3",
   volume: "M4 9h4l5-4v14l-5-4H4V9Zm13-2a7 7 0 0 1 0 10",
+  muted: "M4 9h4l5-4v14l-5-4H4V9Zm13 0 5 6m-5 0 5-6",
   info: "M12 8h.01M12 11v6M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z",
   trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7",
 };

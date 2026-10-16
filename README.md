@@ -75,6 +75,7 @@
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
 | **Shortcuts** | Executables, Windows shortcuts and supported URIs; ready-to-add YouTube, Netflix, Spotify and Internet web links |
+| **Quick controls** | Header audio button, Windows master volume/mute, default output selection and confirmed sleep; controller-accessible side panel |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
 | **App sessions** | Launch, resume and request a normal close for identifiable apps; return when their last tracked window closes |
 | **Personalisation** | Card ordering, bundled themes, custom card/background images and interface scaling |
@@ -112,6 +113,8 @@ On first launch, choose **Add applications** to import your own library. Web pre
 | Return globally without closing the running app | — | Hold Start + Back for 1.2 seconds |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
+
+The **Quick controls** button sits immediately to the left of the clock. In its side panel, Up/Down moves through controls, Left/Right adjusts the focused volume slider by 2 percentage points, A / Cross or Enter selects an output or toggles mute, and B / Circle or Esc closes the panel. Sleep requires confirmation and initially focuses Cancel. Audio reflects the Windows default playback device; output selection changes the console, multimedia and communications defaults. Apps pinned to another output may retain their own routing. See [audio implementation and validation](docs/AUDIO.md) for platform limits and the hardware checklist.
 
 On added application cards, a short Enter / A / Cross press activates on release. A long press shows progress and opens card actions without launching on release. Right-click or touch-and-hold also opens the menu; touch scrolling cancels the gesture. Edit, move and remove cards here, or resume and close tracked sessions. Back / Esc dismisses the menu and restores the selected card. Suggestions and system cards keep their usual action.
 

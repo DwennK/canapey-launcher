@@ -127,3 +127,18 @@ export function targetKey(t: Target): string {
     (t.workingDir ?? "").replaceAll("/", "\\").toLowerCase(),
   ]);
 }
+
+export interface AudioOutput {
+  id: string;
+  name: string;
+}
+export interface AudioState {
+  outputs: AudioOutput[];
+  defaultId: string | null;
+  volume: number | null;
+  muted: boolean;
+}
+export type AudioChange =
+  | { kind: "volume"; id: string; value: number }
+  | { kind: "mute"; id: string; value: boolean }
+  | { kind: "output"; id: string };

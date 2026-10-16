@@ -34,3 +34,10 @@ pub fn start_controller(_: tauri::AppHandle) {}
 pub fn desktop() -> Result<(), String> {
     supported()
 }
+
+pub fn audio_state() -> Result<crate::audio::AudioState, String> {
+    Err("Les commandes audio nécessitent Windows 11.".into())
+}
+pub fn change_audio(_: crate::audio::AudioChange) -> Result<crate::audio::AudioState, String> {
+    audio_state()
+}

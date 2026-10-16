@@ -4,6 +4,9 @@
 
 - Textes de l’interface simplifiés : titres et actions explicites, suppression des slogans et des sous-titres décoratifs.
 
+- Commandes rapides à gauche de l’heure : volume général Windows, muet, choix de la sortie audio et veille avec confirmation dans un panneau latéral.
+- Navigation du panneau au clavier et à la manette, actualisation des sorties connectées et restauration du focus ; commandes Windows à valider sur matériel réel.
+
 - Menu rapide sur les cartes : maintien de 600 ms sur Entrée / A / Croix, clic droit, appui long tactile ou X / Carré ; indicateur de maintien et aucun lancement au relâchement d’un appui long.
 - Modification, déplacement et retrait avec confirmation directement depuis une carte ; reprise et fermeture des sessions suivies, sélection conservée au retour.
 

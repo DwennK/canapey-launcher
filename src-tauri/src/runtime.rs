@@ -538,6 +538,21 @@ fn show_desktop(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn audio_state() -> Result<crate::audio::AudioState, String> {
+    tauri::async_runtime::spawn_blocking(platform::audio_state)
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn change_audio(
+    change: crate::audio::AudioChange,
+) -> Result<crate::audio::AudioState, String> {
+    change.validate()?;
+    tauri::async_runtime::spawn_blocking(move || platform::change_audio(change))
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
 fn power_action(action: String) -> Result<(), String> {
     platform::power(&action)
 }
@@ -833,6 +848,8 @@ pub fn run() {
             close_app,
             show_desktop,
             power_action,
+            audio_state,
+            change_audio,
             quit,
             open_logs,
             check_update,
