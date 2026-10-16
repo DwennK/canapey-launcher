@@ -199,29 +199,24 @@ const filtered = computed(() =>
 );
 const heroTitle = computed(() =>
   current.value.special === "add"
-    ? "Installez-vous."
+    ? "Ajouter des applications"
     : current.value.special === "windows"
       ? "Retour au bureau."
       : current.value.name,
 );
 const subtitle = computed(() =>
-  current.value.special === "add"
-    ? "Vos applications préférées. À portée de manette."
-    : current.value.special === "windows"
-      ? "Retrouvez votre PC. Canapey reste à portée de main."
-      : current.value.suggestion
-        ? "Ajoutez cette application à votre espace."
-        : {
-            netflix: "Le grand écran, à la maison.",
-            youtube: "Une nouvelle vidéo. Un nouvel univers.",
-            spotify: "La bande-son de votre salon.",
-            internet: "Tout le web, depuis votre canapé.",
-            steam: "Votre prochaine aventure vous attend.",
-            plezy: "Toute votre médiathèque, réunie.",
-            silo: "Votre collection, simplement.",
-            home: "Votre application, sur grand écran.",
-            windows: "",
-          }[current.value.theme],
+  current.value.special === "windows"
+    ? "Canapey reste ouvert en arrière-plan."
+    : "",
+);
+const heroStatus = computed(() =>
+  current.value.suggestion
+    ? "À AJOUTER"
+    : current.value.entry?.target.kind === "uri"
+      ? "RACCOURCI WEB"
+      : selectedSession.value
+        ? "EN COURS"
+        : "",
 );
 const heroBg = ref("/art/home.webp"),
   oldBg = ref("");
@@ -1105,30 +1100,20 @@ onUnmounted(() => {
       class="hero"
       aria-live="polite"
     >
-      <div class="eyebrow">
-        <span class="tiny-line" />{{
-          current.suggestion
-            ? "À DÉCOUVRIR"
-            : empty
-              ? "BIENVENUE CHEZ VOUS"
-              : current.entry?.target.kind === "uri"
-                ? "RACCOURCI WEB"
-                : selectedSession
-                  ? "EN COURS"
-                  : "VOTRE ESPACE"
-        }}
+      <div v-if="heroStatus" class="eyebrow">
+        <span class="tiny-line" />{{ heroStatus }}
       </div>
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
-      <p>{{ subtitle }}</p>
+      <p v-if="subtitle">{{ subtitle }}</p>
       <button class="hero-action" @click="activate()">
         <span class="keycap light">{{
           controller ? (ps ? "×" : "A") : "↵"
         }}</span
         >{{
           current.special === "add"
-            ? "Personnaliser mon espace"
+            ? "Ajouter des applications"
             : current.suggestion
-              ? "Ajouter à mon espace"
+              ? "Ajouter"
               : current.special === "windows"
                 ? "Afficher le bureau"
                 : selectedSession
@@ -1146,16 +1131,14 @@ onUnmounted(() => {
       <div class="library-heading">
         <div>
           <span class="section-label">{{
-            view === "grid"
-              ? "Votre bibliothèque"
-              : empty
-                ? "Faites comme chez vous"
-                : "Vos applications"
-          }}</span
-          ><span class="section-count">{{
             empty
-              ? "Quelques idées pour commencer"
-              : `${config.apps.length} application${config.apps.length > 1 ? "s" : ""}`
+              ? "Applications suggérées"
+              : view === "grid"
+                ? "Votre bibliothèque"
+                : "Vos applications"
+          }}</span>
+          <span v-if="!empty" class="section-count">{{
+            `${config.apps.length} application${config.apps.length > 1 ? "s" : ""}`
           }}</span>
         </div>
         <button
@@ -1298,13 +1281,13 @@ onUnmounted(() => {
                     : panel === "move"
                       ? "Déplacer la carte"
                       : panel === "settings"
-                        ? "À votre façon."
+                        ? "Paramètres"
                         : panel === "add"
-                          ? "Un peu plus vous."
+                          ? "Ajouter des applications"
                           : panel === "edit"
                             ? "Personnaliser"
                             : panel === "power"
-                              ? "À bientôt."
+                              ? "Alimentation"
                               : panel === "session"
                                 ? current.name
                                 : confirmTitle
@@ -1394,16 +1377,13 @@ onUnmounted(() => {
                 ><button @click="openPanel('power')">
                   <span>Alimentation</span
                   ><Icon name="power" :size="16" /></button
-                ><small>Canapey {{ version }}<br />Le PC, côté canapé.</small>
+                ><small>Canapey {{ version }}</small>
               </nav>
               <div class="settings-content">
                 <template v-if="settingsTab === 'general'"
-                  ><h3>Votre salon, vos réglages.</h3>
+                  ><h3>Écran et démarrage</h3>
                   <label class="setting-row"
-                    ><span
-                      >Plein écran au démarrage<small
-                        >Pour profiter de toute la TV.</small
-                      ></span
+                    ><span>Plein écran au démarrage</span
                     ><input
                       v-model="config.settings.fullscreen"
                       type="checkbox"
@@ -1465,8 +1445,7 @@ onUnmounted(() => {
                     </button>
                   </div>
                   <p v-if="!config.apps.length" class="muted">
-                    Votre espace est encore libre. Ajoutez votre première
-                    application.
+                    Aucune application ajoutée.
                   </p>
                   <div
                     v-for="(a, i) in config.apps"
@@ -1515,7 +1494,7 @@ onUnmounted(() => {
                     </button></div
                 ></template>
                 <template v-if="settingsTab === 'controls'"
-                  ><h3>Tout, depuis le canapé.</h3>
+                  ><h3>Manette et navigation</h3>
                   <div class="device-line">
                     <Icon name="controller" :size="28" />
                     <div>
@@ -1597,10 +1576,10 @@ onUnmounted(() => {
                   <h3>
                     {{
                       update?.state === "available"
-                        ? `La version ${update.version} vous attend.`
+                        ? `Version ${update.version} disponible`
                         : update?.state === "current"
                           ? "Vous êtes à jour."
-                          : "Toujours à votre rythme."
+                          : "Mises à jour"
                     }}
                   </h3>
                   <p class="muted">
@@ -1640,7 +1619,7 @@ onUnmounted(() => {
                   </button></template
                 >
                 <template v-if="settingsTab === 'diagnostic'"
-                  ><h3>Les détails utiles.</h3>
+                  ><h3>Diagnostic</h3>
                   <dl class="diagnostic">
                     <div>
                       <dt>Version</dt>
@@ -1816,7 +1795,7 @@ onUnmounted(() => {
                 class="primary-button"
                 @click="addEntries(found.filter((a) => chosen.has(a.id)))"
               >
-                Ajouter à mon espace<Icon name="plus" :size="18" />
+                Ajouter<Icon name="plus" :size="18" />
               </button>
             </div>
             <div class="web-section">
@@ -1972,8 +1951,7 @@ onUnmounted(() => {
             </div>
           </template>
           <template v-else-if="panel === 'power'"
-            ><p class="panel-intro">Que souhaitez-vous faire ?</p>
-            <div class="power-options">
+            ><div class="power-options">
               <button
                 @click="
                   confirm(

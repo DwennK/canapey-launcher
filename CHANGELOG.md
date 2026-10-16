@@ -2,6 +2,8 @@
 
 ## À venir
 
+- Textes de l’interface simplifiés : titres et actions explicites, suppression des slogans et des sous-titres décoratifs.
+
 - Menu rapide sur les cartes : maintien de 600 ms sur Entrée / A / Croix, clic droit, appui long tactile ou X / Carré ; indicateur de maintien et aucun lancement au relâchement d’un appui long.
 - Modification, déplacement et retrait avec confirmation directement depuis une carte ; reprise et fermeture des sessions suivies, sélection conservée au retour.
 

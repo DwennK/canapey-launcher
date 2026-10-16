@@ -6,7 +6,7 @@ async (page) => {
   await page.setViewportSize({width:1440,height:900});
   await page.evaluate(()=>localStorage.removeItem('canapey-ui-preview-v1'));
   await page.reload();
-  await page.getByRole('heading',{name:'Installez-vous.'}).waitFor();
+  await page.getByRole('heading',{name:'Ajouter des applications',exact:true}).waitFor();
   const assert=async(condition,message)=>{if(!await condition)throw new Error(message)};
   const selected=()=>page.locator('.cards .app-card[aria-pressed="true"]');
   await assert((await page.locator('.cards .app-card').count())===9,'Honest empty-state suggestions missing');
@@ -113,7 +113,7 @@ async (page) => {
   await page.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:1420')?route.continue():route.abort());
   await page.evaluate(()=>localStorage.setItem('canapey-ui-preview-v1','{broken'));
   await page.reload();
-  await page.getByRole('heading',{name:'Installez-vous.'}).waitFor();
+  await page.getByRole('heading',{name:'Ajouter des applications',exact:true}).waitFor();
   await page.waitForFunction(()=>[...document.images].filter(i=>i.getBoundingClientRect().x<innerWidth).every(i=>i.complete&&i.naturalWidth>0));
   await page.screenshot({animations:'disabled',path:'output/playwright/home-desktop.png'});
   await page.keyboard.press('ArrowDown');
