@@ -1,3 +1,5 @@
+import { version as appVersion } from "../../package.json";
+export { appVersion };
 import { invoke, convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -48,7 +50,7 @@ export async function boot(): Promise<Boot> {
   return {
     config,
     warning: null,
-    version: "0.1.0",
+    version: appVersion,
     native: false,
     sessions: [],
     controller: null,

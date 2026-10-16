@@ -57,7 +57,7 @@ motionPreference.addEventListener("change", motionChanged);
 const config = ref(defaults()),
   loaded = ref(false),
   native = ref(false),
-  version = ref("0.1.0");
+  version = ref(api.appVersion);
 const audio = createAudioControls(api);
 const {
   state: audioState,
