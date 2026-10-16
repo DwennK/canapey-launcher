@@ -8,7 +8,6 @@ import AppCard from "./components/AppCard.vue";
 import * as api from "./lib/bridge";
 import {
   defaults,
-  themeFor,
   targetKey,
   type AppEntry,
   type Action,
@@ -96,8 +95,6 @@ const settingsTab = ref("general"),
   chosen = ref(new Set<string>());
 const editing = ref<AppEntry | null>(null),
   argumentsText = ref(""),
-  webName = ref(""),
-  webUrl = ref(""),
   update = ref<UpdateInfo | null>(null),
   updateError = ref("");
 const confirmTitle = ref(""),
@@ -819,34 +816,6 @@ async function manual() {
       void openPanel("edit");
     }
   });
-}
-async function addWeb(name = webName.value, url = webUrl.value) {
-  try {
-    const u = new URL(url);
-    if (
-      !["https:", "http:", "steam:", "spotify:", "ms-xbox:"].includes(
-        u.protocol,
-      )
-    )
-      throw new Error("Protocole non autorisé.");
-    if (!name.trim()) throw new Error("Indiquez un nom.");
-    await addEntries([
-      {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        theme: themeFor(name),
-        target: { kind: "uri", value: u.href, args: [], workingDir: null },
-        card: null,
-        background: null,
-        icon: null,
-        source: "Raccourci web explicite",
-      },
-    ]);
-    webName.value = "";
-    webUrl.value = "";
-  } catch (e) {
-    notify(e);
-  }
 }
 function edit(app: AppEntry) {
   editing.value = JSON.parse(JSON.stringify(app));
@@ -1783,8 +1752,8 @@ onUnmounted(() => {
           </template>
           <template v-else-if="panel === 'add'">
             <p class="panel-intro">
-              Retrouvez les applications de votre PC, ou ajoutez un raccourci
-              web.
+              Retrouvez les applications de votre PC et ajoutez-les à votre
+              bibliothèque.
             </p>
             <div class="import-toolbar">
               <label class="search-field"
@@ -1835,10 +1804,8 @@ onUnmounted(() => {
               <div v-else-if="!native" class="empty-search">
                 <Icon name="monitor" :size="32" />
                 <p>
-                  La détection sera disponible sous Windows.<small
-                    >Vous pouvez déjà personnaliser l’interface avec des
-                    raccourcis web.</small
-                  >
+                  La détection et l’ajout d’applications sont disponibles sous
+                  Windows.
                 </p>
               </div>
               <div v-else-if="!scanned" class="empty-search">
@@ -1879,60 +1846,6 @@ onUnmounted(() => {
               >
                 Ajouter<Icon name="plus" :size="18" />
               </button>
-            </div>
-            <div class="web-section">
-              <div class="content-heading">
-                <div>
-                  <h3>Un raccourci vers le web</h3>
-                  <p>S’ouvre dans votre navigateur par défaut</p>
-                </div>
-                <Icon name="globe" :size="26" />
-              </div>
-              <div class="web-presets">
-                <button
-                  class="small-button"
-                  @click="addWeb('YouTube', 'https://www.youtube.com')"
-                >
-                  YouTube<Icon name="plus" :size="17" /></button
-                ><button
-                  class="small-button"
-                  @click="addWeb('Netflix', 'https://www.netflix.com')"
-                >
-                  Netflix<Icon name="plus" :size="17" />
-                </button>
-                <button
-                  class="small-button"
-                  @click="addWeb('Spotify', 'https://open.spotify.com')"
-                >
-                  Spotify<Icon name="plus" :size="17" />
-                </button>
-                <button
-                  class="small-button"
-                  @click="addWeb('Internet', 'https://www.google.com')"
-                >
-                  Internet<Icon name="plus" :size="17" />
-                </button>
-              </div>
-              <form class="web-form" @submit.prevent="addWeb()">
-                <input
-                  v-model="webName"
-                  placeholder="Nom"
-                  aria-label="Nom du raccourci"
-                  maxlength="100"
-                  required
-                /><input
-                  v-model="webUrl"
-                  placeholder="https://… ou URI autorisée"
-                  aria-label="Adresse du raccourci"
-                  required
-                /><button
-                  class="small-button"
-                  type="submit"
-                  :disabled="!webName.trim() || !webUrl.trim()"
-                >
-                  Ajouter<Icon name="plus" :size="18" />
-                </button>
-              </form>
             </div>
           </template>
           <template v-else-if="panel === 'edit' && editing">

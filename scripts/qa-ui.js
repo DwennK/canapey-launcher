@@ -27,30 +27,25 @@ async (page) => {
   await page.waitForFunction(()=>document.querySelector('.backdrop-current').getAttribute('src')==='/art/home.webp');
   await page.keyboard.press('Enter');
   await page.getByRole('dialog',{name:'Ajouter des applications'}).waitFor();
-  await page.locator('.web-presets').getByRole('button',{name:'Netflix',exact:true}).click();
-  await page.getByRole('heading',{name:'Netflix',exact:true}).waitFor();
-  await page.getByRole('dialog').waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Ajouter',exact:true}).click();
-  await page.locator('.web-presets').getByRole('button',{name:'YouTube',exact:true}).click();
-  await page.getByRole('heading',{name:'YouTube',exact:true}).waitFor();
-  await page.getByRole('dialog').waitFor({state:'hidden'});
-  for (const name of ['Spotify', 'Internet']) {
-    await page.getByRole('button',{name:'Ajouter',exact:true}).click();
-    await page.locator('.web-presets').getByRole('button',{name,exact:true}).click();
-    await page.getByRole('heading',{name,exact:true}).waitFor();
-    await page.getByRole('dialog').waitFor({state:'hidden'});
-    await page.waitForFunction(theme=>document.querySelector('.backdrop-current').getAttribute('src')===`/art/${theme}.webp`,name.toLowerCase());
-    await page.waitForFunction(()=>[...document.images].filter(i=>i.getBoundingClientRect().x<innerWidth).every(i=>i.complete&&i.naturalWidth>0));
-    await page.screenshot({animations:'disabled',path:`output/playwright/${name.toLowerCase()}-desktop.png`});
-  }
-  // A second import must retain one card per target.
-  await page.getByRole('button',{name:'Ajouter',exact:true}).click();
-  await page.locator('.web-presets').getByRole('button',{name:'Spotify',exact:true}).click();
-  await page.getByRole('dialog').waitFor({state:'hidden'});
+  await assert((await page.locator('.web-section, .web-presets, .web-form').count())===0,'Web creation controls remain');
+  await page.getByText('La détection et l’ajout d’applications sont disponibles sous Windows.').waitFor();
+  await page.screenshot({animations:'disabled',path:'output/playwright/add-preview-desktop.png'});
+  await page.keyboard.press('Escape');
+  // Existing URI shortcuts must remain editable after removing their creation UI.
+  await page.evaluate(async()=>{
+    const {defaults}=await import('/src/lib/types.ts');
+    const config=defaults();
+    config.apps=[['Netflix','https://www.netflix.com/'],['YouTube','https://www.youtube.com/'],['Spotify','https://open.spotify.com/'],['Internet','https://www.google.com/']].map(([name,url])=>({
+      id:name.toLowerCase(), name, theme:name.toLowerCase(),
+      target:{kind:'uri',value:url,args:[],workingDir:null},
+      card:null,background:null,icon:null,source:'Existing shortcut QA fixture'
+    }));
+    config.selectedId='internet';
+    localStorage.setItem('canapey-ui-preview-v1',JSON.stringify(config));
+  });
   await page.reload();
   await page.getByRole('heading',{name:'Internet',exact:true}).waitFor();
   const webApps=await page.evaluate(()=>JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).apps);
-  await assert(webApps.length===4,'Repeated Spotify import created a duplicate');
   for (const [name,theme,url] of [['Spotify','spotify','https://open.spotify.com/'],['Internet','internet','https://www.google.com/']]) {
     const app=webApps.find(a=>a.name===name);
     await assert(app?.theme===theme&&app?.target.kind==='uri'&&app?.target.value===url,`${name} theme/target did not persist`);
@@ -121,9 +116,9 @@ async (page) => {
   await page.screenshot({animations:'disabled',path:'output/playwright/grid-mobile.png'});
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Ajouter',exact:true}).click();
-  await page.locator('.web-presets').getByRole('button',{name:'Internet',exact:true}).scrollIntoViewIfNeeded();
+  await page.getByRole('dialog',{name:'Ajouter des applications'}).waitFor();
   await page.screenshot({animations:'disabled',path:'output/playwright/add-mobile.png'});
-  await assert(page.evaluate(()=>document.documentElement.scrollWidth===innerWidth),'Mobile preset overflow');
+  await assert(page.evaluate(()=>document.documentElement.scrollWidth===innerWidth),'Mobile import overflow');
   await page.keyboard.press('Escape');
   await page.keyboard.press('F1');
   await page.getByRole('dialog',{name:'Paramètres'}).waitFor();
@@ -144,5 +139,5 @@ async (page) => {
   await page.evaluate(()=>localStorage.removeItem('canapey-ui-preview-v1'));
   await assert(errors.length===0,`Runtime errors: ${errors.join('; ')}`);
   await assert(external.length===0,`External requests: ${external.join('; ')}`);
-  return {result:'passed',viewport:'1440×900 + 390×844',errors,external,checked:['carousel/grid/focus','rapid selection/background cancellation','import explicit web','edit/reorder/persist','safe unavailable native actions','updates unconfigured','power confirmation cancel','remove confirmation','corrupt browser config','no external network','mobile layout']};
+  return {result:'passed',viewport:'1440×900 + 390×844',errors,external,checked:['carousel/grid/focus','rapid selection/background cancellation','web creation removed; existing URI compatibility','edit/reorder/persist','safe unavailable native actions','updates unconfigured','power confirmation cancel','remove confirmation','corrupt browser config','no external network','mobile layout']};
 }

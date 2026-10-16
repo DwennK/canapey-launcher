@@ -2,6 +2,9 @@
 
 ## À venir
 
+- Ajout d’applications simplifié : suppression du formulaire et des suggestions de raccourcis web. Les raccourcis déjà enregistrés restent utilisables.
+- Survol et sélection des applications plus visibles, avec un contour de focus intérieur qui ne déborde plus de la liste.
+
 - Correction du retour au bureau Windows qui échouait avec « Classe non enregistrée : 0x80040154 ».
 - Mises à jour intégrées signées pour les préreleases `0.x`, avec un canal distinct des versions stables.
 - Publication du canal après vérification des fichiers de la release publique ; protection contre les brouillons, les fichiers incohérents et les retours de version.

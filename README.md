@@ -63,7 +63,7 @@
 ## Why Canapey
 
 - **Made for the sofa.** Large cards, clear focus and navigation with a controller, keyboard or mouse.
-- **Your apps, together.** Add Windows applications, Store apps and web shortcuts to one personal library.
+- **Your apps, together.** Import Windows applications, Store apps and existing shortcuts into one personal library.
 - **A home that works offline.** Artwork and fonts ship with the launcher. Everyday launcher use needs no account, server or remote service; web destinations still need a connection.
 - **Windows stays yours.** Explorer keeps running. Return to the desktop, use the system tray or reopen Canapey at any time. No shell replacement.
 - **Make it feel like home.** Reorder cards, import artwork, choose your screen, adjust interface size and turn motion or navigation sounds on or off.
@@ -74,7 +74,7 @@
 | --- | --- |
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
-| **Shortcuts** | Executables, Windows shortcuts and supported URIs; ready-to-add YouTube, Netflix, Spotify and Internet web links |
+| **Shortcuts** | Executables, Windows shortcuts and supported URIs |
 | **Quick controls** | Header audio button, Windows master volume/mute, default output selection and confirmed sleep; controller-accessible side panel |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
 | **App sessions** | Launch, resume and request a normal close for identifiable apps; return when their last tracked window closes |
@@ -97,7 +97,7 @@
 
 WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
 
-On first launch, choose **Add applications** to import your own library. Web presets open in the default Windows browser; they do not install the named services. The Internet preset starts at Google, and its target can be edited in the application settings. An installed Spotify app can also be imported through Windows discovery.
+On first launch, choose **Add applications** to discover installed applications or browse for an executable or Windows shortcut. Select the applications you want, then choose **Add**. Previously saved web shortcuts remain available in your library.
 
 ## Controls
 
@@ -154,7 +154,7 @@ npm run desktop
 npm run dev
 ```
 
-Open [127.0.0.1:1420](http://127.0.0.1:1420). The preview uses isolated browser storage and allows web-shortcut editing. Its visible preview label identifies the mode: it does not simulate Windows launches, discovery, Rust controller input or successful updates.
+Open [127.0.0.1:1420](http://127.0.0.1:1420). The preview uses isolated browser storage and allows interface and settings previews. Its visible preview label identifies the mode: it does not simulate Windows launches, discovery, Rust controller input or successful updates.
 
 **Build the Windows installer** on Windows 11 x64:
 
