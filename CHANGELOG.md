@@ -1,6 +1,6 @@
 # Notes de version
 
-## À venir
+## 0.2.0 — 2026-10-17
 
 - Textes de l’interface simplifiés : titres et actions explicites, suppression des slogans et des sous-titres décoratifs.
 
