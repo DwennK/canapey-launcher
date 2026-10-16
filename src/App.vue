@@ -452,7 +452,11 @@ async function openPanel(p: Panel) {
           ? (panelRoot.value.querySelector<HTMLElement>(
               ".quick-actions button:not(:disabled)",
             ) ?? undefined)
-          : focusableItems(panelRoot.value)[0],
+          : p === "settings"
+            ? (panelRoot.value.querySelector<HTMLElement>(
+                ".settings-nav button.active",
+              ) ?? undefined)
+            : focusableItems(panelRoot.value)[0],
     );
 }
 async function closePanel() {

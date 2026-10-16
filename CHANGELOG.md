@@ -2,6 +2,7 @@
 
 ## À venir
 
+- À l’ouverture des paramètres, le focus se place sur « Écran & démarrage » pour commencer directement la navigation dans les catégories.
 - Ajout d’applications simplifié : suppression du formulaire et des suggestions de raccourcis web. Les raccourcis déjà enregistrés restent utilisables.
 - Survol et sélection des applications plus visibles, avec un contour de focus intérieur qui ne déborde plus de la liste.
 
