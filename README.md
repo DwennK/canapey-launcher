@@ -97,7 +97,7 @@
 
 WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
 
-On first launch, choose **Add applications** to discover installed applications or browse for an executable or Windows shortcut. Select the applications you want, then choose **Add**. Previously saved web shortcuts remain available in your library.
+On first launch, choose **Add applications** to discover installed applications or browse for an executable or Windows shortcut. Select the applications you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Applications already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
 
 ## Controls
 

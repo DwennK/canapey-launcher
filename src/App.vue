@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { isSystemTool } from "./lib/discovery";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import AudioControls from "./components/AudioControls.vue";
@@ -89,6 +90,7 @@ const settingsTab = ref("general"),
   monitorList = ref<Monitor[]>([]),
   found = ref<AppEntry[]>([]),
   query = ref(""),
+  showSystemTools = ref(false),
   scanned = ref(false),
   scanBusy = ref(false),
   scanError = ref(""),
@@ -205,10 +207,28 @@ const date = computed(() =>
   }),
 );
 const filtered = computed(() =>
-  found.value.filter((a) =>
-    a.name.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()),
+  found.value.filter(
+    (a) =>
+      (showSystemTools.value || !isSystemTool(a)) &&
+      a.name.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()),
   ),
 );
+const addedTargets = computed(() =>
+  new Set(config.value.apps.map((a) => targetKey(a.target))),
+);
+const isAlreadyAdded = (app: AppEntry) =>
+  addedTargets.value.has(targetKey(app.target));
+const selectedImports = computed(() =>
+  found.value.filter((a) => chosen.value.has(a.id) && !isAlreadyAdded(a)),
+);
+watch(showSystemTools, (show) => {
+  if (!show)
+    chosen.value = new Set(
+      found.value
+        .filter((a) => chosen.value.has(a.id) && !isSystemTool(a))
+        .map((a) => a.id),
+    );
+});
 const heroTitle = computed(() =>
   current.value.special === "add"
     ? "Ajouter des applications"
@@ -790,6 +810,8 @@ async function scan() {
   }
 }
 function toggleChoice(id: string) {
+  const app = found.value.find((a) => a.id === id);
+  if (!app || isAlreadyAdded(app)) return;
   const set = new Set(chosen.value);
   set.has(id) ? set.delete(id) : set.add(id);
   chosen.value = set;
@@ -1782,22 +1804,28 @@ onUnmounted(() => {
                 <Icon name="folder" :size="18" />Parcourir
               </button>
             </div>
-            <div class="quick-search" aria-label="Recherches rapides">
-              <button
-                v-for="name in [
-                  'YouTube',
-                  'Netflix',
-                  'Spotify',
-                  'Plezy',
-                  'Steam',
-                  'Silo',
-                ]"
-                :key="name"
-                :class="{ active: query === name }"
-                @click="query = query === name ? '' : name"
-              >
-                {{ name }}
-              </button>
+            <div class="import-filters">
+              <div class="quick-search" aria-label="Recherches rapides">
+                <button
+                  v-for="name in [
+                    'YouTube',
+                    'Netflix',
+                    'Spotify',
+                    'Plezy',
+                    'Steam',
+                    'Silo',
+                  ]"
+                  :key="name"
+                  :class="{ active: query === name }"
+                  @click="query = query === name ? '' : name"
+                >
+                  {{ name }}
+                </button>
+              </div>
+              <label class="system-filter">
+                <input v-model="showSystemTools" type="checkbox" />
+                Afficher les outils système
+              </label>
             </div>
             <div class="detected-list">
               <div v-if="scanBusy" class="empty-search">
@@ -1819,34 +1847,46 @@ onUnmounted(() => {
               <div v-else-if="!filtered.length" class="empty-search">
                 Aucune application trouvée{{
                   query ? ` pour « ${query} »` : ""
-                }}. Essayez l’ajout manuel.
+                }}. {{
+                  showSystemTools
+                    ? 'Essayez l’ajout manuel.'
+                    : 'Essayez d’afficher les outils système ou utilisez Parcourir.'
+                }}
               </div>
               <button
                 v-for="a in filtered"
                 :key="a.id"
                 class="detected-app"
-                :class="{ chosen: chosen.has(a.id) }"
-                :aria-pressed="chosen.has(a.id)"
+                :class="{
+                  chosen: chosen.has(a.id),
+                  'already-added': isAlreadyAdded(a),
+                }"
+                :aria-pressed="chosen.has(a.id) || isAlreadyAdded(a)"
+                :disabled="isAlreadyAdded(a)"
                 @click="toggleChoice(a.id)"
               >
                 <span class="checkbox"
                   ><Icon
-                    v-if="chosen.has(a.id)"
+                    v-if="chosen.has(a.id) || isAlreadyAdded(a)"
                     name="check"
                     :size="16" /></span
                 ><img v-if="a.icon" :src="api.imageUrl(a.icon)" alt="" /><span
+                  class="detected-name"
                   >{{ a.name }}<small>{{ a.source }}</small></span
+                >
+                <span v-if="isAlreadyAdded(a)" class="added-label"
+                  >Déjà ajoutée</span
                 >
               </button>
             </div>
-            <div v-if="chosen.size" class="import-action">
+            <div v-if="selectedImports.length" class="import-action">
               <span
-                >{{ chosen.size }} sélectionnée{{
-                  chosen.size > 1 ? "s" : ""
+                >{{ selectedImports.length }} sélectionnée{{
+                  selectedImports.length > 1 ? "s" : ""
                 }}</span
               ><button
                 class="primary-button"
-                @click="addEntries(found.filter((a) => chosen.has(a.id)))"
+                @click="addEntries(selectedImports)"
               >
                 Ajouter<Icon name="plus" :size="18" />
               </button>
