@@ -1,5 +1,7 @@
 # Validation — 16 octobre 2026
 
+Ce rapport conserve les preuves de la livraison locale initiale, avant publication. Les résultats Windows de chaque commit et tag sont disponibles dans [GitHub Actions](https://github.com/DwennK/canapey-launcher/actions) ; les installateurs publics se trouvent dans [Releases](https://github.com/DwennK/canapey-launcher/releases). La compilation et les tests automatisés ne remplacent pas la matrice d’essais matériels ci-dessous.
+
 ## Ce qui a réellement été exécuté
 
 Environnement : macOS ARM64, Node 26, Rust 1.94.1. Compilation croisée avec cargo-xwin déjà présent, LLVM 23 installé via Homebrew et NSIS 3.13 déjà présent. Le PATH de compilation a été limité aux commandes, sans modifier le profil shell. Tests de navigateur avec **Google Chrome système**, contexte isolé sans profil personnel. Aucun téléchargement de Chromium Playwright.

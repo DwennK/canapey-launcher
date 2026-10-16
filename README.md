@@ -4,6 +4,10 @@ Un launcher de salon pour **Windows 11 x64**, développé avec **Tauri 2, Rust, 
 
 L’accueil et les paramètres se pilotent au clavier, à la souris et à la manette. Toutes les images et la police sont embarquées. Les cartes proposées au premier démarrage sont étiquetées **À ajouter** : elles ne représentent pas des logiciels détectés.
 
+**Version actuelle : 0.1.0 — prérelease de test.** [Télécharger l’installateur Windows](https://github.com/DwennK/canapey-launcher/releases/tag/v0.1.0) · [Toutes les releases](https://github.com/DwennK/canapey-launcher/releases) · [Notes de version](CHANGELOG.md).
+
+Les versions `0.x` restent expérimentales. L’installateur n’est pas signé Authenticode ; Windows peut afficher un avertissement SmartScreen. Les essais interactifs sur Windows et manettes physiques restent à effectuer.
+
 ## Démarrer
 
 Prérequis Windows : Node.js 24 LTS (ou 22.12+), Rust stable 1.90+, Visual Studio Build Tools avec « Développement Desktop en C++ », Windows SDK et WebView2. Windows 10, x86 et ARM64 ne sont pas pris en charge.
@@ -99,11 +103,23 @@ Démarrage avec Windows : plugin officiel autostart, à l’ouverture de la sess
 
 Le code utilise le plugin officiel Tauri Updater : vérification différée de 15 s, vérification manuelle, version et notes, installation à la demande, vérification de signature et préservation du répertoire de données. Aucun téléchargement ni redémarrage automatique sans action utilisateur. Toute installation est bloquée tant qu’une session est suivie ou qu’un lancement est en cours. Les erreurs réseau ne bloquent pas l’accueil.
 
-Le dépôt distant et les clés de signature ne sont pas fournis. Les mises à jour sont donc **désactivées explicitement** dans la configuration de développement ; aucune clé fictive ne remplace une vraie clé.
+Le dépôt public est [DwennK/canapey-launcher](https://github.com/DwennK/canapey-launcher). Les mises à jour intégrées restent **désactivées explicitement** dans la configuration de développement et les préreleases `0.x`. Ces installateurs se téléchargent depuis la page Releases. Le canal signé ci-dessous est réservé aux futures releases stables : l’endpoint GitHub `latest` ne distribue pas les préreleases.
 
-Pour activer les releases :
+### Versions et publication expérimentale
 
-1. Créer le dépôt GitHub (public pour un endpoint de téléchargement sans compte).
+L’agent choisit le prochain numéro selon les changements, conformément à [AGENTS.md](AGENTS.md) : correctifs et petites améliorations en `0.1.1`, `0.1.2`, etc. ; fonctionnalités importantes en `0.2.0`, `0.3.0`, etc. Le passage en `1.0.0` nécessite une décision explicite de l’utilisateur.
+
+```sh
+npm run version:bump -- patch  # ou minor
+npm run version:check
+npm run check
+```
+
+La commande synchronise `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` et `src-tauri/Cargo.lock`. Elle ne crée ni commit ni tag. Les deux workflows vérifient les versions ; celui de release vérifie aussi le tag. Après mise à jour de `CHANGELOG.md`, commit et push autorisés, pousser le tag annoté `vX.Y.Z` : GitHub Actions compile l’installateur Windows et prépare un brouillon de prérelease avec une empreinte SHA-256. L’agent vérifie les résultats, complète les notes et publie le brouillon dans le cadre de la livraison demandée.
+
+### Futur canal stable signé
+
+1. Utiliser le dépôt public existant et décider explicitement du passage en version stable.
 2. Générer une paire avec `npm run tauri -- signer generate -w <chemin-hors-du-depot>`. Le fichier privé est provisoire : après import et validation dans les secrets Actions, retirer sa copie locale. Ne jamais le committer ni l’incorporer dans l’application.
 3. Ajouter le contenu complet de la clé privée dans le secret Actions `TAURI_SIGNING_PRIVATE_KEY` et son mot de passe dans `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (chaîne vide si aucun).
 4. Ajouter le contenu **base64 complet** du fichier `.pub` dans la variable Actions `TAURI_UPDATER_PUBLIC_KEY`.

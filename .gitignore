@@ -12,3 +12,8 @@ output/
 
 release/
 .xwin-cache/
+*.log
+*.pem
+*.p12
+*.pfx
+coverage/

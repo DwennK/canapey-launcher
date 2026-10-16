@@ -14,7 +14,9 @@
     "desktop": "tauri dev",
     "test": "vitest run",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features",
-    "check": "npm run build && npm test && npm run test:rust",
+    "check": "npm run version:check && npm run build && npm test && npm run test:rust",
+    "version:check": "node scripts/version.mjs check",
+    "version:bump": "node scripts/version.mjs",
     "release:configure": "node scripts/configure-release.mjs"
   },
   "dependencies": {

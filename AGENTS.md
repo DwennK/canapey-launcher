@@ -1,0 +1,12 @@
+# Canapey Launcher — livraison et versions
+
+- Répondre en français. Préserver les changements des autres tâches ; inspecter le statut et les diffs avant toute modification ou commit.
+- Le dépôt public est `DwennK/canapey-launcher`. Ne pousser ou publier que lorsque la demande l'autorise.
+- La première release est `v0.1.0`. Le projet reste expérimental en `0.x.y` ; ne passer à `1.0.0` que sur demande explicite de l'utilisateur.
+- À chaque nouvelle publication demandée, l'agent choisit lui-même le numéro cohérent, sans redemander : `patch` pour corrections/petites améliorations (`0.1.0` → `0.1.1`), `minor` pour fonctionnalités importantes ou changements incompatibles pendant la phase expérimentale (`0.1.x` → `0.2.0`). Une reprise de publication inachevée conserve sa version.
+- Utiliser `npm run version:bump -- patch` ou `npm run version:bump -- minor`. Le script synchronise les cinq fichiers de version ; `npm run version:check` vérifie leur cohérence. Ne jamais déplacer un tag déjà publié.
+- Mettre à jour `CHANGELOG.md`, lancer `npm run check` et `cargo fmt --manifest-path src-tauri/Cargo.toml --check`, puis créer des commits cohérents avec titre et corps en anglais. N'ajouter que les chemins concernés.
+- Pour une livraison autorisée : pousser les commits, créer et pousser le tag annoté `vX.Y.Z`, attendre la CI Windows et le workflow de release. Le workflow prépare un brouillon ; vérifier ses fichiers et notes avant de le publier. Toutes les versions `0.x` sont des préreleases GitHub.
+- Les préreleases sont des installateurs de test sans mise à jour intégrée. Le workflow de release stable conserve la signature Tauri Updater et exige les clés Actions ; aucune clé ne doit entrer dans Git. Authenticode est une signature distincte.
+- Vérifier le dépôt public, le tag, le commit, la release publiée et ses téléchargements. Distinguer compilation Windows, tests automatisés et essais interactifs sur un vrai PC.
+- Pour les modifications visuelles : vérifier desktop (1440×900 minimum par défaut) et mobile ; utiliser Chrome système avec Playwright et un profil isolé, sans téléchargement de Chromium ni accès au profil personnel.
