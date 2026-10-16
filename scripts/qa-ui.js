@@ -74,7 +74,6 @@ async (page) => {
   await page.getByRole('switch',{name:'Sons de navigation',exact:true}).check();
   await page.getByRole('dialog',{name:'Paramètres'}).waitFor();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.overlay')).opacity==='1');
-  await page.getByRole('button',{name:'Fermer le message',exact:true}).click();
   await page.screenshot({animations:'disabled',path:'output/playwright/settings-desktop.png'});
   await page.getByRole('navigation',{name:'Catégories des paramètres'}).getByRole('button',{name:'Alimentation',exact:true}).click();
   await page.getByRole('button',{name:'Éteindre',exact:true}).click();

@@ -30,16 +30,73 @@ export function reconcileSelection(
 ): number {
   return Math.max(0, ids.indexOf(selected ?? ""));
 }
-// Spatial navigation also covers import lists, forms, confirmations and settings.
-export function focusDirection(root: HTMLElement, direction: Action) {
-  const items = [
+export function focusableItems(root: HTMLElement) {
+  return [
     ...root.querySelectorAll<HTMLElement>(
       'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]',
     ),
-  ].filter((e) => e.getClientRects().length > 0 && !e.closest("[inert]"));
+  ].filter(
+    (e) =>
+      e.getClientRects().length > 0 &&
+      !e.closest("[inert], [hidden]") &&
+      !e.matches(":disabled"),
+  );
+}
+export function focusElement(element: HTMLElement | undefined) {
+  element?.focus({ preventScroll: true });
+  element?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+export function isTextControl(
+  element: Element | null,
+): element is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLInputElement &&
+      !["checkbox", "range", "button", "submit"].includes(element.type))
+  );
+}
+export interface FocusBookmark {
+  key: string;
+  index: number;
+}
+function focusKey(element: HTMLElement) {
+  return (
+    element.dataset.focusKey ??
+    element.getAttribute("aria-label") ??
+    (element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+      ? (element.labels?.[0]?.textContent?.trim() ??
+        element.getAttribute("placeholder") ??
+        element.type)
+      : (element.textContent?.trim() ?? ""))
+  );
+}
+export function rememberFocus(root: HTMLElement): FocusBookmark {
+  const items = focusableItems(root),
+    index = items.indexOf(document.activeElement as HTMLElement);
+  return {
+    key: index < 0 ? "" : focusKey(items[index]!),
+    index: Math.max(0, index),
+  };
+}
+export function restoreFocus(root: HTMLElement, bookmark: FocusBookmark) {
+  const items = focusableItems(root);
+  focusElement(
+    items.find((e) => focusKey(e) === bookmark.key) ??
+      items[Math.min(bookmark.index, items.length - 1)],
+  );
+}
+// Spatial navigation also covers import lists, forms, confirmations and settings.
+export function focusDirection(
+  root: HTMLElement,
+  direction: Action,
+  candidates = focusableItems(root),
+) {
+  const items = candidates;
   const current = document.activeElement as HTMLElement;
   if (!items.includes(current)) {
-    items[0]?.focus();
+    focusElement(items[0]);
     return;
   }
   const r = current.getBoundingClientRect(),
@@ -59,6 +116,5 @@ export function focusDirection(root: HTMLElement, direction: Action) {
     })
     .filter((e) => e.primary > 8)
     .sort((a, b) => a.score - b.score)[0];
-  next?.e.focus();
-  next?.e.scrollIntoView({ block: "nearest", inline: "nearest" });
+  focusElement(next?.e);
 }

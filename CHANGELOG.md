@@ -1,5 +1,11 @@
 # Notes de version
 
+## À venir
+
+- Navigation complète aux flèches et aux événements manette entre les cartes, boutons et champs ; Entrée valide et Retour arrière revient au menu précédent hors saisie.
+- Mode d’édition explicite des champs, retour avec restauration du focus, confirmations centrées sur Annuler et protection contre les appuis prolongés.
+- Validation automatisée de 76 états d’interface sur desktop et mobile ; essais avec une manette physique sous Windows encore à effectuer.
+
 ## 0.1.0 — 2026-10-16
 
 Première prérelease publique de test de Canapey Launcher pour Windows 11 x64.

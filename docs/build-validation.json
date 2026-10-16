@@ -4,7 +4,7 @@
   "target": "x86_64-pc-windows-msvc",
   "checks": {
     "frontend_build": "passed",
-    "typescript_tests": 5,
+    "typescript_tests": 9,
     "rust_host_tests": 12,
     "windows_clippy_all_targets": "passed",
     "macos_clippy_all_targets": "passed",
@@ -13,7 +13,13 @@
     "browser_errors": 0,
     "browser_external_requests": 0,
     "npm_audit_vulnerabilities": 0,
-    "spotify_internet_import_persistence_deduplication": "passed"
+    "spotify_internet_import_persistence_deduplication": "passed",
+    "keyboard_controller_ui": {
+      "result": "passed",
+      "panel_states": 76,
+      "physical_controller_tested": false,
+      "evidence": "docs/controls-validation.json"
+    }
   },
   "native_windows_execution": "not performed",
   "windows_hardware_tests": "pending",
@@ -24,12 +30,12 @@
     "return": null
   },
   "source_sha256": {
-    "src/App.vue": "325bdd50aa5555d9a854eeb53e77c7d109e8404479a7568d8d0af525fc2c48e2",
+    "src/App.vue": "e15f5f55c29abb684e55521aaee2b9da6bd4a7e1f2d3201a53d19ca7abf33ce6",
     "src/main.ts": "a9a77d229d3df173585188d0cfcdeb479cf61b5a0028b67353b4f5998c9e3ad9",
-    "src/style.css": "bdef4e3d679e732a6446253d3aa4f2060d2db9395834eef2a2c2a928bc1f87df",
+    "src/style.css": "0f51e9ce1643059e06a5e9e2f03e7a0a619cfd3a1e3b7b30a26a0f462adcbd42",
     "src/components/Icon.vue": "f622ad4434a255dabb815133dae395c18e09545d15544800aedbfcc69d78569c",
     "src/components/AppCard.vue": "72c764883a0ca3a595adbbae6cd397402aaea8e4286780e272620a4fbf89918b",
-    "src/lib/navigation.ts": "d469a537834fe96b399c5d2129e5b74fa3495d64628f7b15d2e4d8a95f3921df",
+    "src/lib/navigation.ts": "0f58ec1a90fe1e941588605c89c854d4eeb13036b68d2e629cb2458180b3e8f7",
     "src/lib/types.ts": "de05fb41c2757006fb3c35195d995204cef34ec3c6ab08690ac4b45dcca36d91",
     "src/lib/bridge.ts": "e8de3c83fdd9cbbc895773bb40cf436e4a7c3ce6348b3131379753343d853dd7",
     "src-tauri/src/runtime.rs": "15989be1f8041b42285ebf0ea2c418278c1b496782f3d5fb24413b878b9651e1",
@@ -46,8 +52,8 @@
   },
   "installer": {
     "path": "release/Canapey-Launcher-0.1.0-windows-x64-setup.exe",
-    "bytes": 5652996,
-    "sha256": "78733d6f0b09b67de3b9c218edfea8bf7b825a08111aff50e07bbc923a9fd71e",
+    "bytes": 5654170,
+    "sha256": "5de15918ad555304f36d3544b89907167f97fa2e1ff7881d75c902cce7e35021",
     "authenticode_signed": false,
     "updater_configured": false
   },

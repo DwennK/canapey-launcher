@@ -14,7 +14,17 @@ import {
   type Monitor,
   type UpdateInfo,
 } from "./lib/types";
-import { navigate, reconcileSelection, focusDirection } from "./lib/navigation";
+import {
+  navigate,
+  reconcileSelection,
+  focusDirection,
+  focusableItems,
+  focusElement,
+  isTextControl,
+  rememberFocus,
+  restoreFocus,
+  type FocusBookmark,
+} from "./lib/navigation";
 
 type Panel = "" | "settings" | "add" | "edit" | "power" | "session" | "confirm";
 interface Tile {
@@ -37,8 +47,10 @@ const config = ref(defaults()),
   version = ref("0.1.0");
 const selected = ref(0),
   view = ref<"carousel" | "grid">("carousel"),
-  panel = ref<Panel>(""),
-  previousPanel = ref<Panel>("");
+  panel = ref<Panel>("");
+const launcherRoot = ref<HTMLElement>();
+const editingControl = ref<HTMLElement | null>(null);
+const panelHistory: { panel: Panel; focus: FocusBookmark }[] = [];
 const clock = ref(new Date()),
   controller = ref<string | null>(null),
   sessions = ref<Session[]>([]),
@@ -150,11 +162,13 @@ const columns = computed(() =>
 const selectedSession = computed(() =>
   sessions.value.find((s) => s.appId === current.value.id),
 );
-const ps = computed(() =>
-  /sony|playstation|dualshock|dualsense|wireless controller/i.test(
-    controller.value ?? "",
-  ),
-);
+const ps = computed(() => {
+  const name = controller.value?.trim() ?? "";
+  return (
+    /sony|playstation|dualshock|dualsense/i.test(name) ||
+    /^wireless controller$/i.test(name)
+  );
+});
 const time = computed(() =>
   clock.value.toLocaleTimeString("fr-CH", {
     hour: "2-digit",
@@ -204,11 +218,7 @@ const heroBg = ref("/art/home.webp"),
 let imageTicket = 0;
 let bgTimer: ReturnType<typeof setTimeout>;
 function trapFocus(e: KeyboardEvent) {
-  const list = [
-    ...panelRoot.value!.querySelectorAll<HTMLElement>(
-      "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)",
-    ),
-  ].filter((x) => x.getClientRects().length && !x.closest("[inert]"));
+  const list = focusableItems(panelRoot.value!);
   if (e.shiftKey && document.activeElement === list[0]) {
     e.preventDefault();
     list.at(-1)?.focus();
@@ -239,6 +249,9 @@ function notify(message: unknown) {
 }
 async function run(label: string, fn: () => Promise<unknown>) {
   if (working.value) return;
+  const origin = panel.value;
+  const root = panelRoot.value;
+  const bookmark = root ? rememberFocus(root) : null;
   working.value = label;
   try {
     await fn();
@@ -246,6 +259,14 @@ async function run(label: string, fn: () => Promise<unknown>) {
     notify(e);
   } finally {
     working.value = "";
+    await nextTick();
+    if (
+      panel.value === origin &&
+      root &&
+      bookmark &&
+      !focusableItems(root).includes(document.activeElement as HTMLElement)
+    )
+      restoreFocus(root, bookmark);
   }
 }
 function persist() {
@@ -315,26 +336,39 @@ function select(index: number) {
   selectionChanged();
 }
 async function openPanel(p: Panel) {
+  if (p === panel.value) return;
+  const root = panel.value ? panelRoot.value : launcherRoot.value;
+  if (root)
+    panelHistory.push({ panel: panel.value, focus: rememberFocus(root) });
+  editingControl.value = null;
   panel.value = p;
   await nextTick();
-  panelRoot.value
-    ?.querySelector<HTMLElement>("button:not(:disabled),input")
-    ?.focus();
-}
-function closePanel() {
-  if (panel.value === "confirm") {
-    panel.value = previousPanel.value;
-    nextTick(() =>
-      panelRoot.value?.querySelector<HTMLElement>("button")?.focus(),
+  if (panelRoot.value) panelRoot.value.inert = false;
+  if (panelRoot.value)
+    focusElement(
+      p === "confirm"
+        ? (panelRoot.value.querySelector<HTMLElement>(
+            ".confirm-actions button",
+          ) ?? undefined)
+        : focusableItems(panelRoot.value)[0],
     );
-    return;
-  }
-  if (panel.value === "edit") {
-    void openPanel("settings");
-    return;
-  }
+}
+async function closePanel() {
+  editingControl.value = null;
+  const previous = panelHistory.pop();
+  if (!previous?.panel && panelRoot.value) panelRoot.value.inert = true;
+  panel.value = previous?.panel ?? "";
+  if (panel.value === "session" && !selectedSession.value) return closePanel();
+  await nextTick();
+  const root = panel.value ? panelRoot.value : launcherRoot.value;
+  if (root && previous) restoreFocus(root, previous.focus);
+  else if (!panel.value) await focusCard();
+}
+function dismissPanels() {
+  editingControl.value = null;
+  panelHistory.length = 0;
+  if (panelRoot.value) panelRoot.value.inert = true;
   panel.value = "";
-  void focusCard();
 }
 function confirm(
   title: string,
@@ -342,7 +376,6 @@ function confirm(
   label: string,
   action: () => Promise<unknown>,
 ) {
-  previousPanel.value = panel.value;
   confirmTitle.value = title;
   confirmText.value = text;
   confirmLabel.value = label;
@@ -352,9 +385,7 @@ function confirm(
 async function acceptConfirm() {
   await run(confirmLabel.value, async () => {
     await confirmAction();
-    panel.value = previousPanel.value;
-    await nextTick();
-    panelRoot.value?.querySelector<HTMLElement>("button")?.focus();
+    await closePanel();
   });
 }
 async function activate(tile = current.value) {
@@ -389,58 +420,64 @@ async function activate(tile = current.value) {
   });
 }
 function dispatch(action: Action) {
-  if (working.value && action !== "back") return;
+  document.documentElement.dataset.inputMode = "directional";
   if (action === "home") {
-    panel.value = "";
+    dismissPanels();
     view.value = "carousel";
     void focusCard();
     return;
   }
+  if (working.value) return;
+  const element = document.activeElement as HTMLElement;
+  if (editingControl.value && editingControl.value !== element)
+    editingControl.value = null;
+  if (editingControl.value) {
+    if (action === "back" || action === "accept") {
+      editingControl.value = null;
+      return;
+    }
+    if (["up", "down", "left", "right"].includes(action)) {
+      if (element instanceof HTMLInputElement && element.type === "range") {
+        ["left", "down"].includes(action)
+          ? element.stepDown()
+          : element.stepUp();
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+      if (element instanceof HTMLSelectElement) {
+        const delta = ["left", "up"].includes(action) ? -1 : 1;
+        element.selectedIndex = Math.max(
+          0,
+          Math.min(element.options.length - 1, element.selectedIndex + delta),
+        );
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+      // A controller direction leaves text entry and moves focus. Keyboard caret
+      // movement is handled natively while explicitly editing a text field.
+      editingControl.value = null;
+    }
+  }
   if (panel.value) {
     if (action === "back") {
-      closePanel();
+      void closePanel();
       return;
     }
     if (action === "accept") {
-      const e = document.activeElement as HTMLElement;
-      if (e instanceof HTMLSelectElement) {
-        e.selectedIndex = (e.selectedIndex + 1) % e.options.length;
-        e.dispatchEvent(new Event("change", { bubbles: true }));
-      } else if (
-        e instanceof HTMLInputElement &&
-        ["checkbox", "range"].includes(e.type)
+      if (!panelRoot.value?.contains(element) || element.matches(":disabled"))
+        return;
+      if (
+        isTextControl(element) ||
+        element instanceof HTMLSelectElement ||
+        (element instanceof HTMLInputElement && element.type === "range")
       ) {
-        if (e.type === "range") {
-          e.stepUp();
-          e.dispatchEvent(new Event("input", { bubbles: true }));
-          e.dispatchEvent(new Event("change", { bubbles: true }));
-        } else e.click();
-      } else e?.click();
+        editingControl.value = element;
+      } else element.click();
       return;
     }
     if (panelRoot.value && ["up", "down", "left", "right"].includes(action)) {
-      const e = document.activeElement;
-      if (
-        e instanceof HTMLInputElement &&
-        e.type === "range" &&
-        ["left", "right"].includes(action)
-      ) {
-        action === "left" ? e.stepDown() : e.stepUp();
-        e.dispatchEvent(new Event("input", { bubbles: true }));
-        e.dispatchEvent(new Event("change", { bubbles: true }));
-      } else if (
-        e instanceof HTMLSelectElement &&
-        ["left", "right"].includes(action)
-      ) {
-        e.selectedIndex = Math.max(
-          0,
-          Math.min(
-            e.options.length - 1,
-            e.selectedIndex + (action === "left" ? -1 : 1),
-          ),
-        );
-        e.dispatchEvent(new Event("change", { bubbles: true }));
-      } else focusDirection(panelRoot.value, action);
+      focusDirection(panelRoot.value, action);
     }
     return;
   }
@@ -448,8 +485,53 @@ function dispatch(action: Action) {
     void openSettings();
     return;
   }
+  if (action === "back") {
+    view.value = "carousel";
+    void focusCard();
+    return;
+  }
   if (action === "accept") {
-    void activate();
+    if (
+      launcherRoot.value?.contains(element) &&
+      element instanceof HTMLButtonElement
+    )
+      element.click();
+    else void activate();
+    return;
+  }
+  if (!cardsRoot.value?.contains(element)) {
+    if (element.closest("footer") && action === "up") {
+      void focusCard();
+    } else if (launcherRoot.value) {
+      focusDirection(
+        launcherRoot.value,
+        action,
+        focusableItems(launcherRoot.value).filter(
+          (e) =>
+            !e.classList.contains("app-card") ||
+            e.getAttribute("aria-pressed") === "true",
+        ),
+      );
+    }
+    return;
+  }
+  if (view.value === "carousel" && action === "up") {
+    focusElement(
+      launcherRoot.value?.querySelector<HTMLElement>(".hero-action") ??
+        undefined,
+    );
+    return;
+  }
+  if (
+    view.value === "grid" &&
+    action === "down" &&
+    Math.floor(selected.value / columns.value) ===
+      Math.floor((tiles.value.length - 1) / columns.value)
+  ) {
+    focusElement(
+      launcherRoot.value?.querySelector<HTMLElement>(".power-button") ??
+        undefined,
+    );
     return;
   }
   const next = navigate(
@@ -464,8 +546,10 @@ function dispatch(action: Action) {
   void focusCard();
 }
 function keyboard(e: KeyboardEvent) {
+  if (e.isComposing || e.defaultPrevented) return;
   if (e.ctrlKey && e.shiftKey && e.code === "KeyQ") {
     e.preventDefault();
+    if (working.value || panel.value === "confirm" || e.repeat) return;
     confirm(
       "Quitter Canapey ?",
       "Vos applications resteront ouvertes.",
@@ -474,12 +558,26 @@ function keyboard(e: KeyboardEvent) {
     );
     return;
   }
+  if (e.altKey || e.metaKey || e.ctrlKey) return;
   const target = e.target as HTMLElement;
-  const editingText =
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLInputElement &&
-      !["checkbox", "range"].includes(target.type));
-  if (editingText && e.key !== "Escape") return;
+  if (e.key === "Tab") {
+    editingControl.value = null;
+    return;
+  }
+  const text = isTextControl(target);
+  if (text && editingControl.value === target) {
+    // Backspace deletes text here; it never navigates back while typing.
+    if (e.key !== "Escape" && e.key !== "Enter" && e.key !== "F1") return;
+    if (
+      e.key === "Enter" &&
+      e.shiftKey &&
+      target instanceof HTMLTextAreaElement
+    )
+      return;
+  } else if (text && e.key.length === 1) {
+    editingControl.value = target;
+    return;
+  }
   const keys: Record<string, Action> = {
     ArrowLeft: "left",
     ArrowRight: "right",
@@ -487,20 +585,25 @@ function keyboard(e: KeyboardEvent) {
     ArrowDown: "down",
     Enter: "accept",
     Escape: "back",
+    Backspace: "back",
     F1: "menu",
   };
-  if (e.key === "Tab") return;
   if (keys[e.key]) {
-    if (
-      !panel.value &&
-      (target.closest("header") || target.closest("footer")) &&
-      e.key === "Enter"
-    )
-      return;
     e.preventDefault();
-    if (e.repeat && ["Enter", "Escape", "F1"].includes(e.key)) return;
+    if (e.repeat && ["Enter", "Escape", "Backspace", "F1"].includes(e.key))
+      return;
     dispatch(keys[e.key]);
   }
+}
+function pointerInput(e: PointerEvent) {
+  document.documentElement.dataset.inputMode = "pointer";
+  editingControl.value = isTextControl(e.target as Element)
+    ? (e.target as HTMLElement)
+    : null;
+}
+function focusChanged() {
+  if (editingControl.value !== document.activeElement)
+    editingControl.value = null;
 }
 async function openSettings() {
   settingsTab.value = "general";
@@ -513,6 +616,8 @@ async function openSettings() {
 }
 async function scan() {
   if (scanBusy.value) return;
+  const root = panelRoot.value;
+  const bookmark = root ? rememberFocus(root) : null;
   scanBusy.value = true;
   scanError.value = "";
   try {
@@ -523,6 +628,14 @@ async function scan() {
     scanError.value = String(e instanceof Error ? e.message : e);
   } finally {
     scanBusy.value = false;
+    await nextTick();
+    if (
+      panel.value === "add" &&
+      root &&
+      bookmark &&
+      !focusableItems(root).includes(document.activeElement as HTMLElement)
+    )
+      restoreFocus(root, bookmark);
   }
 }
 function toggleChoice(id: string) {
@@ -539,7 +652,7 @@ async function addEntries(entries: AppEntry[]) {
     config.value.selectedId = fresh[0].id;
   }
   if (!(await persist())) return;
-  panel.value = "";
+  dismissPanels();
   await focusCard();
   notify(
     fresh.length
@@ -602,13 +715,14 @@ async function saveEditing() {
   const index = config.value.apps.findIndex((a) => a.id === app.id);
   if (index >= 0) {
     config.value.apps[index] = app;
-    if (await persist()) void openPanel("settings");
+    if (await persist()) await closePanel();
   } else await addEntries([app]);
 }
-function moveApp(index: number, delta: number) {
+async function moveApp(index: number, delta: number) {
   const to = index + delta;
   if (to < 0 || to >= config.value.apps.length) return;
   const id = current.value.id;
+  const focused = document.activeElement as HTMLElement;
   const [item] = config.value.apps.splice(index, 1);
   config.value.apps.splice(to, 0, item!);
   selected.value = reconcileSelection(
@@ -616,6 +730,14 @@ function moveApp(index: number, delta: number) {
     id,
   );
   void persist();
+  await nextTick();
+  if (focused.matches(":disabled") && panelRoot.value) {
+    focusElement(
+      focusableItems(panelRoot.value).find(
+        (e) => e.dataset.focusKey === `${item!.id}:name`,
+      ),
+    );
+  }
 }
 async function removeApp() {
   if (!editing.value) return;
@@ -624,7 +746,8 @@ async function removeApp() {
   selected.value = Math.min(selected.value, tiles.value.length - 1);
   if (!(await persist()))
     throw new Error("La suppression n’a pas été enregistrée.");
-  previousPanel.value = "settings";
+  // Skip the removed editor when returning from its confirmation.
+  panelHistory.pop();
 }
 async function imagePick(kind: "card" | "background") {
   await run("Choix du visuel", async () => {
@@ -683,8 +806,7 @@ watch(panel, async (value) => {
 });
 watch(selectedSession, (session) => {
   if (!session && panel.value === "session") {
-    panel.value = "";
-    void focusCard();
+    void closePanel();
   }
 });
 watch(
@@ -701,6 +823,8 @@ watch(
 );
 onMounted(async () => {
   document.addEventListener("keydown", keyboard);
+  document.addEventListener("pointerdown", pointerInput);
+  document.addEventListener("focusin", focusChanged);
   resizeObserver = new ResizeObserver(() => {
     width.value = window.innerWidth;
     height.value = window.innerHeight;
@@ -759,6 +883,8 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   document.removeEventListener("keydown", keyboard);
+  document.removeEventListener("pointerdown", pointerInput);
+  document.removeEventListener("focusin", focusChanged);
   motionPreference.removeEventListener("change", motionChanged);
   resizeObserver?.disconnect();
   clearInterval(clockTimer);
@@ -772,6 +898,8 @@ onUnmounted(() => {
 
 <template>
   <main
+    ref="launcherRoot"
+    :data-editing="!!editingControl"
     class="launcher"
     :class="{
       'reduce-motion': !config.settings.motion || osReducedMotion,
@@ -793,13 +921,13 @@ onUnmounted(() => {
       />
       <div class="backdrop-scrim" />
     </div>
-    <header class="topbar">
+    <header class="topbar" :inert="!!panel">
       <button
         class="brand"
         aria-label="Canapey — Accueil"
         @click="
           view = 'carousel';
-          panel = '';
+          dismissPanels();
           focusCard();
         "
       >
@@ -842,7 +970,12 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
-    <section v-if="view === 'carousel'" class="hero" aria-live="polite">
+    <section
+      v-if="view === 'carousel'"
+      :inert="!!panel"
+      class="hero"
+      aria-live="polite"
+    >
       <div class="eyebrow">
         <span class="tiny-line" />{{
           current.suggestion
@@ -875,7 +1008,12 @@ onUnmounted(() => {
         }}<Icon name="right" :size="17" />
       </button>
     </section>
-    <section class="library" :class="view" aria-label="Applications">
+    <section
+      class="library"
+      :inert="!!panel"
+      :class="view"
+      aria-label="Applications"
+    >
       <div class="library-heading">
         <div>
           <span class="section-label">{{
@@ -938,13 +1076,13 @@ onUnmounted(() => {
         />
       </div>
     </section>
-    <footer class="bottom-bar">
+    <footer class="bottom-bar" :inert="!!panel">
       <div class="hints">
         <span
           ><kbd>{{ controller ? (ps ? "×" : "A") : "↵" }}</kbd
-          >Sélectionner</span
+          >OK</span
         ><span
-          ><kbd>{{ controller ? (ps ? "○" : "B") : "esc" }}</kbd
+          ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
           >Retour</span
         ><span
           ><kbd>{{ controller ? "☰" : "F1" }}</kbd
@@ -966,7 +1104,7 @@ onUnmounted(() => {
       <span class="spinner" />{{ working }}
     </div>
     <Transition name="toast"
-      ><div v-if="toast" class="toast-message" role="status">
+      ><div v-if="toast" :inert="!!panel" class="toast-message" role="status">
         <Icon name="info" :size="20" /><span>{{ toast }}</span
         ><button
           class="icon-button"
@@ -1034,6 +1172,7 @@ onUnmounted(() => {
                     diagnostic: 'Diagnostic',
                   }"
                   :key="key"
+                  :data-focus-key="`settings:${key}`"
                   :class="{ active: settingsTab === key }"
                   @click="settingsTab = key"
                 >
@@ -1120,7 +1259,11 @@ onUnmounted(() => {
                     :key="a.id"
                     class="manage-app"
                   >
-                    <button class="manage-name" @click="edit(a)">
+                    <button
+                      class="manage-name"
+                      :data-focus-key="`${a.id}:name`"
+                      @click="edit(a)"
+                    >
                       <span class="order-number">{{
                         String(i + 1).padStart(2, "0")
                       }}</span
@@ -1136,6 +1279,7 @@ onUnmounted(() => {
                       class="icon-button"
                       :disabled="i === 0"
                       :aria-label="`Avancer ${a.name}`"
+                      :data-focus-key="`${a.id}:up`"
                       @click="moveApp(i, -1)"
                     >
                       <Icon name="up" :size="18" /></button
@@ -1143,12 +1287,14 @@ onUnmounted(() => {
                       class="icon-button"
                       :disabled="i === config.apps.length - 1"
                       :aria-label="`Reculer ${a.name}`"
+                      :data-focus-key="`${a.id}:down`"
                       @click="moveApp(i, 1)"
                     >
                       <Icon name="down" :size="18" /></button
                     ><button
                       class="icon-button"
                       :aria-label="`Modifier ${a.name}`"
+                      :data-focus-key="`${a.id}:edit`"
                       @click="edit(a)"
                     >
                       <Icon name="edit" :size="18" />
@@ -1705,12 +1851,20 @@ onUnmounted(() => {
               </button>
             </div></template
           >
-          <div class="panel-footer">
+          <div class="panel-footer" aria-live="polite">
             <span
-              ><kbd>{{ controller ? (ps ? "○" : "B") : "esc" }}</kbd
+              ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
               >Retour</span
-            ><span v-if="controller">Croix directionnelle pour naviguer</span
-            ><span v-else>Flèches pour naviguer · Entrée pour choisir</span>
+            ><span v-if="editingControl">{{
+              isTextControl(editingControl)
+                ? "Saisie · Entrée pour terminer · Maj+Entrée pour une nouvelle ligne"
+                : "Flèches pour régler · OK pour terminer"
+            }}</span
+            ><span v-else>{{
+              controller
+                ? "Croix directionnelle : naviguer · A / Croix : OK"
+                : "Flèches : naviguer · Entrée : OK / modifier"
+            }}</span>
           </div>
         </section>
       </div>

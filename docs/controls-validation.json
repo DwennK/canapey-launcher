@@ -1,0 +1,392 @@
+{
+  "date": "2026-10-16",
+  "viewports": [
+    "1440x900",
+    "390x844"
+  ],
+  "result": "passed",
+  "nativeHardware": "not tested; IPC fixture only",
+  "errors": [],
+  "report": [
+    {
+      "driver": "keyboard",
+      "label": "Écran & démarrage",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "Écran after scale change",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Manette & ambiance",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "Manette & ambiance",
+      "reachable": 12
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Applications",
+      "reachable": 12
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications reordered",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications original order",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "URI editor",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications restored",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "Executable editor with arguments",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "Remove confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications after cancel",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "Import before scan",
+      "reachable": 16
+    },
+    {
+      "driver": "keyboard",
+      "label": "Import with long results",
+      "reachable": 28
+    },
+    {
+      "driver": "keyboard",
+      "label": "Import multi-select",
+      "reachable": 29
+    },
+    {
+      "driver": "keyboard",
+      "label": "Manual import editor",
+      "reachable": 10
+    },
+    {
+      "driver": "keyboard",
+      "label": "Import restored after manual cancel",
+      "reachable": 29
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Mises à jour",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "Mises à jour",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Available update",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Update confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "keyboard",
+      "label": "Updates restored",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Diagnostic",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Diagnostic",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Quit confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "keyboard",
+      "label": "Diagnostic restored",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "Power",
+      "reachable": 4
+    },
+    {
+      "driver": "keyboard",
+      "label": "Power confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "keyboard",
+      "label": "Active session",
+      "reachable": 4
+    },
+    {
+      "driver": "keyboard",
+      "label": "Force-close confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "keyboard",
+      "label": "Shared-window session with disabled Resume",
+      "reachable": 2
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Diagnostic",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "Diagnostic",
+      "reachable": 13
+    },
+    {
+      "driver": "keyboard",
+      "label": "Diagnostic active and shared sessions",
+      "reachable": 13
+    },
+    {
+      "driver": "controller-events",
+      "label": "Écran & démarrage",
+      "reachable": 11
+    },
+    {
+      "driver": "controller-events",
+      "label": "Écran after scale change",
+      "reachable": 11
+    },
+    {
+      "driver": "controller-events",
+      "label": "settings before Manette & ambiance",
+      "reachable": 11
+    },
+    {
+      "driver": "controller-events",
+      "label": "Manette & ambiance",
+      "reachable": 12
+    },
+    {
+      "driver": "controller-events",
+      "label": "settings before Applications",
+      "reachable": 12
+    },
+    {
+      "driver": "controller-events",
+      "label": "Applications",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "Applications reordered",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "Applications original order",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "URI editor",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Applications restored",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "Executable editor with arguments",
+      "reachable": 11
+    },
+    {
+      "driver": "controller-events",
+      "label": "Remove confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "controller-events",
+      "label": "Applications after cancel",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "Import before scan",
+      "reachable": 16
+    },
+    {
+      "driver": "controller-events",
+      "label": "Import with long results",
+      "reachable": 28
+    },
+    {
+      "driver": "controller-events",
+      "label": "Import multi-select",
+      "reachable": 29
+    },
+    {
+      "driver": "controller-events",
+      "label": "Manual import editor",
+      "reachable": 10
+    },
+    {
+      "driver": "controller-events",
+      "label": "Import restored after manual cancel",
+      "reachable": 29
+    },
+    {
+      "driver": "controller-events",
+      "label": "settings before Mises à jour",
+      "reachable": 18
+    },
+    {
+      "driver": "controller-events",
+      "label": "Mises à jour",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Available update",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Update confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "controller-events",
+      "label": "Updates restored",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "settings before Diagnostic",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Diagnostic",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Quit confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "controller-events",
+      "label": "Diagnostic restored",
+      "reachable": 9
+    },
+    {
+      "driver": "controller-events",
+      "label": "Power",
+      "reachable": 4
+    },
+    {
+      "driver": "controller-events",
+      "label": "Power confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "controller-events",
+      "label": "Active session",
+      "reachable": 4
+    },
+    {
+      "driver": "controller-events",
+      "label": "Force-close confirmation",
+      "reachable": 3
+    },
+    {
+      "driver": "controller-events",
+      "label": "Shared-window session with disabled Resume",
+      "reachable": 2
+    },
+    {
+      "driver": "controller-events",
+      "label": "settings before Diagnostic",
+      "reachable": 11
+    },
+    {
+      "driver": "controller-events",
+      "label": "Diagnostic",
+      "reachable": 13
+    },
+    {
+      "driver": "controller-events",
+      "label": "Diagnostic active and shared sessions",
+      "reachable": 13
+    },
+    {
+      "driver": "keyboard",
+      "label": "mobile general",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "settings before Applications",
+      "reachable": 11
+    },
+    {
+      "driver": "keyboard",
+      "label": "Applications",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "mobile editor",
+      "reachable": 9
+    },
+    {
+      "driver": "keyboard",
+      "label": "mobile apps",
+      "reachable": 18
+    },
+    {
+      "driver": "keyboard",
+      "label": "mobile import",
+      "reachable": 16
+    }
+  ]
+}

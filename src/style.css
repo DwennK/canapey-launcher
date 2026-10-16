@@ -44,8 +44,14 @@ textarea {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+:root[data-input-mode="directional"]
+  :is(button, input, select, textarea):focus {
   outline: 2px solid var(--cream);
+  outline-offset: 5px;
+}
+.launcher[data-editing="true"] :is(input, select, textarea):focus {
+  outline-color: #8addb5;
   outline-offset: 5px;
 }
 button:disabled {

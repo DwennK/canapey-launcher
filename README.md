@@ -103,8 +103,8 @@ On first launch, choose **Add applications** to import your own library. Web pre
 | Action | Keyboard | Controller |
 | --- | --- | --- |
 | Move between cards, buttons and fields | Arrow keys | D-pad / left stick |
-| Choose, open or resume | <kbd>Enter</kbd> | A / Cross |
-| Go back or cancel | <kbd>Esc</kbd> | B / Circle |
+| Choose, open, toggle, or start/finish editing a field | <kbd>Enter</kbd> | A / Cross |
+| Go back or leave field editing | <kbd>Backspace</kbd> / <kbd>Esc</kbd> | B / Circle |
 | Open the library from the carousel | <kbd>↓</kbd> | Down |
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
@@ -115,8 +115,11 @@ On first launch, choose **Add applications** to import your own library. Web pre
 The global shortcut can be disabled or changed to **LB + RB + Start** (L1 + R1 + Options on PlayStation), with an adjustable hold duration. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
 
 <details>
-<summary><strong>Controller navigation and compatibility</strong></summary>
+<summary><strong>Field editing, focus and controller compatibility</strong></summary>
 
+- Arrow keys move focus between controls. Press Enter / A / Cross on a text field, selector or slider to begin editing; press it again to finish. Clicking or typing in a text field also starts editing.
+- While editing text, arrows move the caret and **Backspace deletes text**. Esc / B / Circle ends editing without closing the menu. Shift + Enter adds a line in the arguments field. Outside editing, Backspace returns to the previous menu.
+- From the carousel, Up reaches the main action and then the header. From the last grid row, Down reaches the power control; Up returns to the cards. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
 - Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Entering a path or URI and choosing files may still require a keyboard or a Windows dialog.
 - **Steam Input** can intercept Start/Back or map a controller to keyboard/mouse input through its Desktop Layout. Disable that mapping for Canapey or choose the alternative shortcut. Canapey does not automatically disable duplicate Steam Input and native input.
 - Controllers must be exposed to Windows in a format supported by gilrs / Windows Gaming Input. Canapey does not install PlayStation drivers.

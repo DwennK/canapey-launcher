@@ -9,7 +9,7 @@ Environnement : macOS ARM64, Node 26, Rust 1.94.1. Compilation croisée avec car
 | Vérification | Résultat |
 | --- | --- |
 | `npm run build` | Compilation TypeScript/Vue/Vite réussie |
-| `npm test` | 5 tests de navigation, sélection, grille incomplète, resize et identité d’import réussis |
+| `npm test` | 9 tests de navigation, sélection, grille incomplète, resize, identité d’import et cohérence de version réussis |
 | `cargo test --no-default-features` | 12 tests Rust de configuration, validation, déduplication, répétition, hystérésis, maintien et suivi de processus réussis |
 | `cargo check` sur macOS | Compilation complète du runtime Tauri réussie ; plateforme native Windows désactivée |
 | `cargo xwin clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` | Code spécifique Windows et tests compilés, aucun avertissement Clippy |
@@ -93,7 +93,11 @@ Objectif de premier accueil interactif : **moins de 1 seconde** sur un PC récen
 
 ## Livrables locaux
 
-- `release/Canapey-Launcher-0.1.0-windows-x64-setup.exe` : installateur final (5'652'996 octets).
+- `release/Canapey-Launcher-0.1.0-windows-x64-setup.exe` : installateur final (5654170 octets).
 - `release/SHA256SUMS.txt` : empreinte vérifiée après copie.
 - `docs/build-validation.json` : résultats, empreintes des sources et de l’installateur.
 - Aucun dépôt Git ne préexistait dans ce dossier ; aucun commit, push ni publication n’a été effectué.
+
+## Contrôle approfondi des commandes
+
+Le contrôle clavier/manette du 16 octobre couvre 76 états de panneaux sur desktop et mobile. Tous les contrôles activables de ces états sont atteignables aux flèches. Parcours rejoués au clavier puis avec une fixture des événements IPC manette ; aucune exécution Windows ou manette physique n’est simulée comme réussie. Détails, commandes et limites : [CONTROLES.md](CONTROLES.md). Résultats structurés : [controls-validation.json](controls-validation.json).
