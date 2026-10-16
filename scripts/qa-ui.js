@@ -10,6 +10,11 @@ async (page) => {
   const assert=async(condition,message)=>{if(!await condition)throw new Error(message)};
   const selected=()=>page.locator('.cards .app-card[aria-pressed="true"]');
   await assert((await page.locator('.cards .app-card').count())===9,'Honest empty-state suggestions missing');
+  await assert((await page.locator('.hero button').count())===0,'Redundant hero action remains');
+  await page.keyboard.press('ArrowUp');
+  await assert(page.evaluate(()=>document.activeElement instanceof HTMLButtonElement&&!document.activeElement.closest('.cards')),'Up should reach a remaining control');
+  await page.keyboard.press('Escape');
+  await assert(selected().evaluate(el=>el===document.activeElement),'Back should restore the selected card');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await assert(page.locator('.cards.grid').isVisible(),'Down should open grid');

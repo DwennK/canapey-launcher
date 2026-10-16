@@ -251,38 +251,6 @@ svg {
   letter-spacing: 0.1px;
   margin: 0 0 29px;
 }
-.hero-action {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 7px;
-  padding: 4px 0;
-}
-.hero-action > svg {
-  margin-left: 6px;
-  transition: transform 0.2s;
-}
-.hero-action:hover > svg {
-  transform: translateX(5px);
-}
-.keycap {
-  width: 23px;
-  height: 23px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #fff4;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 700;
-}
-.keycap.light {
-  color: #181a1e;
-  background: #e5e2dc;
-  border: none;
-}
 .library {
   flex-shrink: 0;
   min-width: 0;
@@ -1326,9 +1294,6 @@ textarea {
   .topbar nav button {
     font-size: 18px;
   }
-  .hero-action {
-    font-size: 17px;
-  }
   .eyebrow {
     font-size: 12px;
   }
@@ -1503,9 +1468,6 @@ textarea {
     font-size: 13px;
     max-width: 280px;
     margin-bottom: 24px;
-  }
-  .hero-action {
-    font-size: 11px;
   }
   .eyebrow {
     font-size: 8px;
@@ -1750,9 +1712,6 @@ textarea {
   }
   .section-label {
     font-size: calc(18px * var(--ui-scale));
-  }
-  .hero-action {
-    font-size: calc(14px * var(--ui-scale));
   }
   .panel {
     font-size: calc(15px * var(--ui-scale));

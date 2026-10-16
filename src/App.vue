@@ -669,10 +669,7 @@ function dispatch(action: Action) {
     return;
   }
   if (view.value === "carousel" && action === "up") {
-    focusElement(
-      launcherRoot.value?.querySelector<HTMLElement>(".hero-action") ??
-        undefined,
-    );
+    if (launcherRoot.value) focusDirection(launcherRoot.value, action);
     return;
   }
   if (
@@ -1178,22 +1175,6 @@ onUnmounted(() => {
       </div>
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
-      <button class="hero-action" @click="activate()">
-        <span class="keycap light">{{
-          controller ? (ps ? "×" : "A") : "↵"
-        }}</span
-        >{{
-          current.special === "add"
-            ? "Ajouter des applications"
-            : current.suggestion
-              ? "Ajouter"
-              : current.special === "windows"
-                ? "Afficher le bureau"
-                : selectedSession
-                  ? "Reprendre"
-                  : "Ouvrir"
-        }}<Icon name="right" :size="17" />
-      </button>
     </section>
     <section
       class="library"
