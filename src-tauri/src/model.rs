@@ -56,7 +56,7 @@ impl Default for Settings {
             monitor: None,
             scale: 1.0,
             motion: true,
-            sound: false,
+            sound: true,
             deadzone: 0.24,
             return_shortcut: "startBack".into(),
             hold_ms: 1200,

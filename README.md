@@ -66,7 +66,7 @@
 - **Your apps, together.** Import Windows applications, Store apps and existing shortcuts into one personal library.
 - **A home that works offline.** Artwork and fonts ship with the launcher. Everyday launcher use needs no account, server or remote service; web destinations still need a connection.
 - **Windows stays yours.** Explorer keeps running. Return to the desktop, use the system tray or reopen Canapey at any time. No shell replacement.
-- **Make it feel like home.** Reorder cards, import artwork, choose your screen, adjust interface size and turn motion or navigation sounds on or off.
+- **Make it feel like home.** Reorder cards, import artwork, choose your screen, adjust interface size and turn motion or navigation sounds on or off. Navigation sounds are enabled by default on new installations; saved preferences are preserved.
 
 ## What it does
 

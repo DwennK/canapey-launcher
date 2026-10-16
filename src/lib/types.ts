@@ -88,7 +88,7 @@ export const defaults = (): Config => ({
     monitor: null,
     scale: 1,
     motion: true,
-    sound: false,
+    sound: true,
     deadzone: 0.24,
     returnShortcut: "startBack",
     holdMs: 1200,

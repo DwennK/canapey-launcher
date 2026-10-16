@@ -108,16 +108,18 @@ mod tests {
     fn absent_corrupt_backup_atomic() {
         let d = tempfile::tempdir().unwrap();
         let s = ConfigStore::new(d.path().into());
-        assert!(s.load().1.is_none());
+        let (initial, warning) = s.load();
+        assert!(warning.is_none());
+        assert!(initial.settings.sound);
         let mut c = Config::default();
         s.save(&c).unwrap();
-        c.settings.sound = true;
+        c.settings.sound = false;
         s.save(&c).unwrap();
-        assert!(s.load().0.settings.sound);
+        assert!(!s.load().0.settings.sound);
         fs::write(d.path().join("config.json"), "{bad").unwrap();
         let (r, w) = s.load();
         assert!(w.is_some());
-        assert!(!r.settings.sound);
+        assert!(r.settings.sound);
         assert!(fs::read_dir(d.path()).unwrap().any(|e| e
             .unwrap()
             .file_name()
