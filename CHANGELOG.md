@@ -2,6 +2,7 @@
 
 ## À venir
 
+- Correction du retour au bureau Windows qui échouait avec « Classe non enregistrée : 0x80040154 ».
 - Mises à jour intégrées signées pour les préreleases `0.x`, avec un canal distinct des versions stables.
 - Publication du canal après vérification des fichiers de la release publique ; protection contre les brouillons, les fichiers incohérents et les retours de version.
 - Les installations `v0.1.0` et `v0.2.0` nécessitent une dernière installation manuelle pour recevoir cette fonctionnalité.

@@ -709,21 +709,29 @@ pub fn start_controller(app: tauri::AppHandle) {
     });
 }
 
+// The caller must initialize COM on this thread and drop the interface before uninitializing it.
+unsafe fn desktop_shell() -> windows::core::Result<windows::Win32::UI::Shell::IShellDispatch4> {
+    use windows::Win32::{
+        System::Com::{CoCreateInstance, CLSCTX_INPROC_SERVER},
+        UI::Shell::Shell,
+    };
+    // Shell.Application is supplied by a DLL, not a standalone COM server.
+    // Requesting only CLSCTX_LOCAL_SERVER fails with REGDB_E_CLASSNOTREG (0x80040154).
+    CoCreateInstance(&Shell, None, CLSCTX_INPROC_SERVER)
+}
+
 pub fn desktop() -> Result<(), String> {
     supported()?;
     unsafe {
-        use windows::Win32::{
-            System::Com::*,
-            UI::Shell::{IShellDispatch4, Shell},
-        };
-        let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        use windows::Win32::System::Com::*;
+        CoInitializeEx(None, COINIT_APARTMENTTHREADED)
+            .ok()
+            .map_err(|e| format!("Initialisation du bureau impossible : {e}"))?;
         let result = (|| {
-            let shell: IShellDispatch4 = CoCreateInstance(&Shell, None, CLSCTX_LOCAL_SERVER)?;
+            let shell = desktop_shell()?;
             shell.ToggleDesktop()
         })();
-        if init.is_ok() {
-            CoUninitialize();
-        }
+        CoUninitialize();
         result.map_err(|e| format!("Bureau indisponible : {e}"))
     }
 }
@@ -731,6 +739,20 @@ pub fn desktop() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn desktop_shell_can_be_created() {
+        use windows::Win32::System::Com::*;
+        unsafe {
+            CoInitializeEx(None, COINIT_APARTMENTTHREADED)
+                .ok()
+                .expect("initialize COM for the desktop shell test");
+            // Exercise the actual activation path without toggling the test machine's desktop.
+            let result = desktop_shell().map(drop);
+            CoUninitialize();
+            result.expect("activate Shell.Application for Return to Windows");
+        }
+    }
+
     #[test]
     fn shell_arguments_roundtrip() {
         let a = vec![
