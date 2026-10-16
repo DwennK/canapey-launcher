@@ -107,10 +107,13 @@ On first launch, choose **Add applications** to import your own library. Web pre
 | Go back or leave field editing | <kbd>Backspace</kbd> / <kbd>Esc</kbd> | B / Circle |
 | Open the library from the carousel | <kbd>↓</kbd> | Down |
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
+| Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
 | Return globally without closing the running app | — | Hold Start + Back for 1.2 seconds |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
+
+On added application cards, a short Enter / A / Cross press activates on release. A long press shows progress and opens card actions without launching on release. Right-click or touch-and-hold also opens the menu; touch scrolling cancels the gesture. Edit, move and remove cards here, or resume and close tracked sessions. Back / Esc dismisses the menu and restores the selected card. Suggestions and system cards keep their usual action.
 
 The global shortcut can be disabled or changed to **LB + RB + Start** (L1 + R1 + Options on PlayStation), with an adjustable hold duration. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
 

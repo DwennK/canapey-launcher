@@ -1760,3 +1760,65 @@ textarea {
 .session-detail > span {
   flex: 1;
 }
+
+/* Card actions stay close to the selected card, with room on small screens. */
+.quick-overlay {
+  background: #080b1266;
+  backdrop-filter: blur(4px);
+}
+.panel.quick-panel {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px);
+  padding: 22px 22px 0;
+  border-radius: 18px;
+}
+.quick-panel h2 {
+  font-size: 25px;
+  letter-spacing: -0.6px;
+}
+.quick-panel .panel-heading {
+  margin-bottom: 18px;
+}
+.quick-panel .power-options button {
+  padding: 13px;
+}
+.quick-panel .panel-footer {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 0;
+}
+.quick-panel .panel-footer > span:last-child {
+  display: none;
+}
+.quick-hint {
+  font-size: 12px;
+  color: #b7bcc5;
+}
+.card-hold-progress {
+  position: absolute;
+  z-index: 3;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  background: #fff;
+  transform-origin: left;
+  animation: card-hold 600ms linear both !important;
+}
+@keyframes card-hold {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-width: 700px) {
+  .quick-hint {
+    display: none;
+  }
+  .panel.quick-panel {
+    left: 16px !important;
+  }
+}

@@ -66,7 +66,18 @@ export interface UpdateInfo {
   notes?: string;
 }
 export type Action =
-  "left" | "right" | "up" | "down" | "accept" | "back" | "menu" | "home";
+  | "left"
+  | "right"
+  | "up"
+  | "down"
+  | "accept"
+  | "accept-down"
+  | "accept-up"
+  | "accept-cancel"
+  | "options"
+  | "back"
+  | "menu"
+  | "home";
 export const defaults = (): Config => ({
   version: 1,
   apps: [],

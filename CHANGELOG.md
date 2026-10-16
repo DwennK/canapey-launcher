@@ -2,6 +2,9 @@
 
 ## À venir
 
+- Menu rapide sur les cartes : maintien de 600 ms sur Entrée / A / Croix, clic droit, appui long tactile ou X / Carré ; indicateur de maintien et aucun lancement au relâchement d’un appui long.
+- Modification, déplacement et retrait avec confirmation directement depuis une carte ; reprise et fermeture des sessions suivies, sélection conservée au retour.
+
 - Navigation complète aux flèches et aux événements manette entre les cartes, boutons et champs ; Entrée valide et Retour arrière revient au menu précédent hors saisie.
 - Mode d’édition explicite des champs, retour avec restauration du focus, confirmations centrées sur Annuler et protection contre les appuis prolongés.
 - Validation automatisée de 76 états d’interface sur desktop et mobile ; essais avec une manette physique sous Windows encore à effectuer.

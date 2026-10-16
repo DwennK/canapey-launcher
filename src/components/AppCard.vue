@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from "vue";
+import { CardHold } from "../lib/hold";
 import Icon from "./Icon.vue";
 import type { Theme } from "../lib/types";
-defineProps<{
+const props = defineProps<{
   name: string;
   theme: Theme;
   image?: string;
@@ -11,8 +13,77 @@ defineProps<{
   suggestion?: boolean;
   running?: boolean;
   web?: boolean;
+  hasOptions?: boolean;
+  holding?: boolean;
 }>();
-defineEmits<{ select: []; activate: [] }>();
+const emit = defineEmits<{ select: []; activate: []; options: [] }>();
+const touching = ref(false);
+let pointer: { id: number; x: number; y: number } | null = null;
+let suppressClick = false;
+const hold = new CardHold((active) => (touching.value = active));
+function cancelTouch() {
+  if (pointer) suppressClick = true;
+  pointer = null;
+  hold.cancel();
+}
+function pointerDown(event: PointerEvent) {
+  suppressClick = false;
+  if (!props.hasOptions || event.pointerType === "mouse" || !event.isPrimary)
+    return;
+  pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  emit("select");
+  hold.start("touch", () => {
+    suppressClick = true;
+    emit("options");
+  });
+}
+function pointerMove(event: PointerEvent) {
+  if (
+    pointer?.id === event.pointerId &&
+    Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 12
+  )
+    cancelTouch();
+}
+function pointerUp(event: PointerEvent) {
+  if (pointer?.id !== event.pointerId) return;
+  if (!hold.release("touch")) suppressClick = true;
+  pointer = null;
+}
+function click(event: MouseEvent) {
+  if (suppressClick && event.detail !== 0) {
+    suppressClick = false;
+    return;
+  }
+  emit("activate");
+}
+function contextMenu(event: MouseEvent) {
+  if (!props.hasOptions) return;
+  event.preventDefault();
+  cancelTouch();
+  emit("options");
+}
+// A touch release can target the newly opened overlay rather than the card.
+// Consume that gesture's compatibility click in capture phase, wherever it lands.
+function suppressGestureClick(event: MouseEvent) {
+  if (!suppressClick || event.detail === 0) return;
+  suppressClick = false;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+const resetClick = () => {
+  suppressClick = false;
+};
+onMounted(() => {
+  window.addEventListener("blur", cancelTouch);
+  document.addEventListener("click", suppressGestureClick, true);
+  document.addEventListener("pointerdown", resetClick, true);
+});
+onUnmounted(() => {
+  cancelTouch();
+  window.removeEventListener("blur", cancelTouch);
+  document.removeEventListener("click", suppressGestureClick, true);
+  document.removeEventListener("pointerdown", resetClick, true);
+});
 </script>
 <template>
   <button
@@ -21,8 +92,15 @@ defineEmits<{ select: []; activate: [] }>();
     :aria-label="`${name}${suggestion ? ' — à ajouter' : ''}${running ? ' — en cours' : ''}`"
     :aria-pressed="selected"
     :tabindex="selected ? 0 : -1"
+    :aria-haspopup="hasOptions ? 'dialog' : undefined"
+    @contextmenu="contextMenu"
+    @pointerdown="pointerDown"
+    @pointermove="pointerMove"
+    @pointerup="pointerUp"
+    @pointercancel="cancelTouch"
+    @pointerleave="cancelTouch"
     @focus="$emit('select')"
-    @click="$emit('activate')"
+    @click="click"
   >
     <span class="card-visual">
       <img
@@ -35,6 +113,11 @@ defineEmits<{ select: []; activate: [] }>();
         @error="($event.target as HTMLImageElement).style.display = 'none'"
       />
       <span class="card-shade" />
+      <span
+        v-if="holding || touching"
+        class="card-hold-progress"
+        aria-hidden="true"
+      />
       <span v-if="special === 'add'" class="add-symbol"
         ><Icon name="plus" :size="38"
       /></span>

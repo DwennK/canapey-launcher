@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import AppCard from "./components/AppCard.vue";
 import * as api from "./lib/bridge";
@@ -26,7 +27,16 @@ import {
   type FocusBookmark,
 } from "./lib/navigation";
 
-type Panel = "" | "settings" | "add" | "edit" | "power" | "session" | "confirm";
+type Panel =
+  | ""
+  | "settings"
+  | "add"
+  | "edit"
+  | "power"
+  | "session"
+  | "confirm"
+  | "quick"
+  | "move";
 interface Tile {
   id: string;
   name: string;
@@ -217,6 +227,85 @@ const heroBg = ref("/art/home.webp"),
   oldBg = ref("");
 let imageTicket = 0;
 let bgTimer: ReturnType<typeof setTimeout>;
+const holdingCard = ref(false);
+const quickId = ref<string | null>(null);
+const quickAnchor = ref({ left: 16, top: 16 });
+const quickPosition = computed(() => {
+  const top = Math.max(
+    16,
+    Math.min(quickAnchor.value.top - 24, height.value - 540),
+  );
+  return {
+    left: `${Math.max(16, Math.min(quickAnchor.value.left, width.value - 376))}px`,
+    top: `${top}px`,
+    maxHeight: `${Math.max(0, height.value - top - 16)}px`,
+  };
+});
+const quickApp = computed(() =>
+  config.value.apps.find((a) => a.id === quickId.value),
+);
+const quickSession = computed(() =>
+  sessions.value.find((s) => s.appId === quickId.value),
+);
+const quickIndex = computed(() =>
+  config.value.apps.findIndex((a) => a.id === quickId.value),
+);
+const cardHold = new CardHold((holding) => (holdingCard.value = holding));
+const cancelHold = () => cardHold.cancel();
+function beginAccept(source: string) {
+  document.documentElement.dataset.inputMode = "directional";
+  if (
+    !panel.value &&
+    !working.value &&
+    current.value.entry &&
+    cardsRoot.value?.contains(document.activeElement)
+  ) {
+    const id = current.value.id;
+    cardHold.start(source, () => {
+      if (current.value.id === id) void openQuick(selected.value);
+    });
+  } else dispatch("accept");
+}
+function releaseAccept(source: string) {
+  if (cardHold.release(source)) dispatch("accept");
+}
+function keyboardUp(e: KeyboardEvent) {
+  if (e.key === "Enter") releaseAccept("keyboard");
+}
+function visibilityChanged() {
+  if (document.hidden) cancelHold();
+}
+async function openQuick(index: number) {
+  if (panel.value || working.value || !tiles.value[index]?.entry) return;
+  cancelHold();
+  select(index);
+  quickId.value = current.value.id;
+  await focusCard();
+  const rect = cardsRoot.value
+    ?.querySelector('[aria-pressed="true"]')
+    ?.getBoundingClientRect();
+  quickAnchor.value = { left: rect?.left ?? 16, top: rect?.top ?? 32 };
+  await openPanel("quick");
+}
+function removeQuick() {
+  if (!quickApp.value) return;
+  editing.value = JSON.parse(JSON.stringify(quickApp.value));
+  confirm(
+    "Retirer cette carte ?",
+    "L’application restera installée sur votre PC.",
+    "Retirer",
+    removeApp,
+  );
+}
+async function moveQuick(delta: number) {
+  await moveApp(quickIndex.value, delta);
+  await nextTick();
+  if (panelRoot.value && document.activeElement?.matches(":disabled"))
+    focusElement(
+      panelRoot.value.querySelector<HTMLElement>("[data-move-done]") ??
+        undefined,
+    );
+}
 function trapFocus(e: KeyboardEvent) {
   const list = focusableItems(panelRoot.value!);
   if (e.shiftKey && document.activeElement === list[0]) {
@@ -331,11 +420,13 @@ async function focusCard() {
 }
 function select(index: number) {
   if (index === selected.value) return;
+  cancelHold();
   selected.value = index;
   sound();
   selectionChanged();
 }
 async function openPanel(p: Panel) {
+  cancelHold();
   if (p === panel.value) return;
   const root = panel.value ? panelRoot.value : launcherRoot.value;
   if (root)
@@ -350,18 +441,26 @@ async function openPanel(p: Panel) {
         ? (panelRoot.value.querySelector<HTMLElement>(
             ".confirm-actions button",
           ) ?? undefined)
-        : focusableItems(panelRoot.value)[0],
+        : p === "quick" || p === "move"
+          ? (panelRoot.value.querySelector<HTMLElement>(
+              ".quick-actions button:not(:disabled)",
+            ) ?? undefined)
+          : focusableItems(panelRoot.value)[0],
     );
 }
 async function closePanel() {
+  const closingQuick = panel.value === "quick" || panel.value === "move";
   editingControl.value = null;
   const previous = panelHistory.pop();
   if (!previous?.panel && panelRoot.value) panelRoot.value.inert = true;
   panel.value = previous?.panel ?? "";
   if (panel.value === "session" && !selectedSession.value) return closePanel();
+  if (["quick", "move"].includes(panel.value) && !quickApp.value)
+    return closePanel();
   await nextTick();
   const root = panel.value ? panelRoot.value : launcherRoot.value;
-  if (root && previous) restoreFocus(root, previous.focus);
+  if (!panel.value && closingQuick) await focusCard();
+  else if (root && previous) restoreFocus(root, previous.focus);
   else if (!panel.value) await focusCard();
 }
 function dismissPanels() {
@@ -420,6 +519,24 @@ async function activate(tile = current.value) {
   });
 }
 function dispatch(action: Action) {
+  if (action === "accept-down") {
+    beginAccept("controller");
+    return;
+  }
+  if (action === "accept-up") {
+    releaseAccept("controller");
+    return;
+  }
+  if (action === "accept-cancel") {
+    cancelHold();
+    return;
+  }
+  if (action === "options") {
+    if (cardsRoot.value?.contains(document.activeElement))
+      void openQuick(selected.value);
+    return;
+  }
+  cancelHold();
   document.documentElement.dataset.inputMode = "directional";
   if (action === "home") {
     dismissPanels();
@@ -592,7 +709,8 @@ function keyboard(e: KeyboardEvent) {
     e.preventDefault();
     if (e.repeat && ["Enter", "Escape", "Backspace", "F1"].includes(e.key))
       return;
-    dispatch(keys[e.key]);
+    if (e.key === "Enter") beginAccept("keyboard");
+    else dispatch(keys[e.key]);
   }
 }
 function pointerInput(e: PointerEvent) {
@@ -602,6 +720,7 @@ function pointerInput(e: PointerEvent) {
     : null;
 }
 function focusChanged() {
+  if (!cardsRoot.value?.contains(document.activeElement)) cancelHold();
   if (editingControl.value !== document.activeElement)
     editingControl.value = null;
 }
@@ -823,6 +942,9 @@ watch(
 );
 onMounted(async () => {
   document.addEventListener("keydown", keyboard);
+  document.addEventListener("keyup", keyboardUp);
+  window.addEventListener("blur", cancelHold);
+  document.addEventListener("visibilitychange", visibilityChanged);
   document.addEventListener("pointerdown", pointerInput);
   document.addEventListener("focusin", focusChanged);
   resizeObserver = new ResizeObserver(() => {
@@ -849,7 +971,10 @@ onMounted(async () => {
     if (b.warning) notify(b.warning);
     stopNative = await api.subscribe({
       action: dispatch,
-      controller: (v) => (controller.value = v),
+      controller: (v) => {
+        cancelHold();
+        controller.value = v;
+      },
       sessions: (v) => (sessions.value = v),
       home: () => {
         dispatch("home");
@@ -882,7 +1007,11 @@ onMounted(async () => {
   }, 15000);
 });
 onUnmounted(() => {
+  cancelHold();
   document.removeEventListener("keydown", keyboard);
+  document.removeEventListener("keyup", keyboardUp);
+  window.removeEventListener("blur", cancelHold);
+  document.removeEventListener("visibilitychange", visibilityChanged);
   document.removeEventListener("pointerdown", pointerInput);
   document.removeEventListener("focusin", focusChanged);
   motionPreference.removeEventListener("change", motionChanged);
@@ -1067,6 +1196,9 @@ onUnmounted(() => {
           :image="tileImage(tile)"
           :icon="api.imageUrl(tile.entry?.icon)"
           :selected="selected === i"
+          :holding="selected === i && holdingCard"
+          :has-options="!!tile.entry"
+          @options="openQuick(i)"
           :running="sessions.some((s) => s.appId === tile.id)"
           @select="select(i)"
           @activate="
@@ -1086,9 +1218,13 @@ onUnmounted(() => {
           >Retour</span
         ><span
           ><kbd>{{ controller ? "☰" : "F1" }}</kbd
-          >Options</span
+          >Paramètres</span
         >
       </div>
+      <span v-if="current.entry" class="quick-hint"
+        >Maintenir {{ controller ? (ps ? "Croix" : "A") : "Entrée" }} ·
+        Actions</span
+      >
       <span v-if="!native" class="preview-badge"
         >Aperçu interface · fonctions Windows indisponibles</span
       ><span v-else class="footer-date">{{ date }}</span
@@ -1115,25 +1251,40 @@ onUnmounted(() => {
         </button></div
     ></Transition>
     <Transition name="panel">
-      <div v-if="panel" class="overlay" @click.self="closePanel">
+      <div
+        v-if="panel"
+        class="overlay"
+        :class="{ 'quick-overlay': panel === 'quick' || panel === 'move' }"
+        @click.self="closePanel"
+      >
         <section
           ref="panelRoot"
           class="panel"
-          :class="{ compact: ['power', 'confirm', 'session'].includes(panel) }"
+          :class="{
+            compact: ['power', 'confirm', 'session'].includes(panel),
+            'quick-panel': panel === 'quick' || panel === 'move',
+          }"
+          :style="
+            panel === 'quick' || panel === 'move' ? quickPosition : undefined
+          "
           role="dialog"
           aria-modal="true"
           :aria-label="
-            panel === 'settings'
-              ? 'Paramètres'
-              : panel === 'add'
-                ? 'Ajouter des applications'
-                : panel === 'edit'
-                  ? 'Personnaliser une application'
-                  : panel === 'power'
-                    ? 'Alimentation'
-                    : panel === 'session'
-                      ? 'Application en cours'
-                      : confirmTitle
+            panel === 'quick'
+              ? `Actions pour ${quickApp?.name}`
+              : panel === 'move'
+                ? 'Déplacer la carte'
+                : panel === 'settings'
+                  ? 'Paramètres'
+                  : panel === 'add'
+                    ? 'Ajouter des applications'
+                    : panel === 'edit'
+                      ? 'Personnaliser une application'
+                      : panel === 'power'
+                        ? 'Alimentation'
+                        : panel === 'session'
+                          ? 'Application en cours'
+                          : confirmTitle
           "
           @keydown.tab="trapFocus"
         >
@@ -1142,17 +1293,21 @@ onUnmounted(() => {
               <span class="eyebrow">CANAPEY LAUNCHER</span>
               <h2>
                 {{
-                  panel === "settings"
-                    ? "À votre façon."
-                    : panel === "add"
-                      ? "Un peu plus vous."
-                      : panel === "edit"
-                        ? "Personnaliser"
-                        : panel === "power"
-                          ? "À bientôt."
-                          : panel === "session"
-                            ? current.name
-                            : confirmTitle
+                  panel === "quick"
+                    ? quickApp?.name
+                    : panel === "move"
+                      ? "Déplacer la carte"
+                      : panel === "settings"
+                        ? "À votre façon."
+                        : panel === "add"
+                          ? "Un peu plus vous."
+                          : panel === "edit"
+                            ? "Personnaliser"
+                            : panel === "power"
+                              ? "À bientôt."
+                              : panel === "session"
+                                ? current.name
+                                : confirmTitle
                 }}
               </h2>
             </div>
@@ -1160,7 +1315,66 @@ onUnmounted(() => {
               <Icon name="close" />
             </button>
           </div>
-          <template v-if="panel === 'settings'">
+          <template v-if="panel === 'quick' && quickApp">
+            <div class="quick-actions power-options">
+              <template v-if="quickSession">
+                <button
+                  :disabled="quickSession.status === 'untracked'"
+                  @click="resumeSession(quickApp.id)"
+                >
+                  <Icon name="play" /><span>Reprendre</span>
+                </button>
+                <button @click="closeSession(quickApp.id)">
+                  <Icon name="close" /><span>{{
+                    quickSession.status === "untracked"
+                      ? "Ne plus suivre"
+                      : "Fermer normalement"
+                  }}</span>
+                </button>
+                <button
+                  v-if="quickSession.canForce"
+                  class="danger"
+                  @click="forceSession(quickApp.id)"
+                >
+                  <Icon name="power" /><span>Forcer la fermeture</span>
+                </button>
+              </template>
+              <p v-if="quickSession?.status === 'untracked'" class="note">
+                Fenêtre partagée ou non identifiable : reprenez-la avec Alt +
+                Tab.
+              </p>
+              <button @click="edit(quickApp)">
+                <Icon name="edit" /><span>Modifier</span>
+              </button>
+              <button @click="openPanel('move')">
+                <Icon name="right" /><span>Déplacer</span>
+              </button>
+              <button class="danger" @click="removeQuick">
+                <Icon name="trash" /><span>Retirer la carte</span>
+              </button>
+            </div>
+          </template>
+          <template v-else-if="panel === 'move' && quickApp">
+            <p class="panel-intro">
+              {{ quickApp.name }} · Position {{ quickIndex + 1 }} sur
+              {{ config.apps.length }}
+            </p>
+            <div class="quick-actions power-options">
+              <button :disabled="quickIndex <= 0" @click="moveQuick(-1)">
+                <Icon name="back" /><span>Déplacer avant</span>
+              </button>
+              <button
+                :disabled="quickIndex >= config.apps.length - 1"
+                @click="moveQuick(1)"
+              >
+                <Icon name="right" /><span>Déplacer après</span>
+              </button>
+              <button data-move-done @click="closePanel">
+                <Icon name="check" /><span>Terminé</span>
+              </button>
+            </div>
+          </template>
+          <template v-else-if="panel === 'settings'">
             <div class="settings-layout">
               <nav class="settings-nav" aria-label="Catégories des paramètres">
                 <button

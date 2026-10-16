@@ -32,3 +32,25 @@ PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright
 ```
 
 Utiliser une session distincte pour `qa-ui.js` : la fixture IPC de `qa-controls.js` reste active jusqu’à la fermeture de sa session. Les tests ne réutilisent jamais le profil Chrome personnel.
+
+## Menu rapide des cartes — 16 octobre 2026
+
+Sur une carte ajoutée, Entrée ou A / Croix ouvre l’application au relâchement d’un appui court. Un maintien de 600 ms affiche une barre de progression puis le menu, sans activation au relâchement. Le clic droit, l’appui long tactile et X / Carré ouvrent également ce menu. Les cartes système et les suggestions conservent leur comportement habituel.
+
+Le menu propose Modifier, Déplacer, Retirer avec confirmation et les actions applicables aux sessions suivies. Le déplacement conserve la carte sélectionnée, même après renommage ; Retour / Échap ou un clic extérieur restaure son focus. Une direction, une perte de focus ou une annulation manette interrompt le maintien. Le déplacement tactile annule le geste, et le clic synthétique suivant un appui long est consommé avant de pouvoir activer le menu.
+
+Validation exécutée avec Chrome système isolé :
+
+- `scripts/qa-quick-menu.js` : desktop 1440×900 et mobile 390×844, carrousel/grille, pressions courtes/longues clavier et événements manette, répétition, annulation, clic droit, modification, déplacement, retrait annulé/confirmé, actions de session et tactile émulé via Chrome DevTools. Aucun lancement supplémentaire au relâchement long ; aucune erreur JavaScript.
+- `scripts/qa-controls.js` : les 76 états de navigation existants passent également, sans erreur JavaScript.
+- `npm run check` : build et cohérence de version, 12 tests TypeScript et 12 tests Rust réussis, dont 3 tests d’arbitrage des appuis.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` et Clippy Windows x64 via cargo-xwin : réussis.
+- Rendu inspecté sur les captures desktop/mobile et dans le navigateur intégré.
+
+Ces contrôles simulent l’IPC et le tactile : ils ne remplacent pas un essai avec une manette physique ni l’exécution native sous Windows. Aucun push ni publication n’est associé à cette validation locale.
+
+```sh
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=quick open http://127.0.0.1:1420 --browser chrome --config .playwright/cli.config.json
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=quick run-code "$(cat scripts/qa-quick-menu.js)"
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=quick close
+```

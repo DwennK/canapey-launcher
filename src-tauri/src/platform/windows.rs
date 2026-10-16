@@ -552,6 +552,7 @@ pub fn start_controller(app: tauri::AppHandle) {
         let mut active = None;
         let mut buttons: HashMap<(gilrs::GamepadId, Button), bool> = HashMap::new();
         let mut pending_menu = None;
+        let mut pending_accept = None;
         let mut block_until_release = false;
         let mut was_foreground = false;
         let publish = |g: &Gilrs| {
@@ -572,6 +573,8 @@ pub fn start_controller(app: tauri::AppHandle) {
                 hold = Hold::default();
                 buttons.clear();
                 pending_menu = None;
+                pending_accept = None;
+                let _ = app.emit("input", "accept-cancel");
                 block_until_release = true;
             }
             last_tick = Instant::now();
@@ -585,6 +588,8 @@ pub fn start_controller(app: tauri::AppHandle) {
                         buttons.clear();
                         active = None;
                         pending_menu = None;
+                        pending_accept = None;
+                        let _ = app.emit("input", "accept-cancel");
                     }
                     EventType::ButtonPressed(b, _) => {
                         active = Some(event.id);
@@ -592,7 +597,11 @@ pub fn start_controller(app: tauri::AppHandle) {
                         if !was && foreground && !block_until_release {
                             match b {
                                 Button::South => {
-                                    let _ = app.emit("input", "accept");
+                                    pending_accept = Some(event.id);
+                                    let _ = app.emit("input", "accept-down");
+                                }
+                                Button::West => {
+                                    let _ = app.emit("input", "options");
                                 }
                                 Button::East => {
                                     let _ = app.emit("input", "back");
@@ -604,6 +613,15 @@ pub fn start_controller(app: tauri::AppHandle) {
                     }
                     EventType::ButtonReleased(b, _) => {
                         buttons.insert((event.id, b), false);
+                        if b == Button::South && pending_accept == Some(event.id) {
+                            pending_accept = None;
+                            let action = if foreground && !block_until_release {
+                                "accept-up"
+                            } else {
+                                "accept-cancel"
+                            };
+                            let _ = app.emit("input", action);
+                        }
                         if b == Button::Start
                             && pending_menu.take() == Some(event.id)
                             && foreground
@@ -639,6 +657,9 @@ pub fn start_controller(app: tauri::AppHandle) {
                 };
                 if combination {
                     pending_menu = None;
+                    if pending_accept.take().is_some() {
+                        let _ = app.emit("input", "accept-cancel");
+                    }
                 }
                 if hold.tick(combination, now, settings.hold_ms) {
                     crate::runtime::show_home(&app);
@@ -664,6 +685,7 @@ pub fn start_controller(app: tauri::AppHandle) {
                 previous = d;
                 if d.is_none()
                     && !pressed(Button::South)
+                    && !pressed(Button::West)
                     && !pressed(Button::East)
                     && !pressed(Button::Start)
                     && !pressed(Button::Select)
