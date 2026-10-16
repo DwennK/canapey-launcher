@@ -105,7 +105,6 @@ const confirmTitle = ref(""),
   confirmLabel = ref("Confirmer");
 let confirmAction: () => Promise<unknown> = async () => {};
 let toastTimer: ReturnType<typeof setTimeout>,
-  saveTimer: ReturnType<typeof setTimeout>,
   clockTimer: ReturnType<typeof setInterval>,
   updateTimer: ReturnType<typeof setTimeout>;
 let stopNative = () => {};
@@ -387,11 +386,11 @@ function persist() {
 }
 
 function selectionChanged() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    config.value.selectedId = current.value.entry?.id ?? null;
-    void persist();
-  }, 350);
+  const id = current.value.entry?.id;
+  // Utility cards must not erase the last application to restore on startup.
+  if (!id || id === config.value.selectedId) return;
+  config.value.selectedId = id;
+  void persist();
 }
 function sound() {
   if (!config.value.settings.sound) return;
@@ -519,7 +518,6 @@ async function activate(tile = current.value) {
     return;
   }
   await run("Lancement", async () => {
-    clearTimeout(saveTimer);
     config.value.selectedId = tile.id;
     if (!(await persist())) return;
     const session = await api.launch(tile.id);
@@ -1071,7 +1069,6 @@ onUnmounted(() => {
   clearInterval(clockTimer);
   clearInterval(audioTimer);
   clearTimeout(updateTimer);
-  clearTimeout(saveTimer);
   clearTimeout(toastTimer);
   clearTimeout(bgTimer);
   stopNative();
@@ -1225,6 +1222,7 @@ onUnmounted(() => {
         <AppCard
           v-for="(tile, i) in tiles"
           :key="tile.id"
+          :data-focus-key="`app:${tile.id}`"
           :name="tile.name"
           :theme="tile.theme"
           :special="tile.special"

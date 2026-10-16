@@ -56,6 +56,22 @@ async (page) => {
     await assert(app?.theme===theme&&app?.target.kind==='uri'&&app?.target.value===url,`${name} theme/target did not persist`);
     await assert(page.locator(`.cards .app-card.${theme} .web-label`).isVisible(),`${name} missing WEB label`);
   }
+  const checkRememberedSelection = async () => {
+    // Reload immediately: selection must not depend on the former 350 ms timer.
+    await page.getByRole('button',{name:'Spotify',exact:true}).focus();
+    await page.reload();
+    await page.getByRole('heading',{name:'Spotify',exact:true}).waitFor();
+    for (const utility of ['Retour Windows', 'Ajouter']) {
+      await page.getByRole('button',{name:'Internet',exact:true}).focus();
+      await page.getByRole('button',{name:utility,exact:true}).focus();
+      // Stay on a utility card beyond the old debounce to catch null saves.
+      await page.waitForTimeout(450);
+      await page.reload();
+      await page.getByRole('heading',{name:'Internet',exact:true}).waitFor();
+      await assert(selected().evaluate(el=>el===document.activeElement),'Restored application should receive focus');
+    }
+  };
+  await checkRememberedSelection();
   await page.getByRole('button',{name:'YouTube',exact:true}).focus();
   await page.keyboard.press('F1');
   await page.getByRole('button',{name:'Applications',exact:true}).click();
@@ -97,6 +113,7 @@ async (page) => {
   await assert((await page.evaluate(()=>JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).apps.length))===3,'Removal did not persist');
   await page.keyboard.press('Escape');
   await page.setViewportSize({width:390,height:844});
+  await checkRememberedSelection();
   await page.getByRole('button',{name:'Internet',exact:true}).focus();
   await page.waitForFunction(()=>document.querySelector('.backdrop-current').getAttribute('src')==='/art/internet.webp');
   await page.screenshot({animations:'disabled',path:'output/playwright/home-mobile.png'});
