@@ -1,5 +1,11 @@
 # Notes de version
 
+## À venir
+
+- Mises à jour intégrées signées pour les préreleases `0.x`, avec un canal distinct des versions stables.
+- Publication du canal après vérification des fichiers de la release publique ; protection contre les brouillons, les fichiers incohérents et les retours de version.
+- Les installations `v0.1.0` et `v0.2.0` nécessitent une dernière installation manuelle pour recevoir cette fonctionnalité.
+
 ## 0.2.0 — 2026-10-17
 
 - Textes de l’interface simplifiés : titres et actions explicites, suppression des slogans et des sous-titres décoratifs.

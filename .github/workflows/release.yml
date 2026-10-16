@@ -34,26 +34,17 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc
-      - name: Build experimental installer and create draft prerelease
-        if: startsWith(github.ref_name, 'v0.')
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: Canapey Launcher v__VERSION__ — version de test
-          releaseBody: "Prérelease expérimentale pour Windows 11 x64. Installateur sans signature Authenticode et sans mise à jour intégrée. Voir CHANGELOG.md et docs/VALIDATION.md."
-          releaseDraft: true
-          prerelease: true
-          args: --target x86_64-pc-windows-msvc --bundles nsis
-          includeUpdaterJson: false
       - name: Configure signed update endpoint
-        if: ${{ !startsWith(github.ref_name, 'v0.') }}
         run: npm run release:configure
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+      - name: Require signing key
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Configure TAURI_SIGNING_PRIVATE_KEY before releasing.' }
       - name: Build, sign update artifacts and create draft release
-        if: ${{ !startsWith(github.ref_name, 'v0.') }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,11 +53,12 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: Canapey Launcher v__VERSION__
-          releaseBody: "Windows 11 x64. Voir les notes de version avant publication."
+          releaseBody: "Windows 11 x64. Mises à jour signées. Voir les notes de version avant publication."
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
           args: --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.release.conf.json
           includeUpdaterJson: true
+          updaterJsonPreferNsis: true
       - name: Attach installer checksum
         shell: pwsh
         env:

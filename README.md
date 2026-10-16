@@ -83,7 +83,7 @@
 | **Local storage** | Validated configuration, automatic backup, local artwork and rotating diagnostic logs |
 
 > [!IMPORTANT]
-> **Canapey is experimental.** The `0.x` installers are test prereleases without built-in updates or an Authenticode signature. Windows may show a SmartScreen warning. Interactive testing on a real Windows PC and physical controllers is still pending; builds and browser previews do not establish native compatibility. See the [validation record and hardware checklist](docs/VALIDATION.md).
+> **Canapey is experimental.** The `0.x` installers are test prereleases without an Authenticode signature. Releases built with the signed updater workflow support in-app updates; v0.1.0 and v0.2.0 still require a manual installer download. Windows may show a SmartScreen warning. Interactive testing on a real Windows PC and physical controllers is still pending; builds and browser previews do not establish native compatibility. See the [validation record and hardware checklist](docs/VALIDATION.md).
 
 ## Downloads
 
@@ -231,9 +231,11 @@ Optional start at login uses Tauri's official autostart plugin. Starting a secon
 </details>
 
 <details>
-<summary><strong>Versioning, prereleases and future signed updates</strong></summary>
+<summary><strong>Versioning, prereleases and signed updates</strong></summary>
 
-Development builds and `0.x` prereleases explicitly disable built-in updates. Download these installers from GitHub Releases. GitHub's `latest` endpoint excludes prereleases.
+Development builds keep updates disabled. Release builds, including `0.x`, embed the public verification key and use signed installers. The `0.x` channel reads `https://raw.githubusercontent.com/DwennK/canapey-launcher/updates/0.x.json`; it does not use GitHub's `latest` endpoint, which excludes prereleases. Future stable builds retain the stable release endpoint.
+
+**Migration:** v0.1.0 and v0.2.0 were built without an updater endpoint. Install the first updater-enabled release manually; subsequent versions can be offered in the application. No release has been republished or retagged.
 
 For an authorised publication, follow [AGENTS.md](AGENTS.md): use a patch for fixes and small improvements, a minor for substantial features or breaking changes during the experimental phase. Moving to `1.0.0` requires an explicit decision.
 
@@ -244,17 +246,20 @@ npm run check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 ```
 
-The bump command synchronises `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`; it creates no commit or tag. Update `CHANGELOG.md` and this README's version/download references, then create focused commits. Once delivery is authorised, push the commits and an annotated `vX.Y.Z` tag. Never move a published tag. Both workflows check version consistency; the release workflow also checks the tag. It creates a draft prerelease with a Windows installer and SHA-256 checksum. Review the assets and notes before publishing, and verify the public tag, commit, release and downloads.
+The bump command synchronises `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`; it creates no commit or tag. Update `CHANGELOG.md` and this README's version/download references, then create focused commits. Once delivery is authorised, push the commits and an annotated `vX.Y.Z` tag. Never move a published tag. Both workflows check version consistency; the release workflow also checks the tag. It creates a draft with a Windows installer, updater signature, `latest.json` and SHA-256 checksum. All `0.x` releases remain prereleases. Review the assets and notes before publishing, then verify the public tag, commit, release, downloads and update-channel workflow.
 
-**Future stable channel:** the official Tauri Updater supports a check after 15 seconds, manual checks, release notes, signature verification and user-initiated installation with local data preserved. It never downloads or restarts automatically without user action. Installation is blocked while a session is tracked or a launch is in progress; network failures do not block the home screen.
+**Update behaviour:** the official Tauri Updater supports a check after 15 seconds, manual checks, release notes, signature verification and user-initiated installation with local data preserved. It never downloads or restarts automatically without user action. Installation is blocked while a session is tracked or a launch is in progress; network failures do not block the home screen.
 
-To configure that channel after an explicit stable-release decision:
+Signing configuration (already provisioned for this repository; do not rotate existing keys casually):
 
-1. Generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the application; remove its temporary local copy after import and verification in Actions secrets.
-2. Store the full private key in the Actions secret `TAURI_SIGNING_PRIVATE_KEY` and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty if none).
+1. For a new repository only, generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the application; remove temporary local copies after verification and import into Actions secrets. Retain the same key for future releases.
+2. Store the private key in the Actions secret `TAURI_SIGNING_PRIVATE_KEY` and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 3. Store the **complete base64 contents** of the `.pub` file in the Actions variable `TAURI_UPDATER_PUBLIC_KEY`.
-4. Align all five version files and create the release tag. The [release workflow](.github/workflows/release.yml) uses `GITHUB_REPOSITORY` to generate the ignored `tauri.release.conf.json`, embedding the public key and the endpoint `https://github.com/OWNER/REPO/releases/latest/download/latest.json`.
-5. The workflow creates a draft containing the installer, updater signature and `latest.json`. Test on a real PC, review the notes and publish. A draft does not distribute an update.
+4. The [release workflow](.github/workflows/release.yml) generates the ignored `tauri.release.conf.json` with the correct channel and signs the installer. Missing signing configuration fails the build instead of producing a release with updates disabled.
+5. Publish the reviewed draft with a maintainer account. The [channel workflow](.github/workflows/update-channel.yml) runs on `release: published`, verifies the version, public installer digest and matching signature, then atomically writes `0.x.json` on the machine-managed `updates` branch. It uses the final release notes, ignores an equal or older version, and never promotes a draft. Tauri verifies the signature before installation.
+6. Wait for that workflow and check the public channel URL. To retry promotion of an already published release: `gh workflow run update-channel.yml -f tag=v0.X.Y`. This is also required if publication was performed with `GITHUB_TOKEN`, since GitHub suppresses workflows triggered by that token. Do not edit or delete the channel branch manually.
+
+The first channel manifest is created when the first signed prerelease is published. Existing unsigned releases cannot populate it. A failed promotion leaves the previous channel intact; a short GitHub raw-content cache delay may occur after promotion.
 
 Secrets stay in Actions, never in the frontend; GitHub provides `GITHUB_TOKEN`. **Tauri Updater signing and Windows Authenticode signing are separate.** An updater signature does not remove SmartScreen warnings; the workflow does not claim an Authenticode certificate.
 

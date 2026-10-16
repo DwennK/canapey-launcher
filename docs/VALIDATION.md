@@ -2,6 +2,14 @@
 
 Ce rapport conserve les preuves de la livraison locale initiale, avant publication. Les résultats Windows de chaque commit et tag sont disponibles dans [GitHub Actions](https://github.com/DwennK/canapey-launcher/actions) ; les installateurs publics se trouvent dans [Releases](https://github.com/DwennK/canapey-launcher/releases). La compilation et les tests automatisés ne remplacent pas la matrice d’essais matériels ci-dessous.
 
+## Ajout du 17 octobre 2026 — canal de mise à jour 0.x
+
+- Configuration de signature provisionnée dans GitHub Actions : clé privée et mot de passe en secrets, clé publique en variable. Paire vérifiée par signature d’un fichier de contrôle puis vérification Ed25519 et du commentaire signé ; copies privées temporaires supprimées.
+- `npm run check` : build réussi, 37 tests JavaScript (dont 20 pour les mises à jour) et 13 tests Rust réussis. Couverture du choix de canal, des clés absentes/invalides, de la promotion après publication, de l’intégrité des fichiers, des erreurs réseau et du refus de rétrograder le canal.
+- Workflows vérifiés avec Actionlint ; `cargo fmt --check` et `cargo check --locked` avec la configuration de release générée réussis sur macOS.
+- Aucune nouvelle release publiée pour cette modification. Le premier manifeste public sera créé après publication de la première prérelease signée. L’installation et la mise à jour de bout en bout sur Windows restent à tester.
+- Les résultats ci-dessous décrivent la livraison initiale du 16 octobre et ne constituent pas une validation du nouveau canal.
+
 ## Ce qui a réellement été exécuté
 
 Environnement : macOS ARM64, Node 26, Rust 1.94.1. Compilation croisée avec cargo-xwin déjà présent, LLVM 23 installé via Homebrew et NSIS 3.13 déjà présent. Le PATH de compilation a été limité aux commandes, sans modifier le profil shell. Tests de navigateur avec **Google Chrome système**, contexte isolé sans profil personnel. Aucun téléchargement de Chromium Playwright.
@@ -70,7 +78,7 @@ La configuration fixe le viewport à 1440×900 **avant** le chargement. Le scrip
 | Hors ligne | Couper Internet avant lancement de l’app déjà installée avec WebView2 ; interface et applications locales fonctionnelles. | À tester |
 | Arrêt / redémarrage / veille | Annuler d’abord chaque confirmation ; sur PC de test sans document ouvert, confirmer chaque action et vérifier la reprise. | À tester |
 | Mise à jour indisponible | Endpoint indisponible ou machine hors ligne : pas de blocage, message manuel utile. | UI testée ; réseau natif à tester |
-| Mise à jour signée | Après configuration du dépôt : publier deux versions de test, vérifier signature, notes, installation et données conservées. Vérifier rejet d’une signature invalide. | Bloqué par dépôt / clés non fournis |
+| Mise à jour signée | Publier deux versions signées, attendre la promotion du canal, vérifier signature, notes, installation et données conservées. Vérifier rejet d’une signature invalide. | Clés configurées ; parcours Windows à tester |
 
 ## Mesures de performance à recueillir
 

@@ -1,0 +1,31 @@
+name: Publish experimental update channel
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published 0.x release to promote (or retry)
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: update-channel-0
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v0.'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate published assets and advance the 0.x channel
+        run: node scripts/publish-update-channel.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
