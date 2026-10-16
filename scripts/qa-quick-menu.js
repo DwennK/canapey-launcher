@@ -46,6 +46,7 @@ async (page) => {
     window.isTauri = true;
     window.__qa = {
       calls: [],
+      resumeError: null,
       config: () => config,
       emit: (event, payload) =>
         callbacks.get(events.get(event))?.({ event, payload }),
@@ -86,6 +87,8 @@ async (page) => {
             status: "running",
             canForce: false,
           };
+        if (cmd === "resume_app" && window.__qa.resumeError)
+          throw new Error(window.__qa.resumeError);
         if (cmd === "list_monitors") return [];
         if (cmd === "check_update") return { state: "disabled" };
         return null;
@@ -123,6 +126,63 @@ async (page) => {
     window.__qa.calls.some((c) => c.cmd === "launch_app"),
   );
   assert((await launches()) === 1, "Short Enter must launch once");
+  const resumes = () =>
+    page.evaluate(
+      () => window.__qa.calls.filter((c) => c.cmd === "resume_app"),
+    );
+  // Running sessions resume directly with no launch or intermediate panel.
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await card("Spotify").focus();
+    const before = (await resumes()).length;
+    await page.keyboard.down("Enter");
+    assert((await resumes()).length === before, "Resume happened on keydown");
+    await page.keyboard.up("Enter");
+    await page.waitForFunction(
+      (n) => window.__qa.calls.filter((c) => c.cmd === "resume_app").length === n,
+      before + 1,
+    );
+    await emit("accept-down");
+    await emit("accept-up");
+    await card("Spotify").click();
+    assert((await resumes()).length === before + 3, "Short inputs must resume once each");
+    assert((await dialog().count()) === 0, "Direct resume opened a panel");
+    for (const input of ["keyboard", "controller"]) {
+      if (input === "keyboard") await page.keyboard.down("Enter");
+      else await emit("accept-down");
+      await page.getByRole("dialog", { name: "Actions pour Spotify" }).waitFor();
+      if (input === "keyboard") await page.keyboard.up("Enter");
+      else await emit("accept-up");
+      assert((await resumes()).length === before + 3, "Long press resumed the app");
+      assert(await dialog().getByRole("button", { name: "Modifier", exact: true }).isVisible(), "Edit action missing");
+      assert(await dialog().getByRole("button", { name: "Fermer normalement", exact: true }).isVisible(), "Close action missing");
+      await close();
+    }
+    assert((await launches()) === 1, "Resuming must not relaunch");
+  }
+  assert((await resumes()).every((c) => c.args.id === "spotify"), "Wrong app resumed");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Native errors remain visible without relaunching or losing card focus.
+  await page.evaluate(() => { window.__qa.resumeError = "QA : reprise indisponible"; });
+  await page.keyboard.press("Enter");
+  await page.getByText("QA : reprise indisponible", { exact: true }).waitFor();
+  assert(await card("Spotify").evaluate((e) => e === document.activeElement), "Resume error lost focus");
+  const beforeFallback = (await resumes()).length;
+  await page.evaluate(() => { window.__qa.resumeError = null; });
+  for (const status of ["starting", "closing", "untracked"]) {
+    await page.evaluate((status) => window.__qa.emit("sessions", [{
+      appId: "spotify", name: "Spotify", status, canForce: false,
+    }]), status);
+    await page.keyboard.press("Enter");
+    await dialog().waitFor();
+    if (status === "untracked")
+      assert(await dialog().getByRole("button", { name: "Reprendre", exact: true }).isDisabled(), "Untracked direct resume enabled");
+    await close();
+  }
+  assert((await resumes()).length === beforeFallback && (await launches()) === 1, "Fallback sessions resumed or relaunched");
   await page.evaluate(() => window.__qa.emit("sessions", []));
   await page.keyboard.down("Enter");
   await page.getByRole("dialog", { name: "Actions pour Spotify" }).waitFor();

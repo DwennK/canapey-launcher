@@ -2,6 +2,8 @@
 
 ## À venir
 
+- Reprise directe des applications suivies comme ouvertes avec un appui court sur Entrée / A / Croix ou un clic ; l’appui long conserve le menu de fermeture et de modification.
+
 - Outils système masqués par défaut dans l’ajout d’applications, avec une case pour les afficher ; les applications déjà présentes sont marquées « Déjà ajoutée » et ne peuvent plus être sélectionnées.
 
 - À l’ouverture des paramètres, le focus se place sur « Écran & démarrage » pour commencer directement la navigation dans les catégories.

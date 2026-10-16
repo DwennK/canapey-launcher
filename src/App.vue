@@ -534,8 +534,10 @@ async function activate(tile = current.value) {
     if (native.value && !scanned.value) void scan();
     return;
   }
-  if (selectedSession.value) {
-    void openPanel("session");
+  const session = sessions.value.find((s) => s.appId === tile.id);
+  if (session) {
+    if (session.status === "running") await resumeSession(tile.id);
+    else void openPanel("session");
     return;
   }
   await run("Lancement", async () => {
