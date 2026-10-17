@@ -2153,7 +2153,7 @@ onUnmounted(() => {
                   )
                 "
               >
-                <Icon name="refresh" /><span>Redémarrer</span
+                <Icon name="restart" /><span>Redémarrer</span
                 ><Icon name="right" :size="18" /></button
               ><button
                 @click="
