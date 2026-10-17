@@ -32,7 +32,7 @@ export interface Settings {
   motion: boolean;
   sound: boolean;
   deadzone: number;
-  returnShortcut: "startBack" | "shouldersStart" | "disabled";
+  returnShortcut: "xbox" | "startBack" | "shouldersStart" | "disabled";
   holdMs: number;
 }
 export interface Config {
@@ -97,7 +97,7 @@ export const defaults = (): Config => ({
     motion: true,
     sound: true,
     deadzone: 0.24,
-    returnShortcut: "startBack",
+    returnShortcut: "xbox",
     holdMs: 1200,
   },
 });

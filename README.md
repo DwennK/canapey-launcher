@@ -110,7 +110,7 @@ On first launch, choose **Add applications** to discover installed applications 
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
-| Return globally without closing the running app | — | Hold Start + Back for 1.2 seconds |
+| Return globally without closing the running app | — | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
@@ -118,7 +118,9 @@ The **Quick controls** button sits immediately to the left of the clock. In its 
 
 On added application cards, a short Enter / A / Cross press activates on release. A running tracked application resumes directly, including on click; starting, closing and untracked sessions retain their session panel. A long press shows progress and opens card actions without launching or resuming on release. Right-click or touch-and-hold also opens the menu; touch scrolling cancels the gesture. Edit, move and remove cards here, or resume and close tracked sessions. Back / Esc dismisses the menu and restores the selected card. Suggestions and system cards keep their usual action.
 
-The global shortcut can be disabled or changed to **LB + RB + Start** (L1 + R1 + Options on PlayStation), with an adjustable hold duration. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
+New configurations default to **Xbox button + Start/Back fallback**. Existing saved choices are preserved. You can also choose **Start + Back**, **LB + RB + Start** (L1 + R1 + Options on PlayStation), or disable the shortcut. Hold duration applies to combinations; the Xbox button needs one press. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
+
+In **Settings → Controller & ambience**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
 
 <details>
 <summary><strong>Field editing, focus and controller compatibility</strong></summary>

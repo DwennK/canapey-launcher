@@ -1,7 +1,11 @@
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
+mod xbox;
+#[cfg(windows)]
 pub use windows::*;
+#[cfg(windows)]
+pub(crate) use xbox::XboxInput;
 #[cfg(not(windows))]
 mod unsupported;
 #[cfg(not(windows))]

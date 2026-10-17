@@ -2,6 +2,8 @@
 
 ## À venir
 
+- Retour à l’accueil par la touche Xbox avec Start + Back en secours pour les nouvelles configurations ; choix Start + Back, LB + RB + Start et Désactivé conservés. Test de détection de 15 secondes et accès au réglage Windows Game Bar dans les paramètres. Détection native à valider sur une manette physique sous Windows.
+
 - Clavier à l’écran AZERTY accessible à la manette pour rechercher et modifier les champs texte : accents, majuscules, symboles, correction et annulation avant validation.
 - Écran de test de la manette : boutons, sticks, gâchettes et direction filtrée en direct, réglage de zone neutre entre deux essais et sortie du test par maintien de B / Rond.
 

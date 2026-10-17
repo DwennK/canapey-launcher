@@ -58,7 +58,7 @@ impl Default for Settings {
             motion: true,
             sound: true,
             deadzone: 0.24,
-            return_shortcut: "startBack".into(),
+            return_shortcut: "xbox".into(),
             hold_ms: 1200,
         }
     }
@@ -183,7 +183,8 @@ impl Config {
             || !s.deadzone.is_finite()
             || !(0.1..=0.5).contains(&s.deadzone)
             || !(600..=4000).contains(&s.hold_ms)
-            || !["startBack", "shouldersStart", "disabled"].contains(&s.return_shortcut.as_str())
+            || !["xbox", "startBack", "shouldersStart", "disabled"]
+                .contains(&s.return_shortcut.as_str())
         {
             return Err("Réglage hors limites.".into());
         }

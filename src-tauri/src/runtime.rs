@@ -799,6 +799,7 @@ pub fn run() {
                 update: Mutex::new(None),
                 active: Mutex::new(None),
             });
+            app.manage(crate::xbox_home::XboxHomeState::default());
             let _ = apply_display(app.handle(), &config);
             use tauri::{
                 menu::{Menu, MenuItem},
@@ -827,6 +828,7 @@ pub fn run() {
                 }
             });
             platform::start_controller(app.handle().clone());
+            crate::xbox_home::start(app.handle().clone());
             start_tracking(app.handle().clone());
             let maintenance = app.handle().clone();
             std::thread::spawn(move || {
@@ -845,6 +847,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            crate::xbox_home::xbox_home_status,
+            crate::xbox_home::test_xbox_button,
+            crate::xbox_home::cancel_xbox_test,
+            crate::xbox_home::open_game_bar_settings,
             bootstrap,
             set_controller_test,
             frontend_ready,

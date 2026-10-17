@@ -531,6 +531,26 @@ pub fn power(action: &str) -> Result<(), String> {
     }
 }
 
+pub fn open_game_bar_settings() -> Result<(), String> {
+    // Fixed Settings URI: no caller-controlled target, shell command or registry edits.
+    unsafe {
+        let target = wide("ms-settings:gaming-gamebar");
+        let result = ShellExecuteW(
+            std::ptr::null_mut(),
+            null(),
+            target.as_ptr(),
+            null(),
+            null(),
+            SW_SHOWNORMAL,
+        );
+        if result as isize <= 32 {
+            Err("Impossible d’ouvrir les paramètres Game Bar de Windows.".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
 pub fn start_controller(app: tauri::AppHandle) {
     std::thread::spawn(move || {
         use gilrs::{Axis, Button, EventType, Gilrs};
@@ -735,22 +755,24 @@ pub fn start_controller(app: tauri::AppHandle) {
             }
             if let Some((_, p)) = pad {
                 let pressed = |b| p.is_pressed(b);
-                let combination = match settings.return_shortcut.as_str() {
-                    "startBack" => pressed(Button::Start) && pressed(Button::Select),
-                    "shouldersStart" => {
-                        pressed(Button::Start)
-                            && pressed(Button::LeftTrigger)
-                            && pressed(Button::RightTrigger)
-                    }
-                    _ => false,
-                };
+                let combination = !crate::xbox_home::is_testing(&app)
+                    && (foreground || !crate::xbox_home::handles_background(&app))
+                    && match settings.return_shortcut.as_str() {
+                        "xbox" | "startBack" => pressed(Button::Start) && pressed(Button::Select),
+                        "shouldersStart" => {
+                            pressed(Button::Start)
+                                && pressed(Button::LeftTrigger)
+                                && pressed(Button::RightTrigger)
+                        }
+                        _ => false,
+                    };
                 if combination {
                     pending_menu = None;
                     if pending_accept.take().is_some() {
                         let _ = app.emit("input", "accept-cancel");
                     }
                 }
-                if hold.tick(combination, now, settings.hold_ms) {
+                if hold.tick(combination && !block_until_release, now, settings.hold_ms) {
                     crate::runtime::show_home(&app);
                     repeat.reset();
                     block_until_release = true;

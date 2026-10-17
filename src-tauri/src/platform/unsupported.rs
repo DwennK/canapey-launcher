@@ -30,6 +30,9 @@ pub fn power(_: &str) -> Result<(), String> {
     supported()
 }
 pub fn start_controller(_: tauri::AppHandle) {}
+pub fn open_game_bar_settings() -> Result<(), String> {
+    supported()
+}
 
 pub fn desktop() -> Result<(), String> {
     supported()

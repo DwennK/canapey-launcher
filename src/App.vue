@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { isSystemTool } from "./lib/discovery";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
+import XboxHomeSettings from "./components/XboxHomeSettings.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import AppCard from "./components/AppCard.vue";
@@ -1697,23 +1698,25 @@ onUnmounted(() => {
                       >
                     </div>
                   </div>
-                  <label class="setting-row"
+                  <label class="setting-row home-shortcut-row"
                     ><span
                       >Retour global à l’accueil<small
-                        >Maintenir les boutons, sans fermer
-                        l’application.</small
+                        >{{ config.settings.returnShortcut === 'xbox'
+                          ? 'Un appui Xbox, ou Start + Back maintenus en secours.'
+                          : 'Maintenir les boutons, sans fermer l’application.' }}</small
                       ></span
                     ><select
                       v-model="config.settings.returnShortcut"
                       @change="persist"
                     >
+                      <option value="xbox">Touche Xbox</option>
                       <option value="startBack">Start + Back</option>
                       <option value="shouldersStart">LB + RB + Start</option>
                       <option value="disabled">Désactivé</option>
                     </select></label
                   ><label class="setting-row"
                     ><span
-                      >Durée de maintien<small
+                      >Maintien des combinaisons<small
                         >{{
                           (config.settings.holdMs / 1000).toFixed(1)
                         }}
@@ -1726,7 +1729,7 @@ onUnmounted(() => {
                       max="4000"
                       step="200"
                       @change="persist" /></label
-                  ><label class="setting-row"
+                  ><XboxHomeSettings :native="native" /><label class="setting-row"
                     ><span
                       >Zone neutre du stick<small
                         >{{
