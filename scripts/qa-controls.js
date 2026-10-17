@@ -498,14 +498,14 @@ async (page) => {
       "Settings lost header origin",
     );
     await send("back");
-    await send("down");
-    await send("down");
-    await send("down");
+    await send("up");
+    await send("up");
+    for (let i = 0; i < 8 && await page.evaluate(() => document.activeElement.getAttribute("aria-label")) !== "Alimentation"; i++) await send("right");
     assert(
       (await page.evaluate(() =>
         document.activeElement.getAttribute("aria-label"),
       )) === "Alimentation",
-      "Footer unreachable from grid",
+      "Header power unreachable from grid",
     );
     await send("accept");
     await send("back");
@@ -513,7 +513,7 @@ async (page) => {
       (await page.evaluate(() =>
         document.activeElement.getAttribute("aria-label"),
       )) === "Alimentation",
-      "Footer focus not restored",
+      "Header power focus not restored",
     );
     await send("up");
     await send("back");

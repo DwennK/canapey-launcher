@@ -14,7 +14,6 @@ const emit = defineEmits<{
   mute: [];
   output: [id: string];
   refresh: [];
-  sleep: [];
 }>();
 </script>
 <template>
@@ -107,11 +106,5 @@ const emit = defineEmits<{
         </button>
       </div>
     </template>
-    <div class="audio-sleep">
-      <button :disabled="!native" @click="emit('sleep')">
-        <Icon name="moon" /><span>Mettre en veille</span
-        ><Icon name="right" :size="18" />
-      </button>
-    </div>
   </div>
 </template>

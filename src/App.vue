@@ -146,6 +146,11 @@ const {
   volume: audioVolume,
   switching: audioSwitching,
 } = audio;
+const headerVolume = computed(() => audioState.value?.volume != null
+  ? Math.round(audioVolume.value) : null);
+const volumeDescription = computed(() => headerVolume.value === null
+  ? 'Volume indisponible'
+  : `${audioState.value?.muted ? 'Son coupé · ' : ''}Volume ${headerVolume.value} %`);
 let audioTimer: ReturnType<typeof setInterval>;
 async function openAudio() {
   void openPanel("audio");
@@ -902,18 +907,6 @@ function dispatch(action: Action) {
     if (launcherRoot.value) focusDirection(launcherRoot.value, action);
     return;
   }
-  if (
-    view.value === "grid" &&
-    action === "down" &&
-    Math.floor(selected.value / columns.value) ===
-      Math.floor((tiles.value.length - 1) / columns.value)
-  ) {
-    focusElement(
-      launcherRoot.value?.querySelector<HTMLElement>(".power-button") ??
-        undefined,
-    );
-    return;
-  }
   const next = navigate(
     selected.value,
     tiles.value.length,
@@ -1431,8 +1424,10 @@ onUnmounted(() => {
             v-if="controller" /></span
         ><button
           class="icon-button audio-trigger"
-          title="Commandes rapides"
+          :class="{ 'is-muted': audioState?.muted }"
+          :title="`Commandes rapides · ${volumeDescription}`"
           aria-label="Commandes rapides"
+          :aria-description="volumeDescription"
           aria-haspopup="dialog"
           :aria-expanded="panel === 'audio'"
           @click="openAudio"
@@ -1440,7 +1435,11 @@ onUnmounted(() => {
           <Icon
             :name="audioState?.muted ? 'muted' : 'volume'"
             :size="22"
-          /></button
+          />
+          <span class="header-volume" aria-hidden="true">
+            <span>{{ headerVolume ?? '—' }}<small v-if="headerVolume !== null">%</small></span>
+            <span class="header-volume-track"><i :style="{ width: `${audioState?.muted ? 0 : (headerVolume ?? 0)}%` }" /></span>
+          </span></button
         ><time>{{ time }}</time
         ><button
           class="icon-button"
@@ -1448,6 +1447,15 @@ onUnmounted(() => {
           @click="openSettings"
         >
           <Icon name="settings" :size="22" />
+        </button>
+        <button
+          class="icon-button power-button"
+          aria-label="Alimentation"
+          title="Alimentation"
+          aria-haspopup="dialog"
+          @click="openPanel('power')"
+        >
+          <Icon name="power" :size="21" />
         </button>
       </div>
     </header>
@@ -1544,14 +1552,7 @@ onUnmounted(() => {
       >
       <span v-if="!native" class="preview-badge"
         >Aperçu interface · fonctions Windows indisponibles</span
-      ><span v-else class="footer-date">{{ date }}</span
-      ><button
-        class="icon-button power-button"
-        aria-label="Alimentation"
-        @click="openPanel('power')"
-      >
-        <Icon name="power" :size="21" />
-      </button>
+      ><span v-else class="footer-date">{{ date }}</span>
     </footer>
     <div v-if="working" class="busy-pill" role="status">
       <span class="spinner" />{{ working }}
@@ -1656,14 +1657,6 @@ onUnmounted(() => {
             @mute="audio.toggleMute"
             @output="audio.setOutput"
             @refresh="audio.refresh(true)"
-            @sleep="
-              confirm(
-                'Mettre le PC en veille ?',
-                'Votre session sera conservée.',
-                'Mettre en veille',
-                sleepPc,
-              )
-            "
           />
           <template v-else-if="panel === 'quick' && quickApp">
             <div class="quick-actions power-options">

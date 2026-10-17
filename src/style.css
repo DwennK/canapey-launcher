@@ -214,6 +214,32 @@ svg {
   background: #ffffff10;
   color: #fff;
 }
+.audio-trigger {
+  width: 84px;
+  gap: 9px;
+  padding: 0 10px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  background: #ffffff05;
+}
+.header-volume {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 32px;
+  font-size: 13px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--cream);
+}
+.header-volume small { font-size: 9px; margin-left: 2px; opacity: 0.65; }
+.header-volume-track { height: 2px; border-radius: 2px; background: #ffffff20; overflow: hidden; }
+.header-volume-track i { display: block; height: 100%; background: var(--cream); }
+.audio-trigger.is-muted .header-volume { color: #979ca6; }
+@media (max-width: 360px) {
+  .launcher .topbar { gap: 4px; }
+  .top-right time { display: none; }
+}
 .hero {
   padding: clamp(20px, 6.4vh, 100px) 5% 0;
   flex: 1;
@@ -552,9 +578,6 @@ kbd {
 }
 .preview-badge {
   color: #78808e;
-}
-.power-button {
-  margin-left: 2px;
 }
 .grid-mode .backdrop-scrim {
   background: #0c0f14e6;
@@ -1522,10 +1545,19 @@ textarea {
     display: none;
   }
   .top-right {
-    gap: 9px;
+    gap: 4px;
   }
   .controller-status {
     display: none;
+  }
+  .top-right .icon-button {
+    width: 32px;
+    height: 36px;
+  }
+  .top-right .audio-trigger {
+    width: 72px;
+    gap: 6px;
+    padding: 0 7px;
   }
   .top-right time {
     font-size: 13px;
@@ -1928,8 +1960,7 @@ textarea {
   font-size: 11px;
 }
 .audio-mute,
-.audio-output-list button,
-.audio-sleep button {
+.audio-output-list button {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1943,8 +1974,7 @@ textarea {
 .audio-mute {
   margin-top: 22px;
 }
-.audio-mute > span:first-of-type,
-.audio-sleep button > span {
+.audio-mute > span:first-of-type {
   flex: 1;
 }
 .audio-controls small {
@@ -2023,15 +2053,6 @@ textarea {
   margin-top: 5px;
   border-radius: 6px;
 }
-.audio-sleep {
-  border-top: 1px solid var(--border);
-  padding-top: 24px;
-  margin-top: 14px;
-}
-.audio-sleep button {
-  border: 0;
-  padding: 10px 4px;
-}
 .audio-panel .panel-footer {
   flex-wrap: wrap;
   gap: 10px;
@@ -2044,9 +2065,6 @@ textarea {
   transform: translateX(35px);
 }
 @media (max-width: 620px) {
-  .top-right {
-    gap: 6px;
-  }
   .overlay.audio-overlay {
     padding: 10px;
   }

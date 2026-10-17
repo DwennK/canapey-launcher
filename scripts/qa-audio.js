@@ -120,6 +120,9 @@ async (page) => {
     }),
     "Startup audio must wait until the first frames and timing report",
   );
+  await page.waitForFunction(() => document.querySelector('.header-volume').textContent.includes('64'));
+  assert(await page.locator('.audio-trigger').getAttribute('aria-description') === 'Volume 64 %', 'Missing accessible volume');
+  await page.screenshot({path:'output/playwright/audio-header-initial.png'});
   // Reach header with directional navigation only from the selected home card.
   const focusKey = () =>
     page.evaluate(
@@ -156,6 +159,8 @@ async (page) => {
   await emit("down");
   await accept();
   await page.waitForFunction(() => window.__audioQA.state.muted);
+  assert(await page.locator('.audio-trigger.is-muted').count() === 1, 'Muted header not updated');
+  assert(await page.locator('.header-volume-track i').evaluate(el => el.style.width) === '0%', 'Muted meter not empty');
   await emit("down"); // first output
   await emit("down"); // headset
   assert((await focusKey()).includes("Casque"), "Cannot navigate to headset");
@@ -165,28 +170,8 @@ async (page) => {
   );
   await page.screenshot({ path: "output/playwright/audio-desktop.png" });
   await emit("down"); // refresh
-  await emit("down"); // sleep
-  assert((await focusKey()).includes("Mettre en veille"), "Sleep unreachable");
-  await accept();
-  await page
-    .getByRole("dialog", { name: "Mettre le PC en veille ?" })
-    .waitFor();
-  assert(
-    (await focusKey()) === "Annuler",
-    "Sleep confirmation must focus Cancel",
-  );
-  await emit("back");
-  await dialog.waitFor();
-  assert(
-    (await focusKey()).includes("Mettre en veille"),
-    "Sleep cancel did not restore focus",
-  );
-  assert(
-    !(await page.evaluate(() =>
-      window.__audioQA.calls.some((c) => c.cmd === "power_action"),
-    )),
-    "Sleep called without confirmation",
-  );
+  assert((await focusKey()).includes("Actualiser les sorties"), "Unexpected last quick control");
+  assert(await dialog.getByRole('button', {name: 'Mettre en veille', exact: true}).count() === 0, 'Sleep remains in quick controls');
   await emit("back");
   assert(
     (await focusKey()) === "Commandes rapides",
@@ -240,6 +225,7 @@ async (page) => {
     await page.locator("#quick-volume").isDisabled(),
     "No-device volume enabled",
   );
+  assert(await page.locator('.header-volume').innerText() === '—', 'Unavailable volume must not show zero');
   await page.screenshot({ path: "output/playwright/audio-empty.png" });
   // Many long names, mobile bounds and scrolling.
   await page.evaluate(() => {
@@ -265,34 +251,35 @@ async (page) => {
     ),
     "Mobile horizontal overflow",
   );
-  await page
-    .getByRole("button", { name: "Mettre en veille", exact: true })
-    .focus();
-  await accept();
-  await page
-    .getByRole("dialog", { name: "Mettre le PC en veille ?" })
-    .waitFor();
-  await emit("right");
-  await accept();
-  await dialog.waitFor();
-  assert(
-    await page.evaluate(
-      () =>
-        window.__audioQA.calls.filter(
-          (c) => c.cmd === "power_action" && c.args.action === "sleep",
-        ).length === 1,
-    ),
-    "Confirmed sleep did not invoke the sleep command exactly once",
-  );
   await emit("back");
   assert((await focusKey()) === "Commandes rapides", "Mobile close focus");
+  for (const viewport of [{width:1440,height:900}, {width:390,height:844}, {width:320,height:740}]) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const power = page.locator('.topbar .power-button');
+    assert(await page.locator('footer .power-button').count() === 0, 'Power remains in footer');
+    const rect = await power.boundingBox();
+    assert(rect && rect.y < 100 && rect.x + rect.width <= viewport.width, 'Power not at top right');
+    assert(await page.locator('.top-right > :last-child').getAttribute('aria-label') === 'Alimentation', 'Power is not last');
+    const brand = await page.locator('.brand').boundingBox();
+    const volume = await page.locator('.audio-trigger').boundingBox();
+    assert(volume.y < brand.y + brand.height && volume.x >= brand.x + brand.width, 'Header wrapped or overlaps');
+    await page.screenshot({path:`output/playwright/audio-header-${viewport.width}.png`});
+  }
+  await emit('home');
+  await emit('up');
+  await emit('up');
+  for (let i = 0; i < 8 && await focusKey() !== 'Alimentation'; i++) await emit('right');
+  assert(await focusKey() === 'Alimentation', 'Header power unreachable with controller');
+  await accept();
+  await page.getByRole('button', {name:'Mettre en veille',exact:true}).click();
+  await page.getByRole('dialog',{name:'Mettre le PC en veille ?'}).waitFor();
+  await page.getByRole('button',{name:'Annuler',exact:true}).click();
+  assert(!await page.evaluate(() => window.__audioQA.calls.some(c => c.cmd === 'power_action')), 'Power invoked without confirmation');
+  await emit('back');
+  assert((await focusKey()) === 'Alimentation', 'Power menu did not restore header focus');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({ path: "output/playwright/audio-header.png" });
   assert(errors.length === 0, errors.join("\n"));
-  return {
-    passed: true,
-    controller: "IPC fixture only",
-    errors,
-    screenshots: ["audio-desktop.png", "audio-mobile.png", "audio-empty.png"],
-  };
+  return { passed: true, controller: "IPC fixture only", errors };
 }
