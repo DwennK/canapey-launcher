@@ -6,6 +6,8 @@ import Icon from "./components/Icon.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import AppCard from "./components/AppCard.vue";
+import OnScreenKeyboard from "./components/OnScreenKeyboard.vue";
+import ControllerTester from "./components/ControllerTester.vue";
 import * as api from "./lib/bridge";
 import {
   defaults,
@@ -16,6 +18,7 @@ import {
   type Session,
   type Monitor,
   type UpdateInfo,
+  type ControllerSnapshot,
 } from "./lib/types";
 import {
   navigate,
@@ -76,6 +79,51 @@ const selected = ref(0),
   panel = ref<Panel>("");
 const launcherRoot = ref<HTMLElement>();
 const editingControl = ref<HTMLElement | null>(null);
+const keyboardTarget = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
+const screenKeyboard = ref<InstanceType<typeof OnScreenKeyboard>>();
+const keyboardEntry = ref({
+  value: "",
+  label: "Saisie",
+  start: 0,
+  end: 0,
+  maxLength: -1,
+  multiline: false,
+});
+function openKeyboard(target: HTMLInputElement | HTMLTextAreaElement) {
+  if (target.disabled || target.readOnly) return;
+  cancelHold();
+  editingControl.value = null;
+  keyboardEntry.value = {
+    value: target.value,
+    label:
+      target.getAttribute("aria-label") ??
+      target.labels?.[0]?.textContent?.trim() ??
+      "Saisie",
+    start: target.selectionStart ?? target.value.length,
+    end: target.selectionEnd ?? target.value.length,
+    maxLength: target.maxLength,
+    multiline: target instanceof HTMLTextAreaElement,
+  };
+  keyboardTarget.value = target;
+}
+async function closeKeyboard(value?: string, cursor?: number) {
+  const target = keyboardTarget.value;
+  if (!target) return;
+  if (value !== undefined) {
+    target.value = value;
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  keyboardTarget.value = null;
+  await nextTick();
+  focusElement(target);
+  editingControl.value = target;
+  if (cursor !== undefined) target.setSelectionRange(cursor, cursor);
+}
+function keyboardFor(selector: string) {
+  const target = panelRoot.value?.querySelector(selector);
+  if (isTextControl(target ?? null)) openKeyboard(target as HTMLInputElement);
+}
 const panelHistory: { panel: Panel; focus: FocusBookmark }[] = [];
 const clock = ref(new Date()),
   controller = ref<string | null>(null),
@@ -95,6 +143,34 @@ const settingsTab = ref("general"),
   scanBusy = ref(false),
   scanError = ref(""),
   chosen = ref(new Set<string>());
+const controllerTesting = ref(false);
+const controllerSnapshot = ref<ControllerSnapshot | null>(null);
+async function toggleControllerTest() {
+  await run("Test manette", async () => {
+    const enabled = !controllerTesting.value;
+    controllerTesting.value = enabled;
+    controllerSnapshot.value = null;
+    try {
+      await api.setControllerTest(enabled);
+    } catch (error) {
+      endControllerTest();
+      throw error;
+    }
+  });
+}
+function endControllerTest() {
+  controllerTesting.value = false;
+  controllerSnapshot.value = null;
+}
+function leaveControllerTest() {
+  if (!controllerTesting.value) return;
+  endControllerTest();
+  void api.setControllerTest(false).catch(notify);
+}
+async function setDeadzone(value: number) {
+  config.value.settings.deadzone = value;
+  await persist();
+}
 const editing = ref<AppEntry | null>(null),
   argumentsText = ref(""),
   update = ref<UpdateInfo | null>(null),
@@ -280,6 +356,14 @@ const quickIndex = computed(() =>
 const cardHold = new CardHold((holding) => (holdingCard.value = holding));
 const cancelHold = () => cardHold.cancel();
 function beginAccept(source: string) {
+  if (keyboardTarget.value) {
+    screenKeyboard.value?.handle("accept");
+    return;
+  }
+  if (source === "controller" && isTextControl(document.activeElement)) {
+    openKeyboard(document.activeElement);
+    return;
+  }
   document.documentElement.dataset.inputMode = "directional";
   if (
     !panel.value &&
@@ -495,6 +579,7 @@ async function closePanel() {
   else if (!panel.value) await focusCard();
 }
 function dismissPanels() {
+  keyboardTarget.value = null;
   editingControl.value = null;
   panelHistory.length = 0;
   if (panelRoot.value) panelRoot.value.inert = true;
@@ -551,6 +636,10 @@ async function activate(tile = current.value) {
   });
 }
 function dispatch(action: Action) {
+  if (keyboardTarget.value && action !== "home") {
+    screenKeyboard.value?.handle(action);
+    return;
+  }
   if (action === "accept-down") {
     beginAccept("controller");
     return;
@@ -717,6 +806,17 @@ function dispatch(action: Action) {
   void focusCard();
 }
 function keyboard(e: KeyboardEvent) {
+  if (keyboardTarget.value) return;
+  if (controllerTesting.value) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      leaveControllerTest();
+    }
+    // Tab and pointer input retain an accessible way to stop the test.
+    if (e.key !== "Tab" && e.key !== "Enter" && e.key !== " ")
+      e.preventDefault();
+    return;
+  }
   if (e.isComposing || e.defaultPrevented) return;
   if (e.ctrlKey && e.shiftKey && e.code === "KeyQ") {
     e.preventDefault();
@@ -951,6 +1051,10 @@ watch(
 watch(panel, async (value) => {
   document.body.classList.toggle("panel-open", !!value);
 });
+watch([panel, settingsTab], () => {
+  if (panel.value !== "settings" || settingsTab.value !== "controllerTest")
+    leaveControllerTest();
+});
 watch(selectedSession, (session) => {
   if (!session && panel.value === "session") {
     void closePanel();
@@ -1011,7 +1115,13 @@ onMounted(async () => {
     );
     if (b.warning) notify(b.warning);
     stopNative = await api.subscribe({
-      action: dispatch,
+      action: (action) => {
+        if (!controllerTesting.value) dispatch(action);
+      },
+      controllerSnapshot: (snapshot) => {
+        if (controllerTesting.value) controllerSnapshot.value = snapshot;
+      },
+      controllerTestEnded: endControllerTest,
       controller: (v) => {
         cancelHold();
         controller.value = v;
@@ -1054,6 +1164,7 @@ onMounted(async () => {
   }, 15000);
 });
 onUnmounted(() => {
+  leaveControllerTest();
   cancelHold();
   document.removeEventListener("keydown", keyboard);
   document.removeEventListener("keyup", keyboardUp);
@@ -1285,6 +1396,7 @@ onUnmounted(() => {
     <Transition name="panel">
       <div
         v-if="panel"
+        :inert="!!keyboardTarget"
         class="overlay"
         :class="{
           'quick-overlay': panel === 'quick' || panel === 'move',
@@ -1299,6 +1411,7 @@ onUnmounted(() => {
             compact: ['power', 'confirm', 'session'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
+            'controller-test-active': controllerTesting,
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
           :style="
@@ -1444,6 +1557,7 @@ onUnmounted(() => {
                     general: 'Écran & démarrage',
                     apps: 'Applications',
                     controls: 'Manette & ambiance',
+                    controllerTest: 'Test de la manette',
                     updates: 'Mises à jour',
                     diagnostic: 'Diagnostic',
                   }"
@@ -1647,6 +1761,15 @@ onUnmounted(() => {
                     configuration Bureau ou choisissez une autre combinaison.
                   </p></template
                 >
+                <ControllerTester
+                  v-if="settingsTab === 'controllerTest'"
+                  :snapshot="controllerSnapshot"
+                  :testing="controllerTesting"
+                  :native="native"
+                  :deadzone="config.settings.deadzone"
+                  @toggle="toggleControllerTest"
+                  @deadzone="setDeadzone"
+                />
                 <template v-if="settingsTab === 'updates'"
                   ><div class="version-art">
                     <Icon name="sofa" :size="48" /><span>canapey.</span
@@ -1792,6 +1915,12 @@ onUnmounted(() => {
                   aria-label="Rechercher une application" /></label
               ><button
                 class="small-button"
+                aria-label="Clavier pour rechercher"
+                @click="keyboardFor('input[type=search]')"
+              >
+                Clavier</button
+              ><button
+                class="small-button"
                 :disabled="scanBusy || !native"
                 @click="scan"
               >
@@ -1928,7 +2057,16 @@ onUnmounted(() => {
               </div>
               <div class="edit-fields">
                 <label
-                  >Nom<input v-model="editing.name" maxlength="100" /></label
+                  >Nom<input
+                    v-model="editing.name"
+                    aria-label="Nom"
+                    maxlength="100" /></label
+                ><button
+                  class="small-button"
+                  aria-label="Clavier pour le nom"
+                  @click="keyboardFor('input[aria-label=Nom]')"
+                >
+                  Clavier</button
                 ><label
                   >Ambiance<select v-model="editing.theme">
                     <option
@@ -2085,25 +2223,38 @@ onUnmounted(() => {
             </div></template
           >
           <div class="panel-footer" aria-live="polite">
-            <span
-              ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
-              >Retour</span
-            ><span v-if="editingControl">{{
-              isTextControl(editingControl)
-                ? "Saisie · Entrée pour terminer · Maj+Entrée pour une nouvelle ligne"
-                : "Flèches pour régler · OK pour terminer"
-            }}</span
-            ><span v-else-if="panel === 'audio'"
-              >↑ ↓ Naviguer · ← → Volume ·
-              {{ controller ? "A / Croix" : "Entrée" }} Choisir</span
-            ><span v-else>{{
-              controller
-                ? "Croix directionnelle : naviguer · A / Croix : OK"
-                : "Flèches : naviguer · Entrée : OK / modifier"
-            }}</span>
+            <span v-if="controllerTesting"
+              >Maintenir B / Rond 1,2 s : arrêter le test · Échap au
+              clavier</span
+            >
+            <template v-else
+              ><span
+                ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
+                >Retour</span
+              ><span v-if="editingControl">{{
+                isTextControl(editingControl)
+                  ? "Saisie · Entrée pour terminer · Maj+Entrée pour une nouvelle ligne"
+                  : "Flèches pour régler · OK pour terminer"
+              }}</span
+              ><span v-else-if="panel === 'audio'"
+                >↑ ↓ Naviguer · ← → Volume ·
+                {{ controller ? "A / Croix" : "Entrée" }} Choisir</span
+              ><span v-else>{{
+                controller
+                  ? "Croix directionnelle : naviguer · A / Croix : OK"
+                  : "Flèches : naviguer · Entrée : OK / modifier"
+              }}</span></template
+            >
           </div>
         </section>
       </div>
     </Transition>
+    <OnScreenKeyboard
+      v-if="keyboardTarget"
+      ref="screenKeyboard"
+      v-bind="keyboardEntry"
+      @done="closeKeyboard"
+      @cancel="closeKeyboard()"
+    />
   </main>
 </template>

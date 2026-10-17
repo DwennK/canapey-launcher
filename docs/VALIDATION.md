@@ -109,3 +109,19 @@ Objectif de premier accueil interactif : **moins de 1 seconde** sur un PC récen
 ## Contrôle approfondi des commandes
 
 Le contrôle clavier/manette du 16 octobre couvre 76 états de panneaux sur desktop et mobile. Tous les contrôles activables de ces états sont atteignables aux flèches. Parcours rejoués au clavier puis avec une fixture des événements IPC manette ; aucune exécution Windows ou manette physique n’est simulée comme réussie. Détails, commandes et limites : [CONTROLES.md](CONTROLES.md). Résultats structurés : [controls-validation.json](controls-validation.json).
+
+
+## Clavier à l’écran et test manette — 17 octobre 2026
+
+- Clavier AZERTY : saisie par événements manette, navigation vers toutes les touches et actions, accents, majuscules, symboles, effacement, remplacement d’une sélection, validation et annulation, recherche et renommage enregistré, restitution du focus et saisie physique.
+- Test manette : rendu des boutons, axes, gâchettes et direction filtrée, libellés Xbox/PlayStation, déconnexion/reconnexion, absence d’action de navigation pendant la capture, sortie du test et persistance de la zone neutre.
+- Parcours Chrome système isolé à 1440×900 et 390×844, sans erreurs JavaScript. Le script `scripts/qa-sofa-tools.js` utilise une fixture IPC : il ne prouve ni la lecture d’une manette physique ni le maintien réel de B / Rond sous Windows.
+- Vérification sur une copie isolée des changements du commit : `npm run check` réussi (44 tests JavaScript et 13 tests Rust), format Rust conforme et compilation Clippy Windows sans avertissement.
+- À compléter sur PC Windows : Xbox et PlayStation USB/Bluetooth, sticks au repos et aux extrêmes, valeurs des gâchettes selon pilote, sortie par maintien B / Rond, perte de focus, reconnexion, absence de navigation parasite après le test et interaction avec Steam Input.
+
+Rejouer dans un navigateur de test dédié après `npm run dev` :
+
+```sh
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=canapey-sofa open http://127.0.0.1:1420 --browser chrome --config .playwright/cli.config.json
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=canapey-sofa run-code "$(cat scripts/qa-sofa-tools.js)"
+```

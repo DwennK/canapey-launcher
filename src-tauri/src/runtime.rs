@@ -21,6 +21,7 @@ use tauri_plugin_updater::UpdaterExt;
 pub struct State {
     pub config: Mutex<Config>,
     pub controller: Mutex<Option<String>>,
+    pub controller_test: AtomicBool,
     store: ConfigStore,
     sessions: Mutex<HashMap<String, Session>>,
     launching: Mutex<HashSet<String>>,
@@ -71,6 +72,8 @@ fn foreground(app: &tauri::AppHandle) {
 pub fn show_home(app: &tauri::AppHandle) {
     let started = Instant::now();
     if let Some(state) = app.try_state::<State>() {
+        state.controller_test.store(false, Ordering::SeqCst);
+        let _ = app.emit("controller-test-ended", ());
         *state.returning.lock().unwrap() = Some(Instant::now());
         let config = state.config.lock().unwrap().clone();
         let _ = apply_display(app, &config);
@@ -91,6 +94,7 @@ struct Boot {
 }
 #[tauri::command]
 fn bootstrap(app: tauri::AppHandle, state: tauri::State<State>) -> Boot {
+    state.controller_test.store(false, Ordering::SeqCst);
     Boot {
         config: state.config.lock().unwrap().clone(),
         warning: state.warning.lock().unwrap().take(),
@@ -99,6 +103,12 @@ fn bootstrap(app: tauri::AppHandle, state: tauri::State<State>) -> Boot {
         sessions: session_views(&state),
         controller: state.controller.lock().unwrap().clone(),
     }
+}
+#[tauri::command]
+fn set_controller_test(state: tauri::State<State>, enabled: bool) -> Result<(), String> {
+    platform::supported()?;
+    state.controller_test.store(enabled, Ordering::SeqCst);
+    Ok(())
 }
 #[tauri::command]
 fn frontend_ready(app: tauri::AppHandle, state: tauri::State<State>, frontend_ms: f64) {
@@ -776,6 +786,7 @@ pub fn run() {
                 config: Mutex::new(config.clone()),
                 store,
                 controller: Mutex::new(None),
+                controller_test: AtomicBool::new(false),
                 sessions: Mutex::new(HashMap::new()),
                 launching: Mutex::new(HashSet::new()),
                 warning: Mutex::new(warning),
@@ -835,6 +846,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             bootstrap,
+            set_controller_test,
             frontend_ready,
             home_ready,
             frontend_painted,

@@ -1,5 +1,5 @@
 use crate::{
-    input::{stick, Direction, Hold, Repeater},
+    input::{stick, ControllerSnapshot, Direction, Hold, Repeater},
     model::{deduplicate, AppEntry, Target, TargetKind},
     tracking::{Process, ProcessKey, Window},
 };
@@ -11,6 +11,7 @@ use std::{
     path::Path,
     process::{Command, Stdio},
     ptr::null,
+    sync::atomic::Ordering,
     time::{Duration, Instant},
 };
 use tauri::{Emitter, Manager};
@@ -555,6 +556,10 @@ pub fn start_controller(app: tauri::AppHandle) {
         let mut pending_accept = None;
         let mut block_until_release = false;
         let mut was_foreground = false;
+        let mut was_testing = false;
+        let mut test_exit = Hold::default();
+        let mut test_direction = None;
+        let mut test_published = None;
         let publish = |g: &Gilrs| {
             let name = g.gamepads().next().map(|(_, p)| p.name().to_owned());
             *app.state::<crate::runtime::State>()
@@ -567,6 +572,26 @@ pub fn start_controller(app: tauri::AppHandle) {
         loop {
             let now = start.elapsed().as_millis() as u64;
             let foreground = foreground_is_ours();
+            let state = app.state::<crate::runtime::State>();
+            let mut testing = state.controller_test.load(Ordering::SeqCst);
+            if testing && !foreground {
+                state.controller_test.store(false, Ordering::SeqCst);
+                testing = false;
+                let _ = app.emit("controller-test-ended", ());
+            }
+            if testing != was_testing {
+                repeat.reset();
+                previous = None;
+                hold = Hold::default();
+                test_exit = Hold::default();
+                test_direction = None;
+                test_published = None;
+                pending_menu = None;
+                pending_accept = None;
+                block_until_release = true;
+                let _ = app.emit("input", "accept-cancel");
+                was_testing = testing;
+            }
             if last_tick.elapsed() > Duration::from_secs(2) || foreground != was_foreground {
                 repeat.reset();
                 previous = None;
@@ -585,6 +610,9 @@ pub fn start_controller(app: tauri::AppHandle) {
                         publish(&gilrs);
                         repeat.reset();
                         hold = Hold::default();
+                        test_exit = Hold::default();
+                        test_direction = None;
+                        test_published = None;
                         buttons.clear();
                         active = None;
                         pending_menu = None;
@@ -594,7 +622,7 @@ pub fn start_controller(app: tauri::AppHandle) {
                     EventType::ButtonPressed(b, _) => {
                         active = Some(event.id);
                         let was = buttons.insert((event.id, b), true).unwrap_or(false);
-                        if !was && foreground && !block_until_release {
+                        if !was && foreground && !block_until_release && !testing {
                             match b {
                                 Button::South => {
                                     pending_accept = Some(event.id);
@@ -626,6 +654,7 @@ pub fn start_controller(app: tauri::AppHandle) {
                             && pending_menu.take() == Some(event.id)
                             && foreground
                             && !block_until_release
+                            && !testing
                         {
                             let _ = app.emit("input", "menu");
                         }
@@ -644,6 +673,66 @@ pub fn start_controller(app: tauri::AppHandle) {
             let pad = active
                 .and_then(|id| gilrs.gamepads().find(|(i, _)| *i == id))
                 .or_else(|| gilrs.gamepads().next());
+            if testing {
+                let mut snapshot = ControllerSnapshot::default();
+                if let Some((_, p)) = pad {
+                    snapshot.name = Some(p.name().to_owned());
+                    snapshot.axes = [
+                        p.value(Axis::LeftStickX),
+                        p.value(Axis::LeftStickY),
+                        p.value(Axis::RightStickX),
+                        p.value(Axis::RightStickY),
+                    ];
+                    snapshot.triggers = [
+                        p.button_data(Button::LeftTrigger2)
+                            .map_or(0.0, |b| b.value()),
+                        p.button_data(Button::RightTrigger2)
+                            .map_or(0.0, |b| b.value()),
+                    ];
+                    for (button, name) in [
+                        (Button::South, "south"),
+                        (Button::East, "east"),
+                        (Button::West, "west"),
+                        (Button::North, "north"),
+                        (Button::LeftTrigger, "lb"),
+                        (Button::RightTrigger, "rb"),
+                        (Button::LeftTrigger2, "lt"),
+                        (Button::RightTrigger2, "rt"),
+                        (Button::LeftThumb, "ls"),
+                        (Button::RightThumb, "rs"),
+                        (Button::Start, "start"),
+                        (Button::Select, "select"),
+                        (Button::Mode, "guide"),
+                        (Button::DPadUp, "up"),
+                        (Button::DPadDown, "down"),
+                        (Button::DPadLeft, "left"),
+                        (Button::DPadRight, "right"),
+                    ] {
+                        if p.is_pressed(button) {
+                            snapshot.buttons.push(name);
+                        }
+                    }
+                    test_direction = stick(
+                        snapshot.axes[0],
+                        snapshot.axes[1],
+                        settings.deadzone,
+                        test_direction,
+                    );
+                    snapshot.direction = test_direction.map(Direction::action);
+                } else {
+                    test_direction = None;
+                }
+                if test_exit.tick(snapshot.buttons.contains(&"east"), now, 1200) {
+                    state.controller_test.store(false, Ordering::SeqCst);
+                    let _ = app.emit("controller-test-ended", ());
+                }
+                if test_published.is_none_or(|last| now.saturating_sub(last) >= 50) {
+                    let _ = app.emit("controller-snapshot", &snapshot);
+                    test_published = Some(now);
+                }
+                std::thread::sleep(Duration::from_millis(12));
+                continue;
+            }
             if let Some((_, p)) = pad {
                 let pressed = |b| p.is_pressed(b);
                 let combination = match settings.return_shortcut.as_str() {

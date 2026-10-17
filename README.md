@@ -123,14 +123,16 @@ The global shortcut can be disabled or changed to **LB + RB + Start** (L1 + R1 +
 <details>
 <summary><strong>Field editing, focus and controller compatibility</strong></summary>
 
-- Arrow keys move focus between controls. Press Enter / A / Cross on a text field, selector or slider to begin editing; press it again to finish. Clicking or typing in a text field also starts editing.
+- Arrow keys move focus between controls. A / Cross on a text field opens the on-screen AZERTY keyboard, with accents, uppercase, numbers, symbols and caret controls. Choose **Terminé** to apply the draft or B / Circle to cancel; focus returns to the field. Search and name fields also have a **Clavier** button. Physical typing remains available. Enter starts or ends physical text editing; Enter / A / Cross starts or ends selector and slider editing.
 - While editing text, arrows move the caret and **Backspace deletes text**. Esc / B / Circle ends editing without closing the menu. Shift + Enter adds a line in the arguments field. Outside editing, Backspace returns to the previous menu.
 - From the carousel, Up reaches the main action and then the header. From the last grid row, Down reaches the power control; Up returns to the cards. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
-- Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Entering a path or URI and choosing files may still require a keyboard or a Windows dialog.
+- Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Paths and arguments can also use the on-screen keyboard; choosing files still uses a Windows dialog.
 - **Steam Input** can intercept Start/Back or map a controller to keyboard/mouse input through its Desktop Layout. Disable that mapping for Canapey or choose the alternative shortcut. Canapey does not automatically disable duplicate Steam Input and native input.
 - Controllers must be exposed to Windows in a format supported by gilrs / Windows Gaming Input. Canapey does not install PlayStation drivers.
 
 </details>
+
+In **Settings → Test de la manette**, choose **Démarrer le test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Arrêter le test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
 
 ## Quick start
 

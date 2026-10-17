@@ -11,6 +11,7 @@ import {
   type Monitor,
   type UpdateInfo,
   type Action,
+  type ControllerSnapshot,
 } from "./types";
 export const native = isTauri();
 const browserKey = "canapey-ui-preview-v1";
@@ -98,6 +99,8 @@ export async function ready() {
 export const returnReady = () =>
   native ? invoke("home_ready") : Promise.resolve();
 export const quit = () => (native ? invoke("quit") : unavailable());
+export const setControllerTest = (enabled: boolean): Promise<void> =>
+  native ? invoke("set_controller_test", { enabled }) : unavailable();
 export const imageUrl = (path: string | null | undefined) =>
   path
     ? path.startsWith("/art/")
@@ -112,6 +115,8 @@ export async function subscribe(handlers: {
   sessions: (v: Session[]) => void;
   home: () => void;
   error: (v: string) => void;
+  controllerSnapshot: (v: ControllerSnapshot) => void;
+  controllerTestEnded: () => void;
 }) {
   if (!native) return () => {};
   const stops = await Promise.all([
@@ -120,6 +125,10 @@ export async function subscribe(handlers: {
     listen<Session[]>("sessions", (e) => handlers.sessions(e.payload)),
     listen("home", handlers.home),
     listen<string>("native-error", (e) => handlers.error(e.payload)),
+    listen<ControllerSnapshot>("controller-snapshot", (e) =>
+      handlers.controllerSnapshot(e.payload),
+    ),
+    listen("controller-test-ended", handlers.controllerTestEnded),
   ]);
   return () => stops.forEach((f) => f());
 }

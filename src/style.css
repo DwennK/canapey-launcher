@@ -2026,3 +2026,12 @@ textarea {
     font-size: 26px;
   }
 }
+
+/* Keep all live signals visible while controller navigation is captured. */
+.settings-panel.controller-test-active > .panel-heading,
+.controller-test-active .settings-nav {
+  display: none;
+}
+.controller-test-active .settings-layout {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -1,4 +1,14 @@
 // Timestamp-driven input: hysteresis, immediate press, delayed repeat, no catch-up queue.
+#[derive(serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ControllerSnapshot {
+    pub name: Option<String>,
+    pub buttons: Vec<&'static str>,
+    pub axes: [f32; 4],
+    pub triggers: [f32; 2],
+    pub direction: Option<&'static str>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Left,

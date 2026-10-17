@@ -2,6 +2,9 @@
 
 ## À venir
 
+- Clavier à l’écran AZERTY accessible à la manette pour rechercher et modifier les champs texte : accents, majuscules, symboles, correction et annulation avant validation.
+- Écran de test de la manette : boutons, sticks, gâchettes et direction filtrée en direct, réglage de zone neutre entre deux essais et sortie du test par maintien de B / Rond.
+
 - Sons de navigation activés par défaut pour les nouvelles installations ; le réglage reste désactivable et les préférences déjà enregistrées sont conservées.
 
 - Reprise directe des applications suivies comme ouvertes avec un appui court sur Entrée / A / Croix ou un clic ; l’appui long conserve le menu de fermeture et de modification.

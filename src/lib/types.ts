@@ -52,6 +52,13 @@ export interface Monitor {
   name: string;
   primary: boolean;
 }
+export interface ControllerSnapshot {
+  name: string | null;
+  buttons: string[];
+  axes: [number, number, number, number];
+  triggers: [number, number];
+  direction: "left" | "right" | "up" | "down" | null;
+}
 export interface Boot {
   config: Config;
   warning: string | null;
