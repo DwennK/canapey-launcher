@@ -1,6 +1,9 @@
 # Notes de version
 
-## À venir
+## 0.3.0 — 2026-10-17
+
+- Option pour quitter Canapey depuis le menu d’alimentation, avec confirmation et conservation des applications ouvertes.
+- Dernière application sélectionnée conservée au redémarrage.
 
 - Configuration visuelle de la Skip 1s / Flirc : photo complète cliquable, apprentissage et association de 34 commandes à la navigation, Home, applications, volume et lecture. Associations indépendantes, mode couleurs et portée locale/globale ; migration de l’ancien bouton Home. Les conflits conservent les réglages précédents. Validation matérielle Skip 1s / Windows encore à effectuer.
 
