@@ -1,5 +1,13 @@
 # Notes de version
 
+## 0.3.3 — 2026-10-17
+
+- Télécommande : ajout des actions « Vue des tâches (Windows + Tab) », « Fermer la fenêtre active » et « Échap (Escape) » dans la catégorie Windows. Ces actions peuvent cibler la fenêtre active sans ramener Canapey au premier plan ; la fermeture reste normale, sans arrêt forcé du processus.
+- Les menus de session et de carte se ferment après une demande de fermeture normale réussie ; ils restent ouverts en cas d’erreur.
+- Suppression du bouton « Tout voir » sur l’accueil, l’accès Bibliothèque étant déjà présent.
+- Nouvelle icône de mise à jour, plus simple et lisible.
+- Les essais interactifs des nouvelles actions avec une télécommande physique sous Windows restent à effectuer.
+
 ## 0.3.2 — 2026-10-17
 
 - Télécommande : toutes les actions sont disponibles globalement, avec apprentissage des touches ordinaires, de navigation, du pavé numérique et multimédias, indépendamment du récepteur. Les actions d’interface ramènent Canapey au premier plan ; les anciennes associations locales restent modifiables.

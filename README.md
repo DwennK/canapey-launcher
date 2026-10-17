@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.3.2-experimental-78664E?style=flat-square" alt="Version 0.3.2 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.3.3-experimental-78664E?style=flat-square" alt="Version 0.3.3 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.2"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.3"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -87,7 +87,7 @@
 
 ## Downloads
 
-**Current project version: 0.3.2.** Download the Windows installer from [the v0.3.2 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.2), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.3.3.** Download the Windows installer from [the v0.3.3 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.3), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
