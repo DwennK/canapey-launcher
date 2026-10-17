@@ -2,7 +2,6 @@
 defineProps<{ name: string; size?: number }>();
 const paths: Record<string, string> = {
   home: "m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9",
-  sofa: "M5 10V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M5 14h14M5 18v2m14-2v2M3 10a2 2 0 0 1 2 2v2h14v-2a2 2 0 0 1 4 0v4a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z",
   ambiance: "M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
   remote: "M9 2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM12 5h.01M12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM10 17h.01M14 17h.01M10 19h.01M14 19h.01",
   settings:

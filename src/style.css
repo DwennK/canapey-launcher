@@ -134,13 +134,16 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   letter-spacing: -1.8px;
   padding: 5px 0;
 }
-.brand svg {
-  color: var(--cream);
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
 }
 .brand-dot {
   color: #c5b99f;
@@ -1597,11 +1600,12 @@ textarea {
     align-content: center;
   }
   .brand {
-    font-size: 25px;
+    font-size: 27px;
     gap: 8px;
   }
-  .brand svg {
-    width: 25px;
+  .brand-mark {
+    width: 27px;
+    height: 27px;
   }
   .topbar nav {
     order: 3;

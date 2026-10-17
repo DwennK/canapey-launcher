@@ -1384,19 +1384,11 @@ onUnmounted(() => {
       <div class="backdrop-scrim" />
     </div>
     <header class="topbar" :inert="!!panel">
-      <button
-        class="brand"
-        aria-label="Canapey — Accueil"
-        @click="
-          view = 'carousel';
-          dismissPanels();
-          focusCard();
-        "
-      >
-        <Icon name="sofa" :size="31" /><span
+      <div class="brand">
+        <img class="brand-mark" src="/brand/canapey-mark.svg" width="31" height="31" alt="" /><span
           >canapey<span class="brand-dot">.</span></span
         >
-      </button>
+      </div>
       <nav aria-label="Navigation principale">
         <button
           :class="{ active: view === 'carousel' }"
@@ -1996,7 +1988,7 @@ onUnmounted(() => {
                 />
                 <template v-if="settingsTab === 'updates'"
                   ><div class="version-art">
-                    <Icon name="sofa" :size="48" /><span>canapey.</span
+                    <img src="/brand/canapey-mark.svg" width="48" height="48" alt="" /><span>canapey.</span
                     ><small>Version {{ version }}</small>
                   </div>
                   <h3>

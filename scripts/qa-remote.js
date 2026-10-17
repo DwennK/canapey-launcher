@@ -96,7 +96,7 @@ async (page) => {
   await page.getByRole('button',{name:'Fermer',exact:true}).click();
   await page.keyboard.press('n');assert(await page.evaluate(()=>window.__remoteQA.calls.some(c=>c.cmd==='run_remote_action'&&c.args.button==='digit1')),'Application mapping did not dispatch');
   const sendUI=async(action,pressed=true)=>page.evaluate(({action,pressed})=>window.__remoteQA.emit('remote-action',{binding:{button:'ok',key:{code:'Enter',ctrl:false,alt:false,shift:false},action,global:true,appId:null},pressed,foregrounded:true}),{action,pressed});
-  await page.getByRole('button',{name:'Canapey — Accueil'}).click();
+  await page.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:'Accueil',exact:true}).click();
   await sendUI('accept');await page.getByRole('button',{name:'Modifier',exact:true}).waitFor();
   const launchCount=await page.evaluate(()=>window.__remoteQA.calls.filter(c=>c.cmd==='launch_app').length);
   await sendUI('accept',false);
