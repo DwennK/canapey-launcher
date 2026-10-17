@@ -289,6 +289,8 @@ The [validation record](docs/VALIDATION.md) documents the checks performed, brow
 
 **Performance is measured, not assumed.** Sub-second interaction is a target, not a published result. `startup_interactive_ms` measures from Rust runtime entry to the frontend signal after two rendered frames; `return_interactive_ms` measures the return path to the same signal. Cold start, warm start and return must be measured separately on the target PC. Neither metric measures full Windows boot time.
 
+Startup phase timings are logged automatically during normal use, with version, platform and build profile. See [startup measurements and the local before/after comparison](docs/STARTUP.md). The Mac browser comparison shows faster visual settling, not a measured Windows cold-start improvement.
+
 ## Credits & references
 
 - **Artwork:** bundled scene prompts are recorded in [`docs/artwork-prompts.json`](docs/artwork-prompts.json). Scenes were generated with ImageGen; the Windows card is a local vector composition. Service names are typographic treatments, not a claim to official logos. Trademarks belong to their respective owners; no affiliation is implied.

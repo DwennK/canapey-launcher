@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import {
+  computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
+} from "vue";
 import { isSystemTool } from "./lib/discovery";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
-import XboxHomeSettings from "./components/XboxHomeSettings.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import AppCard from "./components/AppCard.vue";
-import OnScreenKeyboard from "./components/OnScreenKeyboard.vue";
-import ControllerTester from "./components/ControllerTester.vue";
+import { startupMark } from "./lib/startup";
 import * as api from "./lib/bridge";
 import {
   defaults,
@@ -32,6 +32,16 @@ import {
   restoreFocus,
   type FocusBookmark,
 } from "./lib/navigation";
+
+const XboxHomeSettings = defineAsyncComponent(
+  () => import("./components/XboxHomeSettings.vue"),
+);
+const OnScreenKeyboard = defineAsyncComponent(
+  () => import("./components/OnScreenKeyboard.vue"),
+);
+const ControllerTester = defineAsyncComponent(
+  () => import("./components/ControllerTester.vue"),
+);
 
 type Panel =
   | ""
@@ -327,6 +337,12 @@ const heroStatus = computed(() =>
         ? "EN COURS"
         : "",
 );
+const startupPainted = ref(false);
+const animateBackground = ref(false);
+const animateHero = ref(false);
+watch(view, () => {
+  animateHero.value = true;
+});
 const heroBg = ref("/art/home.webp"),
   oldBg = ref("");
 let imageTicket = 0;
@@ -525,7 +541,9 @@ async function focusCard() {
     block: "nearest",
     inline: "nearest",
     behavior:
-      config.value.settings.motion && !osReducedMotion.value
+      startupPainted.value &&
+      config.value.settings.motion &&
+      !osReducedMotion.value
         ? "smooth"
         : "instant",
   });
@@ -1021,6 +1039,7 @@ watch(
   () => [current.value.id, current.value.entry?.background],
   async () => {
     const ticket = ++imageTicket;
+    const animate = startupPainted.value;
     const target =
       api.imageUrl(current.value.entry?.background) ||
       `/art/${current.value.theme === "windows" ? "home" : current.value.theme}.webp`;
@@ -1033,7 +1052,8 @@ watch(
       return;
     }
     if (ticket !== imageTicket) return;
-    oldBg.value = heroBg.value;
+    animateBackground.value = animate;
+    oldBg.value = animate ? heroBg.value : "";
     heroBg.value = target;
     clearTimeout(bgTimer);
     bgTimer = setTimeout(() => (oldBg.value = ""), 650);
@@ -1103,7 +1123,9 @@ onMounted(async () => {
     if (!document.hidden) clock.value = new Date();
   }, 1000);
   try {
+    startupMark("bootstrapStart");
     const b = await api.boot();
+    startupMark("bootstrapEnd");
     config.value = b.config;
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
@@ -1115,6 +1137,7 @@ onMounted(async () => {
       b.config.selectedId,
     );
     if (b.warning) notify(b.warning);
+    startupMark("subscribeStart");
     stopNative = await api.subscribe({
       action: (action) => {
         if (!controllerTesting.value) dispatch(action);
@@ -1137,13 +1160,20 @@ onMounted(async () => {
       },
       error: notify,
     });
+    startupMark("subscribeEnd");
   } catch (e) {
     notify(e);
   } finally {
     loaded.value = true;
     await nextTick();
     await focusCard();
-    void api.ready();
+    startupMark("focused");
+    try {
+      await api.ready();
+    } catch (e) {
+      notify(e);
+    }
+    startupPainted.value = true;
     if (native.value) {
       void audio.refresh();
       audioTimer = setInterval(() => {
@@ -1205,6 +1235,7 @@ onUnmounted(() => {
         :key="heroBg"
         :src="heroBg"
         class="backdrop-current"
+        :style="{ animation: animateBackground ? undefined : 'none' }"
         alt=""
       />
       <div class="backdrop-scrim" />
@@ -1274,6 +1305,7 @@ onUnmounted(() => {
       v-if="view === 'carousel'"
       :inert="!!panel"
       class="hero"
+      :class="{ 'hero-initial': !animateHero }"
       aria-live="polite"
     >
       <div v-if="heroStatus" class="eyebrow">

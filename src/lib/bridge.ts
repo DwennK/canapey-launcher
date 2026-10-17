@@ -1,6 +1,7 @@
 import { version as appVersion } from "../../package.json";
 export { appVersion };
 import { invoke, convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { startupMark, startupTimings } from "./startup";
 import { listen } from "@tauri-apps/api/event";
 import {
   defaults,
@@ -89,12 +90,13 @@ export const installUpdate = (): Promise<void> =>
 export const logs = (): Promise<void> =>
   native ? invoke("open_logs") : unavailable();
 export async function ready() {
-  if (!native) return;
   // Show before requesting animation frames: hidden WebView2 windows may suspend rAF.
-  await invoke("frontend_ready", { frontendMs: performance.now() });
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => void invoke("frontend_painted")),
+  if (native) await invoke("frontend_ready", { frontendMs: performance.now() });
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
+  startupMark("painted");
+  if (native) await invoke("frontend_painted", { timings: startupTimings() });
 }
 export const returnReady = () =>
   native ? invoke("home_ready") : Promise.resolve();

@@ -1,0 +1,734 @@
+{
+  "environment": "Chrome on macOS; fresh browser context per navigation, browser/OS already running; not native Windows cold start",
+  "browser": "155.0.8059.79",
+  "viewport": "1440x900",
+  "rounds": 12,
+  "summaries": [
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "count": 12,
+      "focusedMs": {
+        "median": 47.30000001192093,
+        "p95": 59.69999998807907
+      },
+      "readyFramesMs": {
+        "median": 64.94999998807907,
+        "p95": 75.19999998807907
+      },
+      "visibleSelectionMs": {
+        "median": 47.349999994039536,
+        "p95": 59.69999998807907
+      },
+      "settledMs": {
+        "median": 665,
+        "p95": 700.0999999642372
+      },
+      "initialJsBytes": {
+        "median": 149663,
+        "p95": 149663
+      },
+      "initialCssBytes": {
+        "median": 32894,
+        "p95": 32894
+      }
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "count": 12,
+      "focusedMs": {
+        "median": 46.29999998211861,
+        "p95": 49.60000002384186
+      },
+      "readyFramesMs": {
+        "median": 66.25,
+        "p95": 78
+      },
+      "visibleSelectionMs": {
+        "median": 46.349999994039536,
+        "p95": 49.60000002384186
+      },
+      "settledMs": {
+        "median": 66.34999999403954,
+        "p95": 78
+      },
+      "initialJsBytes": {
+        "median": 142776,
+        "p95": 142776
+      },
+      "initialCssBytes": {
+        "median": 28789,
+        "p95": 28789
+      }
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "count": 12,
+      "focusedMs": {
+        "median": 40.50000002980232,
+        "p95": 45.69999998807907
+      },
+      "readyFramesMs": {
+        "median": 62.69999998807907,
+        "p95": 76.19999998807907
+      },
+      "visibleSelectionMs": {
+        "median": 1062.7000000178814,
+        "p95": 1076.300000011921
+      },
+      "settledMs": {
+        "median": 1063.4500000178814,
+        "p95": 1076.5
+      },
+      "initialJsBytes": {
+        "median": 149663,
+        "p95": 149663
+      },
+      "initialCssBytes": {
+        "median": 32894,
+        "p95": 32894
+      }
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "count": 12,
+      "focusedMs": {
+        "median": 41.19999998807907,
+        "p95": 47.69999998807907
+      },
+      "readyFramesMs": {
+        "median": 66.25,
+        "p95": 75.20000004768372
+      },
+      "visibleSelectionMs": {
+        "median": 41.25,
+        "p95": 47.90000003576279
+      },
+      "settledMs": {
+        "median": 66.44999998807907,
+        "p95": 75.30000001192093
+      },
+      "initialJsBytes": {
+        "median": 142776,
+        "p95": 142776
+      },
+      "initialCssBytes": {
+        "median": 28789,
+        "p95": 28789
+      }
+    }
+  ],
+  "samples": [
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 0,
+      "focusedMs": 59.69999998807907,
+      "visibleSelectionMs": 59.69999998807907,
+      "readyFramesMs": 66.19999998807907,
+      "settledMs": 700.0999999642372,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 0,
+      "focusedMs": 47.30000001192093,
+      "visibleSelectionMs": 47.39999997615814,
+      "readyFramesMs": 74.10000002384186,
+      "settledMs": 74.19999998807907,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 1,
+      "focusedMs": 46.40000003576279,
+      "visibleSelectionMs": 46.5,
+      "readyFramesMs": 67.5,
+      "settledMs": 67.60000002384186,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 1,
+      "focusedMs": 47.10000002384186,
+      "visibleSelectionMs": 47.19999998807907,
+      "readyFramesMs": 65.60000002384186,
+      "settledMs": 665.4000000357628,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 2,
+      "focusedMs": 47.5,
+      "visibleSelectionMs": 47.5,
+      "readyFramesMs": 74.79999995231628,
+      "settledMs": 641.6999999880791,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 2,
+      "focusedMs": 45.799999952316284,
+      "visibleSelectionMs": 45.89999997615814,
+      "readyFramesMs": 73.59999996423721,
+      "settledMs": 73.69999998807907,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 3,
+      "focusedMs": 46.19999998807907,
+      "visibleSelectionMs": 46.19999998807907,
+      "readyFramesMs": 61.799999952316284,
+      "settledMs": 61.799999952316284,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 3,
+      "focusedMs": 46.09999996423721,
+      "visibleSelectionMs": 46.19999998807907,
+      "readyFramesMs": 75.19999998807907,
+      "settledMs": 675.3999999761581,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 4,
+      "focusedMs": 45.59999996423721,
+      "visibleSelectionMs": 45.69999998807907,
+      "readyFramesMs": 58.5,
+      "settledMs": 626.2999999523163,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 4,
+      "focusedMs": 46.80000001192093,
+      "visibleSelectionMs": 46.80000001192093,
+      "readyFramesMs": 69.30000001192093,
+      "settledMs": 69.30000001192093,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 5,
+      "focusedMs": 47.19999998807907,
+      "visibleSelectionMs": 47.19999998807907,
+      "readyFramesMs": 65,
+      "settledMs": 65.09999996423721,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 5,
+      "focusedMs": 45.40000003576279,
+      "visibleSelectionMs": 45.5,
+      "readyFramesMs": 57.60000002384186,
+      "settledMs": 624.6000000238419,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 6,
+      "focusedMs": 48.09999996423721,
+      "visibleSelectionMs": 48.09999996423721,
+      "readyFramesMs": 64.29999995231628,
+      "settledMs": 664.5999999642372,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 6,
+      "focusedMs": 45.89999997615814,
+      "visibleSelectionMs": 45.89999997615814,
+      "readyFramesMs": 72.60000002384186,
+      "settledMs": 72.60000002384186,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 7,
+      "focusedMs": 46,
+      "visibleSelectionMs": 46.09999996423721,
+      "readyFramesMs": 59.5,
+      "settledMs": 59.59999996423721,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 7,
+      "focusedMs": 46.69999998807907,
+      "visibleSelectionMs": 46.799999952316284,
+      "readyFramesMs": 68.79999995231628,
+      "settledMs": 669.5,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 8,
+      "focusedMs": 45.700000047683716,
+      "visibleSelectionMs": 45.700000047683716,
+      "readyFramesMs": 61.40000003576279,
+      "settledMs": 662.1000000238419,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 8,
+      "focusedMs": 45.10000002384186,
+      "visibleSelectionMs": 45.10000002384186,
+      "readyFramesMs": 58.60000002384186,
+      "settledMs": 58.60000002384186,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 9,
+      "focusedMs": 49.60000002384186,
+      "visibleSelectionMs": 49.60000002384186,
+      "readyFramesMs": 78,
+      "settledMs": 78,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 9,
+      "focusedMs": 52.90000003576279,
+      "visibleSelectionMs": 52.90000003576279,
+      "readyFramesMs": 70.40000003576279,
+      "settledMs": 670.9000000357628,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 10,
+      "focusedMs": 50.90000003576279,
+      "visibleSelectionMs": 51,
+      "readyFramesMs": 62.80000001192093,
+      "settledMs": 696.3000000119209,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 10,
+      "focusedMs": 45.30000001192093,
+      "visibleSelectionMs": 45.30000001192093,
+      "readyFramesMs": 64.89999997615814,
+      "settledMs": 64.89999997615814,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "after",
+      "round": 11,
+      "focusedMs": 46.39999997615814,
+      "visibleSelectionMs": 46.5,
+      "readyFramesMs": 60.19999998807907,
+      "settledMs": 60.30000001192093,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "empty",
+      "variant": "before",
+      "round": 11,
+      "focusedMs": 47.5,
+      "visibleSelectionMs": 47.5,
+      "readyFramesMs": 61.5,
+      "settledMs": 661.5999999642372,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 0,
+      "focusedMs": 40.40000003576279,
+      "readyFramesMs": 72.5,
+      "visibleSelectionMs": 1071.800000011921,
+      "settledMs": 1072.4000000357628,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 0,
+      "focusedMs": 44.90000003576279,
+      "visibleSelectionMs": 44.90000003576279,
+      "readyFramesMs": 74.69999998807907,
+      "settledMs": 75,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 1,
+      "focusedMs": 41,
+      "visibleSelectionMs": 41,
+      "readyFramesMs": 59.80000001192093,
+      "settledMs": 60.10000002384186,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 1,
+      "focusedMs": 40.40000003576279,
+      "readyFramesMs": 62.69999998807907,
+      "visibleSelectionMs": 1062.9000000357628,
+      "settledMs": 1063.800000011921,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 2,
+      "focusedMs": 40.19999998807907,
+      "readyFramesMs": 58.30000001192093,
+      "visibleSelectionMs": 1058.199999988079,
+      "settledMs": 1058.6000000238419,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 2,
+      "focusedMs": 40.5,
+      "visibleSelectionMs": 40.69999998807907,
+      "readyFramesMs": 71.59999996423721,
+      "settledMs": 71.79999995231628,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 3,
+      "focusedMs": 40.39999997615814,
+      "visibleSelectionMs": 40.59999996423721,
+      "readyFramesMs": 61,
+      "settledMs": 61.19999998807907,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 3,
+      "focusedMs": 39.60000002384186,
+      "readyFramesMs": 70.90000003576279,
+      "visibleSelectionMs": 1070.5,
+      "settledMs": 1070.9000000357628,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 4,
+      "focusedMs": 40.69999998807907,
+      "readyFramesMs": 71.69999998807907,
+      "visibleSelectionMs": 1071.8999999761581,
+      "settledMs": 1072.5,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 4,
+      "focusedMs": 39.10000002384186,
+      "visibleSelectionMs": 39.19999998807907,
+      "readyFramesMs": 58.60000002384186,
+      "settledMs": 58.80000001192093,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 5,
+      "focusedMs": 40.80000001192093,
+      "visibleSelectionMs": 40.90000003576279,
+      "readyFramesMs": 73.80000001192093,
+      "settledMs": 74,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 5,
+      "focusedMs": 41.5,
+      "readyFramesMs": 62,
+      "visibleSelectionMs": 1061.699999988079,
+      "settledMs": 1062,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 6,
+      "focusedMs": 45.69999998807907,
+      "readyFramesMs": 76.19999998807907,
+      "visibleSelectionMs": 1076.300000011921,
+      "settledMs": 1076.5,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 6,
+      "focusedMs": 43.60000002384186,
+      "visibleSelectionMs": 43.60000002384186,
+      "readyFramesMs": 75.20000004768372,
+      "settledMs": 75.30000001192093,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 7,
+      "focusedMs": 41.39999997615814,
+      "visibleSelectionMs": 41.5,
+      "readyFramesMs": 64.89999997615814,
+      "settledMs": 65.09999996423721,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 7,
+      "focusedMs": 40.19999998807907,
+      "readyFramesMs": 61,
+      "visibleSelectionMs": 1061,
+      "settledMs": 1061.300000011921,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 8,
+      "focusedMs": 43.30000001192093,
+      "readyFramesMs": 64,
+      "visibleSelectionMs": 1063.6000000238419,
+      "settledMs": 1063.800000011921,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 8,
+      "focusedMs": 47.69999998807907,
+      "visibleSelectionMs": 47.90000003576279,
+      "readyFramesMs": 67.60000002384186,
+      "settledMs": 67.80000001192093,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 9,
+      "focusedMs": 42.39999997615814,
+      "visibleSelectionMs": 42.5,
+      "readyFramesMs": 61.19999998807907,
+      "settledMs": 61.5,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 9,
+      "focusedMs": 41,
+      "readyFramesMs": 62.69999998807907,
+      "visibleSelectionMs": 1062.300000011921,
+      "settledMs": 1062.800000011921,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 10,
+      "focusedMs": 39.40000003576279,
+      "readyFramesMs": 62,
+      "visibleSelectionMs": 1062.5,
+      "settledMs": 1063.1000000238419,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 10,
+      "focusedMs": 39.89999997615814,
+      "visibleSelectionMs": 40,
+      "readyFramesMs": 58.80000001192093,
+      "settledMs": 59.10000002384186,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "after",
+      "round": 11,
+      "focusedMs": 44.80000001192093,
+      "visibleSelectionMs": 44.80000001192093,
+      "readyFramesMs": 74.89999997615814,
+      "settledMs": 75.09999996423721,
+      "complete": true,
+      "initialJsBytes": 142776,
+      "initialCssBytes": 28789
+    },
+    {
+      "scenario": "24-apps-last-selected",
+      "variant": "before",
+      "round": 11,
+      "focusedMs": 40.60000002384186,
+      "readyFramesMs": 60,
+      "visibleSelectionMs": 1060,
+      "settledMs": 1060.5,
+      "complete": true,
+      "initialJsBytes": 149663,
+      "initialCssBytes": 32894
+    }
+  ],
+  "date": "2026-10-17",
+  "hardware": {
+    "cpu": "Apple M4",
+    "ramGiB": 16
+  },
+  "baselineCommit": "fc77e57",
+  "assets": {
+    "before": [
+      {
+        "file": "index-OpBXRb-s.js",
+        "bytes": 149663,
+        "sha256": "15383b3d32200feb6f1718106b9f64931cc003da7f2ca647e399156ff51c9847"
+      },
+      {
+        "file": "index-QKfzf9ry.css",
+        "bytes": 32894,
+        "sha256": "291beab0326d775c23ee2453254cc91f3780093d26e46fd569799355c7f88992"
+      }
+    ],
+    "after": [
+      {
+        "file": "index-BZ-sYxh0.css",
+        "bytes": 28789,
+        "sha256": "39eda68362999c1b7cd7ea8e5c45194b0aa983cb396c9ac2fb1b1eb8890a12c5"
+      },
+      {
+        "file": "index-DuRSxTHF.js",
+        "bytes": 142776,
+        "sha256": "7b824c6a50c88c8ec2bd466cecdd1151c54de9aa58f0e08f2be34a29392235f9"
+      }
+    ]
+  }
+}

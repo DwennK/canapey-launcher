@@ -108,7 +108,8 @@ onUnmounted(() => {
         class="card-image"
         :src="image"
         alt=""
-        loading="lazy"
+        :loading="selected ? 'eager' : 'lazy'"
+        :fetchpriority="selected ? 'high' : 'auto'"
         draggable="false"
         @error="($event.target as HTMLImageElement).style.display = 'none'"
       />

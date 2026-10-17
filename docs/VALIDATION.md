@@ -92,6 +92,8 @@ La configuration fixe le viewport à 1440×900 **avant** le chargement. Le scrip
 
 ## Mesures de performance à recueillir
 
+Depuis l’optimisation du 17 octobre 2026, les étapes natives et frontend sont enregistrées automatiquement à chaque lancement. Voir [STARTUP.md](STARTUP.md) pour leur définition et le comparatif local. Les valeurs Windows ci-dessous restent non mesurées ; le benchmark Chrome ne les remplace pas.
+
 Les logs permettent de distinguer :
 
 - `frontend_loaded_ms` : chargement Vue et configuration avant demande d’affichage.

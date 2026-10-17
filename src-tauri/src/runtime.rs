@@ -29,6 +29,7 @@ pub struct State {
     started: Instant,
     ready: AtomicBool,
     painted: AtomicBool,
+    tray_scheduled: AtomicBool,
     returning: Mutex<Option<Instant>>,
     updating: AtomicBool,
     scan_busy: AtomicBool,
@@ -121,13 +122,30 @@ fn frontend_ready(app: tauri::AppHandle, state: tauri::State<State>, frontend_ms
     }
 }
 #[tauri::command]
-fn frontend_painted(state: tauri::State<State>) {
+fn frontend_painted(app: tauri::AppHandle, state: tauri::State<State>, timings: FrontendTimings) {
     if !state.painted.swap(true, Ordering::SeqCst) {
         log::info!(
             "startup_interactive_ms={}",
             state.started.elapsed().as_millis()
         );
+        log::info!(
+            "startup_frontend_timings={}",
+            serde_json::to_string(&timings).unwrap_or_default()
+        );
+        schedule_tray(&app);
     }
+}
+#[derive(serde::Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontendTimings {
+    entry: Option<f64>,
+    mounted: Option<f64>,
+    bootstrap_start: Option<f64>,
+    bootstrap_end: Option<f64>,
+    subscribe_start: Option<f64>,
+    subscribe_end: Option<f64>,
+    focused: Option<f64>,
+    painted: Option<f64>,
 }
 #[tauri::command]
 fn home_ready(state: tauri::State<State>) {
@@ -752,6 +770,47 @@ fn prune_icons(dir: &std::path::Path, protected: &HashSet<PathBuf>) {
         }
     }
 }
+// Creating the tray is not required for the first interactive home screen.
+// The watchdog also schedules it if the frontend cannot reach its painted signal.
+fn schedule_tray(app: &tauri::AppHandle) {
+    let state = app.state::<State>();
+    if state.tray_scheduled.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let handle = app.clone();
+    if let Err(error) = app.run_on_main_thread(move || {
+        let started = Instant::now();
+        if let Err(error) = create_tray(&handle) {
+            log::warn!("Unable to create tray: {error}");
+        }
+        log::info!("startup_deferred_tray_ms={}", started.elapsed().as_millis());
+    }) {
+        state.tray_scheduled.store(false, Ordering::SeqCst);
+        log::warn!("Unable to schedule tray: {error}");
+    }
+}
+fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::{
+        menu::{Menu, MenuItem},
+        tray::TrayIconBuilder,
+    };
+    let open = MenuItem::with_id(app, "open", "Ouvrir Canapey", true, None::<&str>)?;
+    let exit = MenuItem::with_id(app, "exit", "Quitter", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &exit])?;
+    let mut tray = TrayIconBuilder::new()
+        .tooltip("Canapey Launcher")
+        .menu(&menu)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_home(app),
+            "exit" => app.exit(0),
+            _ => {}
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+    Ok(())
+}
 pub fn run() {
     let started = Instant::now();
     tauri::Builder::default()
@@ -768,6 +827,21 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            let setup_started = Instant::now();
+            log::info!(
+                "startup_begin version={} os={} arch={} profile={} pid={} setup_enter_ms={}",
+                app.package_info().version,
+                std::env::consts::OS,
+                std::env::consts::ARCH,
+                if cfg!(debug_assertions) {
+                    "debug"
+                } else {
+                    "release"
+                },
+                std::process::id(),
+                started.elapsed().as_millis()
+            );
+            let config_started = Instant::now();
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let store = ConfigStore::new(dir.clone());
@@ -780,6 +854,8 @@ pub fn run() {
                     config.settings.autostart = enabled;
                 }
             }
+            log::info!("startup_config_ms={}", config_started.elapsed().as_millis());
+            let artwork_started = Instant::now();
             // Missing artwork should not prevent startup or the next settings save.
             for item in &mut config.apps {
                 for p in [&mut item.card, &mut item.background, &mut item.icon] {
@@ -790,6 +866,11 @@ pub fn run() {
                     }
                 }
             }
+            log::info!(
+                "startup_artwork_check_ms={} apps={}",
+                artwork_started.elapsed().as_millis(),
+                config.apps.len()
+            );
             app.manage(State {
                 config: Mutex::new(config.clone()),
                 store,
@@ -801,6 +882,7 @@ pub fn run() {
                 started,
                 ready: AtomicBool::new(false),
                 painted: AtomicBool::new(false),
+                tray_scheduled: AtomicBool::new(false),
                 returning: Mutex::new(None),
                 updating: AtomicBool::new(false),
                 scan_busy: AtomicBool::new(false),
@@ -808,32 +890,23 @@ pub fn run() {
                 active: Mutex::new(None),
             });
             app.manage(crate::xbox_home::XboxHomeState::default());
+            let display_started = Instant::now();
             let _ = apply_display(app.handle(), &config);
-            use tauri::{
-                menu::{Menu, MenuItem},
-                tray::TrayIconBuilder,
-            };
-            let open = MenuItem::with_id(app, "open", "Ouvrir Canapey", true, None::<&str>)?;
-            let exit = MenuItem::with_id(app, "exit", "Quitter", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &exit])?;
-            let mut tray = TrayIconBuilder::new()
-                .tooltip("Canapey Launcher")
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "open" => show_home(app),
-                    "exit" => app.exit(0),
-                    _ => {}
-                });
-            if let Some(icon) = app.default_window_icon() {
-                tray = tray.icon(icon.clone());
-            }
-            let _ = tray.build(app);
+            log::info!(
+                "startup_display_ms={}",
+                display_started.elapsed().as_millis()
+            );
             let a = app.handle().clone();
             std::thread::spawn(move || {
                 std::thread::sleep(Duration::from_secs(3));
                 if !a.state::<State>().ready.load(Ordering::SeqCst) {
+                    log::warn!(
+                        "startup_show_watchdog_ms={}",
+                        a.state::<State>().started.elapsed().as_millis()
+                    );
                     foreground(&a);
                 }
+                schedule_tray(&a);
             });
             platform::start_controller(app.handle().clone());
             crate::xbox_home::start(app.handle().clone());
@@ -852,6 +925,11 @@ pub fn run() {
                     .collect();
                 prune_icons(&dir.join("icons"), &protected);
             });
+            log::info!(
+                "startup_setup_ms={} startup_setup_complete_ms={}",
+                setup_started.elapsed().as_millis(),
+                started.elapsed().as_millis()
+            );
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

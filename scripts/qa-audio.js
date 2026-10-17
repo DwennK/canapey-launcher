@@ -111,6 +111,15 @@ async (page) => {
   await page.waitForFunction(() =>
     window.__audioQA.calls.some((call) => call.cmd === "audio_state"),
   );
+  assert(
+    await page.evaluate(() => {
+      const calls = window.__audioQA.calls;
+      const painted = calls.findIndex((call) => call.cmd === "frontend_painted");
+      return painted >= 0 && painted < calls.findIndex((call) => call.cmd === "audio_state")
+        && typeof calls[painted].args.timings.painted === "number";
+    }),
+    "Startup audio must wait until the first frames and timing report",
+  );
   // Reach header with directional navigation only from the selected home card.
   const focusKey = () =>
     page.evaluate(
