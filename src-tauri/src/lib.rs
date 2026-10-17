@@ -6,6 +6,9 @@ pub mod model;
 #[cfg(feature = "desktop")]
 mod platform;
 #[cfg(feature = "desktop")]
+mod remote_home;
+pub mod remote_shortcut;
+#[cfg(feature = "desktop")]
 mod runtime;
 pub mod tracking;
 #[cfg(feature = "desktop")]

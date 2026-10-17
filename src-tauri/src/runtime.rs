@@ -20,6 +20,7 @@ use tauri_plugin_updater::UpdaterExt;
 
 pub struct State {
     pub config: Mutex<Config>,
+    config_save: Mutex<()>,
     pub controller: Mutex<Option<String>>,
     pub controller_test: AtomicBool,
     store: ConfigStore,
@@ -170,14 +171,19 @@ fn validate_images(config: &Config, dir: &std::path::Path) -> Result<(), String>
     Ok(())
 }
 #[tauri::command]
-fn save_config(
+async fn save_config(
     app: tauri::AppHandle,
-    state: tauri::State<State>,
-    config: Config,
+    state: tauri::State<'_, State>,
+    mut config: Config,
+    remote_home_update: Option<bool>,
 ) -> Result<Config, String> {
+    config.settings.migrate_remote();
     config.validate()?;
     validate_images(&config, &state.store.dir)?;
-    let mut current = state.config.lock().unwrap();
+    // Native shortcut registration dispatches to the UI thread. Never hold the
+    // configuration read lock while waiting for it (Home also reads config).
+    let _saving = state.config_save.lock().unwrap();
+    let current = state.config.lock().unwrap().clone();
     if cfg!(windows) && config.settings.autostart != current.settings.autostart {
         let manager = app.autolaunch();
         let result = if config.settings.autostart {
@@ -187,7 +193,16 @@ fn save_config(
         };
         result.map_err(|e| format!("Démarrage Windows : {e}"))?;
     }
-    if let Err(e) = state.store.save(&config) {
+    let save_result = if remote_home_update == Some(true)
+        || config.settings.remote_bindings != current.settings.remote_bindings
+    {
+        crate::remote_home::save_with_binding(&app, &config.settings.remote_bindings, || {
+            state.store.save(&config)
+        })
+    } else {
+        state.store.save(&config)
+    };
+    if let Err(e) = save_result {
         if cfg!(windows) && config.settings.autostart != current.settings.autostart {
             let manager = app.autolaunch();
             let _ = if current.settings.autostart {
@@ -200,8 +215,7 @@ fn save_config(
     }
     let display_changed = config.settings.monitor != current.settings.monitor
         || config.settings.fullscreen != current.settings.fullscreen;
-    *current = config.clone();
-    drop(current);
+    *state.config.lock().unwrap() = config.clone();
     if display_changed {
         if let Err(error) = apply_display(&app, &config) {
             log::warn!("Display settings: {error}");
@@ -587,6 +601,51 @@ async fn change_audio(
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
+async fn run_remote_action(app: tauri::AppHandle, button: String) -> Result<(), String> {
+    let binding = app
+        .state::<State>()
+        .config
+        .lock()
+        .unwrap()
+        .settings
+        .remote_bindings
+        .iter()
+        .find(|b| b.button == button)
+        .cloned()
+        .ok_or("Bouton non associé.")?;
+    execute_remote(app, binding).await
+}
+async fn execute_remote(
+    app: tauri::AppHandle,
+    binding: crate::remote_shortcut::RemoteBinding,
+) -> Result<(), String> {
+    match binding.action.as_str() {
+        "home" => {
+            show_home(&app);
+            Ok(())
+        }
+        "launch" => launch_app(app, binding.app_id.ok_or("Application non choisie.")?)
+            .await
+            .map(|_| ()),
+        "desktop" => show_desktop(app),
+        "volumeUp" | "volumeDown" | "mute" | "playPause" | "previousTrack" | "nextTrack"
+        | "stop" => platform::media_command(&binding.action),
+        _ => Err("Cette action se déclenche depuis l’interface Canapey.".into()),
+    }
+}
+#[cfg(windows)]
+pub(crate) fn dispatch_remote(
+    app: tauri::AppHandle,
+    binding: crate::remote_shortcut::RemoteBinding,
+) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = execute_remote(app.clone(), binding).await {
+            let _ = app.emit("native-error", error);
+        }
+    });
+}
+
+#[tauri::command]
 fn power_action(action: String) -> Result<(), String> {
     platform::power(&action)
 }
@@ -813,7 +872,10 @@ fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 }
 pub fn run() {
     let started = Instant::now();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(windows)]
+    let builder = builder.plugin(crate::remote_home::plugin());
+    builder
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_home(app)
         }))
@@ -873,6 +935,7 @@ pub fn run() {
             );
             app.manage(State {
                 config: Mutex::new(config.clone()),
+                config_save: Mutex::new(()),
                 store,
                 controller: Mutex::new(None),
                 controller_test: AtomicBool::new(false),
@@ -890,6 +953,8 @@ pub fn run() {
                 active: Mutex::new(None),
             });
             app.manage(crate::xbox_home::XboxHomeState::default());
+            app.manage(crate::remote_home::RemoteHomeState::default());
+            crate::remote_home::start(app.handle(), &config.settings.remote_bindings);
             let display_started = Instant::now();
             let _ = apply_display(app.handle(), &config);
             log::info!(
@@ -933,6 +998,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            run_remote_action,
+            crate::remote_home::remote_home_status,
+            crate::remote_home::set_remote_capture,
             crate::xbox_home::xbox_home_status,
             crate::xbox_home::test_xbox_button,
             crate::xbox_home::cancel_xbox_test,

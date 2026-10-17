@@ -2,6 +2,8 @@
 
 ## À venir
 
+- Configuration visuelle de la Skip 1s / Flirc : photo complète cliquable, apprentissage et association de 34 commandes à la navigation, Home, applications, volume et lecture. Associations indépendantes, mode couleurs et portée locale/globale ; migration de l’ancien bouton Home. Les conflits conservent les réglages précédents. Validation matérielle Skip 1s / Windows encore à effectuer.
+
 - Applications suivies maximisées à l’apparition de leur fenêtre principale et à la reprise depuis Canapey, avec leurs contrôles de fermeture conservés. Dialogues, fenêtres à taille fixe et fenêtres partagées exclus ; le redimensionnement manuel reste possible après l’ouverture.
 
 - Accueil immédiatement stable au démarrage : pas de fondu initial ni de défilement vers la carte mémorisée ; priorité de chargement à cette carte. Clavier et diagnostics chargés à la demande, lecture audio et icône de notification différées après les premières frames.

@@ -110,9 +110,17 @@ On first launch, choose **Add applications** to discover installed applications 
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
-| Return globally without closing the running app | — | Xbox button; hold Start + Back for 1.2 seconds as fallback |
+| Return globally without closing the running app | Configurable in **Settings → Télécommande** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
+
+### Skip 1s / Flirc remote
+
+In **Settings → Télécommande**, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
+
+Flirc must already send a distinct keyboard key for each button: Canapey learns that key, not the infrared signal, and does not reprogram the receiver. Ordinary arrows, Enter, Esc and typing keys can be mapped inside Canapey. Home, app launch/resume and media actions can also work globally while Canapey is running, using a dedicated shortcut such as **Ctrl + Alt + H**. A physical keyboard triggers the same actions. Existing Flirc media keys already act directly in Windows; program a dedicated keyboard shortcut before remapping them here.
+
+A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Annuler l’écoute**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
 
 The **Quick controls** button sits immediately to the left of the clock. In its side panel, Up/Down moves through controls, Left/Right adjusts the focused volume slider by 2 percentage points, A / Cross or Enter selects an output or toggles mute, and B / Circle or Esc closes the panel. Sleep requires confirmation and initially focuses Cancel. Audio reflects the Windows default playback device; output selection changes the console, multimedia and communications defaults. Apps pinned to another output may retain their own routing. See [audio implementation and validation](docs/AUDIO.md) for platform limits and the hardware checklist.
 

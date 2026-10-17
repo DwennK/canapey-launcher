@@ -46,6 +46,8 @@ pub struct Settings {
     pub sound: bool,
     pub deadzone: f32,
     pub return_shortcut: String,
+    pub remote_bindings: Vec<crate::remote_shortcut::RemoteBinding>,
+    pub remote_home: Option<crate::remote_shortcut::RemoteShortcut>,
     pub hold_ms: u64,
 }
 impl Default for Settings {
@@ -59,7 +61,25 @@ impl Default for Settings {
             sound: true,
             deadzone: 0.24,
             return_shortcut: "xbox".into(),
+            remote_home: None,
+            remote_bindings: vec![],
             hold_ms: 1200,
+        }
+    }
+}
+impl Settings {
+    pub fn migrate_remote(&mut self) {
+        if let Some(key) = self.remote_home.take() {
+            if self.remote_bindings.is_empty() {
+                self.remote_bindings
+                    .push(crate::remote_shortcut::RemoteBinding {
+                        button: "home".into(),
+                        key,
+                        action: "home".into(),
+                        global: true,
+                        app_id: None,
+                    });
+            }
         }
     }
 }
@@ -178,6 +198,10 @@ impl Config {
             return Err("Maximum 250 applications.".into());
         }
         let s = &self.settings;
+        crate::remote_shortcut::validate_bindings(&s.remote_bindings)?;
+        if let Some(shortcut) = &s.remote_home {
+            shortcut.validate()?;
+        }
         if !s.scale.is_finite()
             || !(0.8..=1.4).contains(&s.scale)
             || !s.deadzone.is_finite()

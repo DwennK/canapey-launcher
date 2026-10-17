@@ -50,3 +50,7 @@ pub fn audio_state() -> Result<crate::audio::AudioState, String> {
 pub fn change_audio(_: crate::audio::AudioChange) -> Result<crate::audio::AudioState, String> {
     audio_state()
 }
+
+pub fn media_command(_: &str) -> Result<(), String> {
+    supported()
+}

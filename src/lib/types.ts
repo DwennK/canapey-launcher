@@ -33,7 +33,23 @@ export interface Settings {
   sound: boolean;
   deadzone: number;
   returnShortcut: "xbox" | "startBack" | "shouldersStart" | "disabled";
+  remoteHome: RemoteShortcut | null; // Legacy Home-only configuration, migrated on load.
+  remoteBindings: RemoteBinding[];
   holdMs: number;
+}
+export interface RemoteShortcut {
+  code: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+}
+export type RemoteAction = 'home' | 'up' | 'down' | 'left' | 'right' | 'accept' | 'back' | 'menu' | 'options' | 'library' | 'audio' | 'power' | 'desktop' | 'launch' | 'volumeUp' | 'volumeDown' | 'mute' | 'playPause' | 'previousTrack' | 'nextTrack' | 'stop';
+export interface RemoteBinding {
+  button: string;
+  key: RemoteShortcut;
+  action: RemoteAction;
+  global: boolean;
+  appId: string | null;
 }
 export interface Config {
   version: number;
@@ -98,6 +114,8 @@ export const defaults = (): Config => ({
     sound: true,
     deadzone: 0.24,
     returnShortcut: "xbox",
+    remoteHome: null,
+    remoteBindings: [],
     holdMs: 1200,
   },
 });

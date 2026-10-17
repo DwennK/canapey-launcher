@@ -35,6 +35,7 @@ impl ConfigStore {
         }
         let mut c: Config = serde_json::from_slice(&fs::read(p).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
+        c.settings.migrate_remote();
         c.validate()?;
         if !c.apps.iter().any(|a| Some(&a.id) == c.selected_id.as_ref()) {
             c.selected_id = c.apps.first().map(|a| a.id.clone());

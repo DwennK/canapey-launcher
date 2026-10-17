@@ -9,6 +9,8 @@ import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import AppCard from "./components/AppCard.vue";
 import { startupMark } from "./lib/startup";
+import { captureShortcut, runRemoteAction } from "./lib/remote-home";
+import { findRemoteBinding } from "./lib/remote-layout";
 import * as api from "./lib/bridge";
 import {
   defaults,
@@ -20,6 +22,7 @@ import {
   type Monitor,
   type UpdateInfo,
   type ControllerSnapshot,
+  type RemoteBinding,
 } from "./lib/types";
 import {
   navigate,
@@ -36,6 +39,36 @@ import {
 const XboxHomeSettings = defineAsyncComponent(
   () => import("./components/XboxHomeSettings.vue"),
 );
+const RemoteHomeSettings = defineAsyncComponent(
+  () => import("./components/RemoteHomeSettings.vue"),
+);
+const remoteCapturing = ref(false);
+function remoteCaptureChanged(value: boolean) {
+  cancelHold();
+  remoteCapturing.value = value;
+}
+async function saveRemoteBindings(bindings: RemoteBinding[]) {
+  config.value.settings.remoteHome = null;
+  config.value.settings.remoteBindings = bindings;
+  return queueSave(true);
+}
+let remoteAcceptCode: string | null = null;
+function remoteBindingFor(event: KeyboardEvent) {
+  try {
+    const key = captureShortcut({ key: event.key, code: event.code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey, repeat: false, isComposing: event.isComposing, getModifierState: (name: string) => event.getModifierState(name) } as KeyboardEvent, false);
+    return key ? findRemoteBinding(config.value.settings.remoteBindings ?? [], key) : undefined;
+  } catch { return undefined; }
+}
+function executeRemote(binding: RemoteBinding) {
+  const action = binding.action;
+  if (['up','down','left','right','accept','back','menu','options'].includes(action)) dispatch(action as Action);
+  else if (action === 'library') { dismissPanels(); view.value = 'grid'; void focusCard(); }
+  else if (action === 'audio') void openAudio();
+  else if (action === 'power') void openPanel('power');
+  else if (action === 'home' && !native.value) dispatch('home');
+  else if (native.value) void runRemoteAction(binding.button).catch(notify);
+  else notify('Cette action nécessite Canapey sous Windows.');
+}
 const OnScreenKeyboard = defineAsyncComponent(
   () => import("./components/OnScreenKeyboard.vue"),
 );
@@ -398,6 +431,9 @@ function releaseAccept(source: string) {
   if (cardHold.release(source)) dispatch("accept");
 }
 function keyboardUp(e: KeyboardEvent) {
+  if (remoteCapturing.value) return;
+  if (remoteAcceptCode === e.code) { remoteAcceptCode = null; releaseAccept("remote"); return; }
+  if (remoteBindingFor(e) && !(panel.value === 'settings' && settingsTab.value === 'remote')) return;
   if (e.key === "Enter") releaseAccept("keyboard");
 }
 function visibilityChanged() {
@@ -487,10 +523,13 @@ async function run(label: string, fn: () => Promise<unknown>) {
   }
 }
 function persist() {
+  return queueSave();
+}
+function queueSave(remoteHomeUpdate = false) {
   const snapshot = JSON.parse(JSON.stringify(config.value));
   saveChain = saveChain.then(async () => {
     try {
-      await api.save(snapshot);
+      await api.save(snapshot, remoteHomeUpdate);
       lastSaved = snapshot;
       return true;
     } catch (e) {
@@ -655,6 +694,7 @@ async function activate(tile = current.value) {
   });
 }
 function dispatch(action: Action) {
+  if (remoteCapturing.value && action !== "home") return;
   if (keyboardTarget.value && action !== "home") {
     screenKeyboard.value?.handle(action);
     return;
@@ -825,6 +865,7 @@ function dispatch(action: Action) {
   void focusCard();
 }
 function keyboard(e: KeyboardEvent) {
+  if (remoteCapturing.value) return;
   if (keyboardTarget.value) return;
   if (controllerTesting.value) {
     if (e.key === "Escape") {
@@ -837,6 +878,20 @@ function keyboard(e: KeyboardEvent) {
     return;
   }
   if (e.isComposing || e.defaultPrevented) return;
+  // Do not remap text editing, select editing, or the configuration interface itself.
+  const remoteTarget = e.target as HTMLElement;
+  if (!(panel.value === 'settings' && settingsTab.value === 'remote')
+      && !isTextControl(remoteTarget) && remoteTarget.tagName !== 'SELECT'
+      && editingControl.value !== remoteTarget) {
+    const binding = remoteBindingFor(e);
+    if (binding && (!binding.global || !native.value)) {
+      e.preventDefault();
+      if (e.repeat && !['up','down','left','right','volumeUp','volumeDown'].includes(binding.action)) return;
+      if (binding.action === 'accept') { remoteAcceptCode = e.code; beginAccept('remote'); }
+      else executeRemote(binding);
+      return;
+    }
+  }
   if (e.ctrlKey && e.shiftKey && e.code === "KeyQ") {
     e.preventDefault();
     if (working.value || panel.value === "confirm" || e.repeat) return;
@@ -1444,6 +1499,7 @@ onUnmounted(() => {
             compact: ['power', 'confirm', 'session'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
+            'remote-settings-panel': panel === 'settings' && settingsTab === 'remote',
             'controller-test-active': controllerTesting,
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
@@ -1590,6 +1646,7 @@ onUnmounted(() => {
                     general: 'Écran & démarrage',
                     apps: 'Applications',
                     controls: 'Manette & ambiance',
+                    remote: 'Télécommande',
                     controllerTest: 'Test de la manette',
                     updates: 'Mises à jour',
                     diagnostic: 'Diagnostic',
@@ -1606,6 +1663,14 @@ onUnmounted(() => {
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
+                <RemoteHomeSettings
+                  v-if="settingsTab === 'remote'"
+                  :native="native"
+                  :bindings="config.settings.remoteBindings ?? []"
+                  :apps="config.apps"
+                  :save-bindings="saveRemoteBindings"
+                  @capturing="remoteCaptureChanged"
+                />
                 <template v-if="settingsTab === 'general'"
                   ><h3>Écran et démarrage</h3>
                   <label class="setting-row"

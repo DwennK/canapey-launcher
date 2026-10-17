@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{ name: string; size?: number }>();
 const paths: Record<string, string> = {
+  home: "m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9",
   sofa: "M5 10V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M5 14h14M5 18v2m14-2v2M3 10a2 2 0 0 1 2 2v2h14v-2a2 2 0 0 1 4 0v4a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z",
   settings:
     "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l.6 2.4 2.1 1.2L19 6l2 3.5-1.7 1.8v2.4L21 15.5 19 19l-2.3-.6-2.1 1.2L14 22h-4l-.6-2.4-2.1-1.2L5 19l-2-3.5 1.7-1.8v-2.4L3 9.5 5 6l2.3.6 2.1-1.2L10 3Z",

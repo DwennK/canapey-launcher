@@ -890,6 +890,43 @@ pub fn desktop() -> Result<(), String> {
     }
 }
 
+/// Send only fixed media commands. Global bindings cannot use these output keys,
+/// so the generated events cannot recursively trigger the registered shortcuts.
+pub fn media_command(action: &str) -> Result<(), String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let vk = match action {
+        "volumeUp" => VK_VOLUME_UP,
+        "volumeDown" => VK_VOLUME_DOWN,
+        "mute" => VK_VOLUME_MUTE,
+        "playPause" => VK_MEDIA_PLAY_PAUSE,
+        "previousTrack" => VK_MEDIA_PREV_TRACK,
+        "nextTrack" => VK_MEDIA_NEXT_TRACK,
+        "stop" => VK_MEDIA_STOP,
+        _ => return Err("Commande multimédia inconnue.".into()),
+    };
+    let inputs = [0, KEYEVENTF_KEYUP].map(|flags| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: vk,
+                dwFlags: flags,
+                ..Default::default()
+            },
+        },
+    });
+    if unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_ptr(),
+            std::mem::size_of::<INPUT>() as i32,
+        )
+    } != inputs.len() as u32
+    {
+        return Err("Windows n’a pas accepté la commande multimédia.".into());
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

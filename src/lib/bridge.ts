@@ -49,6 +49,10 @@ export async function boot(): Promise<Boot> {
   } catch {
     /* preview only */
   }
+  if (config.settings.remoteHome && !config.settings.remoteBindings.length) {
+    config.settings.remoteBindings = [{ button: 'home', key: config.settings.remoteHome, action: 'home', global: true, appId: null }];
+    config.settings.remoteHome = null;
+  }
   return {
     config,
     warning: null,
@@ -58,8 +62,8 @@ export async function boot(): Promise<Boot> {
     controller: null,
   };
 }
-export async function save(config: Config): Promise<Config> {
-  if (native) return invoke("save_config", { config });
+export async function save(config: Config, remoteHomeUpdate = false): Promise<Config> {
+  if (native) return invoke("save_config", { config, remoteHomeUpdate });
   localStorage.setItem(browserKey, JSON.stringify(config));
   return config;
 }

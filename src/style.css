@@ -2053,3 +2053,9 @@ textarea {
 .controller-test-active .settings-layout {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Full-device mapping keeps the photo and inspector visible together on desktop. */
+@media (min-width: 701px) {
+  .panel.settings-panel.remote-settings-panel { height: min(860px, calc(100dvh - 60px)); width: min(1240px, calc(100vw - 64px)); }
+  .remote-settings-panel .settings-content { overflow: hidden; }
+}
