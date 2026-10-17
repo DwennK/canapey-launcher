@@ -72,6 +72,9 @@ fn foreground(app: &tauri::AppHandle) {
     }
 }
 pub fn show_home(app: &tauri::AppHandle) {
+    return_to_launcher(app, false);
+}
+fn return_to_launcher(app: &tauri::AppHandle, preserve_panel: bool) {
     let started = Instant::now();
     if let Some(state) = app.try_state::<State>() {
         state.controller_test.store(false, Ordering::SeqCst);
@@ -81,7 +84,7 @@ pub fn show_home(app: &tauri::AppHandle) {
         let _ = apply_display(app, &config);
     }
     foreground(app);
-    let _ = app.emit("home", ());
+    let _ = app.emit("home", preserve_panel);
     log::info!("return_window_request_ms={}", started.elapsed().as_millis());
 }
 #[derive(Serialize)]
@@ -865,7 +868,8 @@ fn start_tracking(app: tauri::AppHandle) {
                 if return_home {
                     *state.active.lock().unwrap() = None;
                     if !state.updating.load(Ordering::SeqCst) {
-                        show_home(&app);
+                        // A completed app must not dismiss settings the user is using.
+                        return_to_launcher(&app, true);
                     }
                 }
             }

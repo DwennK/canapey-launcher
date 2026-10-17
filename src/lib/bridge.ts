@@ -120,7 +120,7 @@ export async function subscribe(handlers: {
   action: (v: Action) => void;
   controller: (v: string | null) => void;
   sessions: (v: Session[]) => void;
-  home: () => void;
+  home: (preservePanel: boolean) => void;
   error: (v: string) => void;
   controllerSnapshot: (v: ControllerSnapshot) => void;
   controllerTestEnded: () => void;
@@ -134,7 +134,7 @@ export async function subscribe(handlers: {
     listen<{binding: RemoteBinding; pressed: boolean; foregrounded: boolean}>("remote-action", e => handlers.remoteAction(e.payload)),
     listen<string | null>("controller", (e) => handlers.controller(e.payload)),
     listen<Session[]>("sessions", (e) => handlers.sessions(e.payload)),
-    listen("home", handlers.home),
+    listen<boolean>("home", (e) => handlers.home(e.payload === true)),
     listen<string>("native-error", (e) => handlers.error(e.payload)),
     listen<ControllerSnapshot>("controller-snapshot", (e) =>
       handlers.controllerSnapshot(e.payload),

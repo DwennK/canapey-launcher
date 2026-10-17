@@ -1287,9 +1287,20 @@ onMounted(async () => {
         cancelHold();
         controller.value = v;
       },
-      sessions: (v) => (sessions.value = v),
-      home: () => {
-        dispatch("home");
+      sessions: async (v) => {
+        const root = panel.value === 'settings' && settingsTab.value === 'diagnostic'
+          ? panelRoot.value : null;
+        const bookmark = root ? rememberFocus(root) : null;
+        sessions.value = v;
+        await nextTick();
+        if (root && bookmark && root === panelRoot.value &&
+            panel.value === 'settings' && settingsTab.value === 'diagnostic' &&
+            !focusableItems(root).includes(document.activeElement as HTMLElement)) {
+          restoreFocus(root, bookmark);
+        }
+      },
+      home: (preservePanel) => {
+        if (!preservePanel || !panel.value) dispatch("home");
         clock.value = new Date();
         requestAnimationFrame(() =>
           requestAnimationFrame(() => void api.returnReady()),

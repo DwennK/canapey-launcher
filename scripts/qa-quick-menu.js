@@ -89,6 +89,10 @@ async (page) => {
           };
         if (cmd === "resume_app" && window.__qa.resumeError)
           throw new Error(window.__qa.resumeError);
+        if (cmd === "close_app" && window.__qa.closeDuringConfirmation) {
+          window.__qa.emit("home", true);
+          window.__qa.emit("sessions", []);
+        }
         if (cmd === "list_monitors") return [];
         if (cmd === "check_update") return { state: "disabled" };
         return null;
@@ -405,6 +409,28 @@ async (page) => {
     () => window.__qa.calls.filter((c) => c.cmd === "launch_app").length === 3,
   );
   await cdp.detach();
+  // Automatic return after an app exits preserves Diagnostic; explicit Home still exits.
+  for (const viewport of [{width:1440,height:900}, {width:390,height:844}]) {
+    await page.setViewportSize(viewport);
+    await page.keyboard.press('F1');
+    await page.getByRole('button',{name:'Diagnostic',exact:true}).click();
+    const running = {appId:'internet',name:'Internet',status:'running',canForce:true};
+    await page.evaluate(session => window.__qa.emit('sessions',[session]), running);
+    await page.locator('.session-detail').getByRole('button',{name:'Fermer',exact:true}).click();
+    // The tracker sends Home first, then the refreshed list, after close_app returns.
+    await page.evaluate(() => { window.__qa.emit('home',true); window.__qa.emit('sessions',[]); });
+    await page.locator('.session-detail').waitFor({state:'hidden'});
+    assert(await page.getByRole('heading',{name:'Diagnostic',exact:true}).isVisible(), 'Diagnostic closed after normal app exit');
+    assert(await dialog().evaluate(el => el.contains(document.activeElement)), 'Focus lost after removed session');
+    await page.screenshot({path:`output/playwright/diagnostic-close-${viewport.width}.png`});
+    await page.evaluate(session => { window.__qa.emit('sessions',[session]); window.__qa.closeDuringConfirmation=true; }, running);
+    await page.locator('.session-detail').getByRole('button',{name:'Forcer',exact:true}).click();
+    await page.getByRole('button',{name:'Forcer',exact:true}).click();
+    await page.getByRole('heading',{name:'Diagnostic',exact:true}).waitFor();
+    assert(await page.locator('.session-detail').count() === 0, 'Forced session still present');
+    await page.evaluate(() => { window.__qa.closeDuringConfirmation=false; window.__qa.emit('home',false); });
+    await dialog().waitFor({state:'hidden'});
+  }
   assert(errors.length === 0, errors.join("\n"));
   return {
     result: "passed",
