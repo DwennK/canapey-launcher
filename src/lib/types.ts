@@ -43,7 +43,7 @@ export interface RemoteShortcut {
   alt: boolean;
   shift: boolean;
 }
-export type RemoteAction = 'home' | 'up' | 'down' | 'left' | 'right' | 'accept' | 'back' | 'menu' | 'options' | 'library' | 'audio' | 'power' | 'desktop' | 'launch' | 'volumeUp' | 'volumeDown' | 'mute' | 'playPause' | 'previousTrack' | 'nextTrack' | 'stop';
+export type RemoteAction = 'home' | 'up' | 'down' | 'left' | 'right' | 'accept' | 'back' | 'menu' | 'options' | 'library' | 'audio' | 'power' | 'desktop' | 'taskView' | 'closeWindow' | 'escape' | 'launch' | 'volumeUp' | 'volumeDown' | 'mute' | 'playPause' | 'previousTrack' | 'nextTrack' | 'stop';
 export interface RemoteBinding {
   button: string;
   key: RemoteShortcut;

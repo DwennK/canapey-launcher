@@ -108,6 +108,12 @@ async (page) => {
   await page.waitForFunction(()=>window.__remoteQA.calls.some(c=>c.cmd==='launch_app'));
   await open();await choose('Home');await page.getByRole('button',{name:'Retirer l’association',exact:true}).click();await page.getByText('Association retirée.',{exact:true}).waitFor();
   assert((await bindings()).length===7 && !(await bindings()).some(b=>b.button==='home'),'Removal affected other mappings');
+  await learn('4','F8');await page.getByRole('combobox',{name:'Action',exact:true}).selectOption({label:'Vue des tâches (Windows + Tab)'});await save();
+  await learn('5','F9');await page.getByRole('combobox',{name:'Action',exact:true}).selectOption({label:'Fermer la fenêtre active'});await save();
+  await learn('6','F7');await page.getByRole('combobox',{name:'Action',exact:true}).selectOption({label:'Échap (Escape)'});await save();
+  await page.reload();await open();
+  for(const [button,action] of [['digit4','taskView'],['digit5','closeWindow'],['digit6','escape']])assert((await bindings()).some(b=>b.button===button&&b.action===action&&b.global),'Windows action was not persisted globally');
+  await choose('4');await page.screenshot({path:'output/playwright/remote-windows-actions-desktop.png'});
   await page.setViewportSize({width:390,height:844});
   await page.locator('.remote-heading').scrollIntoViewIfNeeded();await page.screenshot({path:'output/playwright/remote-full-mobile-photo.png'});
   await choose('Lecture / pause');await page.keyboard.press('MediaPlayPause');

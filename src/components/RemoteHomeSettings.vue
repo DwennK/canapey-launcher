@@ -16,7 +16,7 @@ const inspector = ref<HTMLElement>();
 const globalAllowed = computed(() => !!remoteActions.find(a => a.id === action.value)?.global);
 const conflict = computed(() => key.value ? props.bindings.find(b => b.button !== selected.value && sameShortcut(b.key, key.value!)) : undefined);
 const visibleButtons = computed(() => remoteButtons.filter(b => b.color ? colors.value : !(colors.value && ['up','down','left','right'].includes(b.id))));
-const groups = ['Canapey', 'Navigation', 'Son et lecture'];
+const groups = [...new Set(remoteActions.map(action => action.group))];
 let timer: ReturnType<typeof setTimeout> | undefined, stopEvents: (() => void) | undefined;
 let disposed = false, generation = 0, swallowUntil = 0;
 function label(id: string) { return remoteButtons.find(b => b.id === id)?.label ?? id; }

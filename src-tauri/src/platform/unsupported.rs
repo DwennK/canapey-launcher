@@ -44,6 +44,18 @@ pub fn desktop() -> Result<(), String> {
     supported()
 }
 
+pub fn task_view() -> Result<(), String> {
+    supported()
+}
+
+pub fn escape() -> Result<(), String> {
+    supported()
+}
+
+pub fn close_foreground_window() -> Result<(), String> {
+    supported()
+}
+
 pub fn audio_state() -> Result<crate::audio::AudioState, String> {
     Err("Les commandes audio nécessitent Windows 11.".into())
 }

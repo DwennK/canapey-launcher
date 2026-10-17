@@ -890,6 +890,140 @@ pub fn desktop() -> Result<(), String> {
     }
 }
 
+/// Open Task View with the Windows shortcut, without foregrounding the launcher.
+pub fn task_view() -> Result<(), String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    // Coalesce presses while waiting for the learned shortcut's modifiers to lift.
+    static ACTIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let Ok(_guard) = ACTIVE.try_lock() else {
+        return Ok(());
+    };
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN, VK_TAB]
+        .iter()
+        .any(|key| unsafe { GetAsyncKeyState(*key as i32) < 0 })
+    {
+        if Instant::now() >= deadline {
+            return Err("Relâchez les touches puis réessayez d’ouvrir la vue des tâches.".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let input = |key, flags| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: key,
+                dwFlags: flags,
+                ..unsafe { std::mem::zeroed() }
+            },
+        },
+    };
+    let sequence = [
+        input(VK_LWIN, KEYEVENTF_EXTENDEDKEY),
+        input(VK_TAB, 0),
+        input(VK_TAB, KEYEVENTF_KEYUP),
+        input(VK_LWIN, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP),
+    ];
+    let size = std::mem::size_of::<INPUT>() as i32;
+    let sent = unsafe { SendInput(sequence.len() as u32, sequence.as_ptr(), size) };
+    if sent != sequence.len() as u32 {
+        // Never leave an injected Windows/Tab key down after a partial insertion.
+        if sent > 0 {
+            let release = [sequence[2], sequence[3]];
+            unsafe { SendInput(release.len() as u32, release.as_ptr(), size) };
+        }
+        return Err("Windows n’a pas accepté l’ouverture de la vue des tâches.".into());
+    }
+    Ok(())
+}
+
+pub fn close_foreground_window() -> Result<(), String> {
+    request_window_close(unsafe { GetForegroundWindow() })
+}
+
+pub fn escape() -> Result<(), String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    static ACTIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let Ok(_guard) = ACTIVE.try_lock() else {
+        return Ok(());
+    };
+    let foreground = unsafe { GetForegroundWindow() };
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
+        .iter()
+        .any(|key| unsafe { GetAsyncKeyState(*key as i32) < 0 })
+    {
+        if Instant::now() >= deadline {
+            return Err("Relâchez les touches puis réessayez d’envoyer Échap.".into());
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    unsafe {
+        if GetForegroundWindow() != foreground {
+            return Err("La fenêtre active a changé. Réessayez d’envoyer Échap.".into());
+        }
+        let mut info: GUITHREADINFO = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<GUITHREADINFO>() as u32;
+        if GetGUIThreadInfo(0, &mut info) == 0 {
+            return Err("Impossible d’identifier la fenêtre active pour Échap.".into());
+        }
+        let target = if info.hwndFocus.is_null() {
+            info.hwndActive
+        } else {
+            info.hwndFocus
+        };
+        post_escape(target)
+    }
+}
+
+fn post_escape(target: HWND) -> Result<(), String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_ESCAPE;
+    unsafe {
+        if target.is_null() || IsWindow(target) == 0 {
+            return Err("Aucune fenêtre active pour recevoir Échap.".into());
+        }
+        // Target the focused control's queue directly: SendInput would be caught
+        // again if Escape is reserved by any of our global remote bindings.
+        let down = PostMessageW(target, WM_KEYDOWN, VK_ESCAPE as usize, 0x0001_0001);
+        let up = PostMessageW(target, WM_KEYUP, VK_ESCAPE as usize, 0xc001_0001);
+        if down == 0 || up == 0 {
+            return Err("Windows n’a pas accepté la touche Échap.".into());
+        }
+    }
+    Ok(())
+}
+
+fn request_window_close(target: HWND) -> Result<(), String> {
+    unsafe {
+        let mut class = [0u16; 256];
+        let len = GetClassNameW(target, class.as_mut_ptr(), class.len() as i32);
+        if target.is_null()
+            || IsWindow(target) == 0
+            || target == GetDesktopWindow()
+            || target == GetShellWindow()
+            || len == 0
+            || [
+                "Progman",
+                "WorkerW",
+                "Shell_TrayWnd",
+                "Shell_SecondaryTrayWnd",
+            ]
+            .contains(&String::from_utf16_lossy(&class[..len as usize]).as_ref())
+        {
+            return Err("Aucune fenêtre d’application active à fermer.".into());
+        }
+        // A normal close request preserves the application's save/confirmation dialog.
+        // Post it so a hung foreground app cannot block the remote listener.
+        if PostMessageW(target, WM_CLOSE, 0, 0) == 0 {
+            return Err(format!(
+                "Windows n’a pas accepté la fermeture : {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Dispatch a media command without generating keyboard input. In particular,
 /// mapping MediaPlayPause to playPause must not trigger its own global hotkey.
 pub fn media_command(action: &str) -> Result<(), String> {
@@ -998,6 +1132,40 @@ mod tests {
         close(&window.tracked()).unwrap();
         dispatch_window_messages();
         assert_eq!(unsafe { IsWindow(window.0) }, 0);
+    }
+    #[test]
+    fn remote_close_posts_a_normal_request_and_rejects_desktop_or_stale_windows() {
+        assert!(request_window_close(std::ptr::null_mut()).is_err());
+        assert!(request_window_close(unsafe { GetDesktopWindow() }).is_err());
+        assert!(request_window_close(unsafe { GetShellWindow() }).is_err());
+        let window = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        request_window_close(window.0).unwrap();
+        // The recipient processes WM_CLOSE itself; no process is terminated.
+        assert_ne!(unsafe { IsWindow(window.0) }, 0);
+        dispatch_window_messages();
+        assert_eq!(unsafe { IsWindow(window.0) }, 0);
+        assert!(request_window_close(window.0).is_err());
+    }
+    #[test]
+    fn remote_escape_targets_window_queue_with_both_key_edges() {
+        let window = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        assert!(post_escape(std::ptr::null_mut()).is_err());
+        post_escape(window.0).unwrap();
+        unsafe {
+            let mut message: MSG = std::mem::zeroed();
+            for (kind, flags) in [(WM_KEYDOWN, 0x0001_0001), (WM_KEYUP, 0xc001_0001)] {
+                assert_ne!(
+                    PeekMessageW(&mut message, window.0, kind, kind, PM_REMOVE),
+                    0
+                );
+                assert_eq!(message.wParam, 0x1b);
+                assert_eq!(message.lParam, flags);
+            }
+            assert_eq!(
+                PeekMessageW(&mut message, window.0, WM_HOTKEY, WM_HOTKEY, PM_REMOVE),
+                0
+            );
+        }
     }
     #[test]
     fn resume_maximizes_normal_and_minimized_windows_and_preserves_maximized_state() {

@@ -28,7 +28,10 @@ export const remoteActions: {id: RemoteAction; label: string; group: string; glo
   {id:'options',label:'Actions de la carte',group:'Canapey',global:true},
   {id:'audio',label:'Commandes rapides',group:'Canapey',global:true},
   {id:'power',label:'Menu d’alimentation',group:'Canapey',global:true},
-  {id:'desktop',label:'Afficher le bureau Windows',group:'Canapey',global:true},
+  {id:'desktop',label:'Afficher le bureau Windows',group:'Windows',global:true},
+  {id:'taskView',label:'Vue des tâches (Windows + Tab)',group:'Windows',global:true},
+  {id:'closeWindow',label:'Fermer la fenêtre active',group:'Windows',global:true},
+  {id:'escape',label:'Échap (Escape)',group:'Windows',global:true},
   ...(['up','down','left','right','accept','back'] as const).map((id,i) => ({ id, label:['Haut','Bas','Gauche','Droite','Valider / OK','Retour'][i]!, group:'Navigation',global:true })),
   ...(['volumeUp','volumeDown','mute','playPause','previousTrack','nextTrack','stop'] as const).map((id,i) => ({ id, label:['Volume +','Volume −','Activer / couper le son','Lecture / pause','Piste précédente','Piste suivante','Arrêter la lecture'][i]!, group:'Son et lecture', global:true })),
 ];

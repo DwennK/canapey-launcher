@@ -188,6 +188,9 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
             "audio",
             "power",
             "desktop",
+            "taskView",
+            "closeWindow",
+            "escape",
             "volumeUp",
             "volumeDown",
             "mute",
@@ -351,6 +354,12 @@ mod tests {
             let mut b = binding("home", "KeyH");
             b.action = action.into();
             assert!(validate_bindings(&[b]).is_ok());
+        }
+        for action in ["taskView", "closeWindow", "escape"] {
+            let mut b = binding("info", "F10");
+            b.action = action.into();
+            assert!(validate_bindings(&[b]).is_ok());
+            assert!(!interface_action(action));
         }
         for action in ["home", "launch", "desktop", "mute", "playPause", "unknown"] {
             assert!(!interface_action(action));

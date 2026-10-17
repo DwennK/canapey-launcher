@@ -628,6 +628,23 @@ async fn execute_remote(
             .await
             .map(|_| ()),
         "desktop" => show_desktop(app),
+        "taskView" => tauri::async_runtime::spawn_blocking(platform::task_view)
+            .await
+            .map_err(|e| e.to_string())?,
+        "closeWindow" => platform::close_foreground_window(),
+        "escape" => {
+            if app
+                .get_webview_window("main")
+                .is_some_and(|window| window.is_focused().unwrap_or(false))
+            {
+                // Bypass learned keyboard mappings when Escape targets Canapey itself.
+                app.emit("input", "back").map_err(|e| e.to_string())
+            } else {
+                tauri::async_runtime::spawn_blocking(platform::escape)
+                    .await
+                    .map_err(|e| e.to_string())?
+            }
+        }
         "volumeUp" | "volumeDown" | "mute" | "playPause" | "previousTrack" | "nextTrack"
         | "stop" => platform::media_command(&binding.action),
         _ => Err("Cette action se déclenche depuis l’interface Canapey.".into()),

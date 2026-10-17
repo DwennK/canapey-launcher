@@ -61,7 +61,8 @@ function remoteBindingFor(event: KeyboardEvent) {
 }
 function executeRemote(binding: RemoteBinding) {
   const action = binding.action;
-  if (['up','down','left','right','accept','back','menu','options'].includes(action)) dispatch(action as Action);
+  if (action === 'escape') dispatch('back');
+  else if (['up','down','left','right','accept','back','menu','options'].includes(action)) dispatch(action as Action);
   else if (action === 'library') { dismissPanels(); view.value = 'grid'; void focusCard(); }
   else if (action === 'audio') void openAudio();
   else if (action === 'power') void openPanel('power');
