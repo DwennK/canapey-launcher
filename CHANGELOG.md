@@ -1,5 +1,18 @@
 # Notes de version
 
+## 0.4.0 — 2026-10-17
+
+- Nouvel onglet Ambiance séparé des Manettes : ambiances générales Salon, Émeraude, Nuit et Crépuscule, fond fixe ou lié à l’application, luminosité, flou, animations et volume des sons.
+- Fonds et cartes harmonisés autour de la direction visuelle Spotify, conservée ; Silo dispose d’un univers streaming.
+- Paramètres et menus de carte redessinés, avec une meilleure lisibilité, des actions mieux regroupées et un positionnement qui garde le menu à l’écran.
+- Correction du double focus entre une carte et les paramètres ; le logo Canapey ne reçoit plus le focus.
+- La fermeture d’une application depuis Diagnostic conserve le menu et replace le focus sur un contrôle disponible.
+- Volume actuel visible en haut, bouton d’alimentation en haut à droite et retrait de la veille des commandes rapides.
+- Indicateur clavier/manette déplacé avant les aides en bas à gauche. Touches adaptées aux manettes Xbox, PlayStation et Nintendo reconnues, y compris dans les menus et le diagnostic.
+- Nouveau symbole Canapey, favicon et icônes Windows assorties ; texte « canapey. » conservé et légèrement agrandi.
+- Notes de version mises en forme et défilables à la manette. Après confirmation d’une mise à jour, Canapey demande la fermeture normale des applications suivies et attend leur arrêt ; aucune fermeture forcée ni fermeture d’une fenêtre partagée.
+- Version expérimentale Windows 11 x64. Les essais interactifs avec de vraies manettes et applications Windows restent à effectuer ; un pilote qui présente une manette comme Xbox peut masquer sa marque réelle.
+
 ## 0.3.3 — 2026-10-17
 
 - Télécommande : ajout des actions « Vue des tâches (Windows + Tab) », « Fermer la fenêtre active » et « Échap (Escape) » dans la catégorie Windows. Ces actions peuvent cibler la fenêtre active sans ramener Canapey au premier plan ; la fermeture reste normale, sans arrêt forcé du processus.
