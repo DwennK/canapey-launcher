@@ -2202,6 +2202,19 @@ onUnmounted(() => {
               >
                 <Icon name="power" /><span>Éteindre</span
                 ><Icon name="right" :size="18" />
+              </button>
+              <button
+                @click="
+                  confirm(
+                    'Quitter Canapey ?',
+                    'Vos applications resteront ouvertes.',
+                    'Quitter',
+                    api.quit,
+                  )
+                "
+              >
+                <Icon name="close" /><span>Quitter le launcher</span
+                ><Icon name="right" :size="18" />
               </button></div
           ></template>
           <template v-else-if="panel === 'session'"
