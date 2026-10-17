@@ -1426,16 +1426,7 @@ onUnmounted(() => {
           }}</span>
         </div>
         <button
-          v-if="view === 'carousel'"
-          class="text-button"
-          @click="
-            view = 'grid';
-            focusCard();
-          "
-        >
-          <Icon name="grid" :size="16" />Tout voir</button
-        ><button
-          v-else
+          v-if="view === 'grid'"
           class="text-button"
           @click="
             view = 'carousel';
