@@ -31,6 +31,11 @@ export interface Settings {
   scale: number;
   motion: boolean;
   sound: boolean;
+  soundVolume: number;
+  dynamicBackground: boolean;
+  generalAmbiance: "home" | "spotify" | "night" | "dusk";
+  backgroundBrightness: number;
+  backgroundBlur: number;
   deadzone: number;
   returnShortcut: "xbox" | "startBack" | "shouldersStart" | "disabled";
   remoteHome: RemoteShortcut | null; // Legacy Home-only configuration, migrated on load.
@@ -112,6 +117,11 @@ export const defaults = (): Config => ({
     scale: 1,
     motion: true,
     sound: true,
+    soundVolume: 0.5,
+    dynamicBackground: true,
+    generalAmbiance: "home",
+    backgroundBrightness: 1,
+    backgroundBlur: 0,
     deadzone: 0.24,
     returnShortcut: "xbox",
     remoteHome: null,

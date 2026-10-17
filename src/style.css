@@ -103,6 +103,7 @@ svg {
   height: 100%;
   object-fit: cover;
   object-position: 50% 44%;
+  filter: brightness(var(--background-brightness, 1)) blur(var(--background-blur, 0px));
 }
 .backdrop-current {
   animation: background-in 0.6s ease both;
@@ -759,6 +760,40 @@ kbd {
   font-size: 13px;
   cursor: pointer;
 }
+.ambiance-preview {
+  position: relative;
+  height: 120px;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-top: 20px;
+  background: #101218;
+}
+.ambiance-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(var(--background-brightness, 1)) blur(var(--background-blur, 0px));
+}
+.ambiance-preview span {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #101218cc;
+  font-size: 10px;
+}
+.ambiance-sound-test { margin-top: 16px; }
+.ambiance-gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+.ambiance-choice { position: relative; padding: 0; overflow: hidden; border: 1px solid #ffffff20; border-radius: 10px; aspect-ratio: 1.5; text-align: left; background: #101218; }
+.ambiance-choice img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
+.ambiance-choice::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 35%, #07090dc9); pointer-events: none; }
+.ambiance-choice > span { position: absolute; z-index: 1; bottom: 10px; left: 10px; font-size: 12px; color: #f7f0e4; }
+.ambiance-choice > svg { position: absolute; z-index: 1; top: 8px; right: 8px; background: var(--cream); color: #20242a; border-radius: 50%; padding: 3px; box-sizing: content-box; }
+.ambiance-choice[aria-pressed="true"] { border-color: var(--cream); box-shadow: 0 0 0 1px var(--cream); }
+.ambiance-choice:hover img { transform: scale(1.04); }
+.ambiance-choice-hint { font-size: 11px; line-height: 1.7; color: #a0a7b3; margin: 12px 0 0; }
+@media (max-width: 700px) { .ambiance-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .setting-row small,
 .manage-name small,
 .device-line small,

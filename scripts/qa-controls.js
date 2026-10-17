@@ -335,7 +335,7 @@ async (page) => {
       "Slider edit failed",
     );
     await mapPanel("Écran after scale change");
-    await openCategory("Manette & ambiance");
+    await openCategory("Manettes");
     const combo = page.getByRole("combobox", { name: /Retour global/ });
     await go(combo);
     await send("accept");

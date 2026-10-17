@@ -7,6 +7,7 @@ import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
+import { backgroundFor, generalAmbiances } from "./lib/ambiance";
 import AppCard from "./components/AppCard.vue";
 import { startupMark } from "./lib/startup";
 import { captureShortcut, runRemoteAction } from "./lib/remote-home";
@@ -608,7 +609,7 @@ function selectionChanged() {
   void persist();
 }
 function sound() {
-  if (!config.value.settings.sound) return;
+  if (!config.value.settings.sound || config.value.settings.soundVolume <= 0) return;
   try {
     audioContext ??= new AudioContext();
     void audioContext.resume();
@@ -617,7 +618,7 @@ function sound() {
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
     oscillator.frequency.setValueAtTime(620, audioContext.currentTime);
-    gain.gain.setValueAtTime(0.018, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.036 * config.value.settings.soundVolume, audioContext.currentTime);
     gain.gain.exponentialRampToValueAtTime(
       0.0001,
       audioContext.currentTime + 0.035,
@@ -1163,14 +1164,16 @@ function tileImage(t: Tile) {
   if (t.special === "add" || t.special === "windows") return "";
   return api.imageUrl(t.entry?.card) || `/art/${t.theme}-card.webp`;
 }
+function selectGeneralAmbiance(id: typeof generalAmbiances[number]['id']) {
+  config.value.settings.generalAmbiance = id;
+  config.value.settings.dynamicBackground = false;
+  void persist();
+}
 watch(
-  () => [current.value.id, current.value.entry?.background],
-  async () => {
+  () => backgroundFor(current.value.theme, api.imageUrl(current.value.entry?.background), config.value.settings),
+  async (target) => {
     const ticket = ++imageTicket;
     const animate = startupPainted.value;
-    const target =
-      api.imageUrl(current.value.entry?.background) ||
-      `/art/${current.value.theme === "windows" ? "home" : current.value.theme}.webp`;
     if (target === heroBg.value) return;
     const image = new Image();
     image.src = target;
@@ -1371,6 +1374,8 @@ onUnmounted(() => {
       '--ui-scale': config.settings.scale,
       '--columns': columns,
       '--screen-height': height + 'px',
+      '--background-brightness': config.settings.backgroundBrightness,
+      '--background-blur': config.settings.backgroundBlur + 'px',
     }"
   >
     <div class="backdrop" aria-hidden="true">
@@ -1724,7 +1729,8 @@ onUnmounted(() => {
                   v-for="(label, key) in {
                     general: 'Écran & démarrage',
                     apps: 'Applications',
-                    controls: 'Manette & ambiance',
+                    controls: 'Manettes',
+                    ambiance: 'Ambiance',
                     remote: 'Télécommande',
                     controllerTest: 'Test de la manette',
                     updates: 'Mises à jour',
@@ -1919,9 +1925,43 @@ onUnmounted(() => {
                       min="0.1"
                       max="0.5"
                       step="0.05"
-                      @change="persist" /></label
-                  ><label class="setting-row"
-                    ><span>Animations</span
+                      @change="persist" /></label>
+                  <p class="note">
+                    Steam Input peut intercepter ces boutons. Désactivez sa
+                    configuration Bureau ou choisissez une autre combinaison.
+                  </p></template>
+                <template v-if="settingsTab === 'ambiance'">
+                  <h3>Ambiance</h3>
+                  <p class="note">Personnalisez l’image et les sons de Canapey. Les changements s’appliquent immédiatement.</p>
+                  <div class="ambiance-gallery" role="group" aria-label="Ambiances générales">
+                    <button v-for="ambiance in generalAmbiances" :key="ambiance.id"
+                      class="ambiance-choice" :aria-label="ambiance.name" :title="ambiance.description"
+                      :aria-pressed="config.settings.generalAmbiance === ambiance.id"
+                      @click="selectGeneralAmbiance(ambiance.id)">
+                      <img :src="`/art/${ambiance.id}-card.webp`" alt="" loading="lazy" />
+                      <span>{{ ambiance.name }}</span>
+                      <Icon v-if="config.settings.generalAmbiance === ambiance.id" name="check" :size="18" />
+                    </button>
+                  </div>
+                  <p class="ambiance-choice-hint">Choisissez une ambiance pour la conserver partout, ou activez les fonds par application ci-dessous.</p>
+                  <div class="ambiance-preview" aria-label="Aperçu du fond d’écran">
+                    <img :src="heroBg" alt="" />
+                    <span>Aperçu du fond</span>
+                  </div>
+                  <label class="setting-row">
+                    <span>Fond lié à l’application<small>Chaque application a son univers. L’accueil garde votre ambiance générale.</small></span>
+                    <input v-model="config.settings.dynamicBackground" type="checkbox" role="switch" @change="persist" />
+                  </label>
+                  <label class="setting-row">
+                    <span>Luminosité du fond<small>{{ Math.round(config.settings.backgroundBrightness * 100) }} %</small></span>
+                    <input v-model.number="config.settings.backgroundBrightness" type="range" min="0.3" max="1" step="0.05" @change="persist" />
+                  </label>
+                  <label class="setting-row">
+                    <span>Flou du fond<small>{{ config.settings.backgroundBlur === 0 ? 'Aucun' : config.settings.backgroundBlur + ' px' }}</small></span>
+                    <input v-model.number="config.settings.backgroundBlur" type="range" min="0" max="12" step="1" @change="persist" />
+                  </label>
+                  <label class="setting-row"
+                    ><span>Animations<small>{{ osReducedMotion ? 'Réduites selon vos préférences système.' : 'Transitions entre les cartes et les fonds.' }}</small></span
                     ><input
                       v-model="config.settings.motion"
                       type="checkbox"
@@ -1935,11 +1975,12 @@ onUnmounted(() => {
                       role="switch"
                       @change="persist"
                   /></label>
-                  <p class="note">
-                    Steam Input peut intercepter ces boutons. Désactivez sa
-                    configuration Bureau ou choisissez une autre combinaison.
-                  </p></template
-                >
+                  <label class="setting-row">
+                    <span>Volume des sons<small>{{ Math.round(config.settings.soundVolume * 100) }} % · Sons de Canapey uniquement.</small></span>
+                    <input v-model.number="config.settings.soundVolume" :disabled="!config.settings.sound" type="range" min="0" max="1" step="0.05" @change="persist(); sound()" />
+                  </label>
+                  <button class="small-button ambiance-sound-test" :disabled="!config.settings.sound || config.settings.soundVolume === 0" @click="sound">Écouter un son</button>
+                </template>
                 <ControllerTester
                   v-if="settingsTab === 'controllerTest'"
                   :snapshot="controllerSnapshot"
@@ -2255,7 +2296,7 @@ onUnmounted(() => {
                       :key="t"
                       :value="t"
                     >
-                      {{ t === "home" ? "Canapey" : t }}
+                      {{ t === "home" ? "Ambiance générale" : t === "silo" ? "Silo · Streaming" : t }}
                     </option>
                   </select></label
                 ><label

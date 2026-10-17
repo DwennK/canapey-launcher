@@ -1,35 +1,5 @@
 [
   {
-    "name": "home",
-    "prompt": "An extraordinary cinematic photograph of the rugged Scottish highlands at blue hour, still dark lake in foreground, an immense jagged mountain filling right half with a very subtle golden sunset line on horizon, charcoal blue and muted amber palette, atmospheric mist, natural film grain, deep shadows and clean empty dark left half for interface text. Full bleed wide 16:9 landscape. No text, no logos, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
-    "name": "netflix",
-    "prompt": "Cinematic editorial photograph inside an empty premium movie theater, sweeping rows of deep crimson velvet seats, a luminous ivory screen partially seen at upper right casting atmospheric beams in slight haze, dramatic shadow, black and dark red palette. Very wide landscape 16:9, full bleed background for a television launcher, no text, no logos, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
-    "name": "youtube",
-    "prompt": "Original high end 3D editorial artwork about online video: a monumental translucent red glass play triangle on a glossy dark red stage with red rectangular light frames in perspective, sharp minimal composition, vivid vermilion reflected light, large dark negative space left, sculptural physically realistic materials. Cinematic wide 16:9, full bleed, no words, no letters, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
-    "name": "plezy",
-    "prompt": "Beautiful cinematic still life of a home film library: neatly arranged rows of blank unlettered film cases and vinyl records, a subtle amber lamp illuminating their edges, dark oak furniture, a record player and a shaft of warm light, deep green shadow. Luxury editorial photography wide 16:9, full bleed, no text, no logos, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
-    "name": "steam",
-    "prompt": "Epic cinematic video game concept environment, a solitary tiny astronaut exploring an immense alien planet, monolithic black stone cliffs and a huge pale planet above a teal horizon, cold blue light, reflective wet rock, striking scale, photorealistic AAA game art, dark negative space on left. Wide 16:9 background, no text, no logos, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
-    "name": "silo",
-    "prompt": "Cinematic architectural photograph of a secret archive in a massive cylindrical concrete silo, curving shelves of film canisters and books climbing toward a soft circular skylight, warm gold slivers of light, deep dark sepia and charcoal, sophisticated minimal brutalist architecture, realistic textures. Wide 16:9 background, full bleed, no text, no logos, no UI.",
-    "method": "Built-in image_gen"
-  },
-  {
     "name": "spotify",
     "prompt": "Cinematic editorial photograph for a premium dark television music launcher. Sculptural black vinyl record spinning on a minimal brushed metal turntable on the right, vivid emerald green light grazing the grooves, deep forest green atmospheric shadows and a subtle green light beam, elegant analog listening room, realistic tactile materials. The left half is dark negative space for interface text. Wide 16:9 full bleed landscape, no text, no logos, no UI, no watermark.",
     "method": "Built-in image_gen",
@@ -37,10 +7,84 @@
     "card": "public/art/spotify-card.webp"
   },
   {
+    "name": "home",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Warm welcoming designer living room at evening, sculptural deep charcoal fabric sofa on the right, walnut side table and softly glowing amber lamp, olive toned leafy plant and textured dark plaster wall. Muted honey and olive light, editorial interior photography. This is the general SALON ambience.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/home.webp",
+    "card": "public/art/home-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "netflix",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Intimate home cinema: a beautiful dark red velvet cinema lounge chair and a compact black cinema lens/projector on a walnut side table in the right foreground, tiny burgundy-red light grazes the upholstery, out of focus dark projection screen farther back. Rich oxblood and restrained warm ivory. Sophisticated cinematic real room.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/netflix.webp",
+    "card": "public/art/netflix-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "youtube",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Quiet creator's video studio: sculptural high end black cinema camera with tactile lens in right foreground on a black desk, small unlit monitor and softly illuminated red acoustic panels behind, restrained vermilion light tracing camera and desk edges. A realistic warm intimate video-making workspace, no play-button sculpture.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/youtube.webp",
+    "card": "public/art/youtube-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
     "name": "internet",
-    "prompt": "Cinematic original editorial 3D artwork for a premium dark television web browser launcher. A magnificent translucent blue glass globe on the right, illuminated by a thin icy cyan horizon, subtle etched meridians catching light, deep midnight navy background and restrained silver blue reflections on a dark polished surface. Minimal sophisticated sculpture, physically realistic materials, spacious dark negative space on the left for interface text. Wide 16:9 full bleed landscape. No text, no letters, no logos, no UI, no watermark.",
-    "method": "Built-in image_gen",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Quiet study for exploring the world: elegant real smoked blue glass terrestrial globe on right on dark walnut desk, closed notebook and a low warm lamp, distant blue-hour window. Deep navy and restrained icy blue highlights, real premium interior photography, no sci-fi holograms.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
     "background": "public/art/internet.webp",
-    "card": "public/art/internet-card.webp"
+    "card": "public/art/internet-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "plezy",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Intimate personal movie library in a dark lounge: compact beautiful black film projector in right foreground on dark walnut cabinet with a few unlettered movie cases, soft amber projector beam into darkness and warm brass lamp behind. Dark honey, tobacco and muted warm shadows. Home media and movies, no vinyl turntable.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/plezy.webp",
+    "card": "public/art/plezy-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "steam",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. Refined evening gaming lounge: premium matte black unbranded game controller prominently resting on a dark textured couch arm on the right, low black monitor and walnut furniture softly out of focus, a subtle teal blue practical light grazing the controller, atmospheric deep petrol shadows. Realistic tactile home gaming, no astronaut or giant alien landscape.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/steam.webp",
+    "card": "public/art/steam-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "silo",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. A sophisticated home STREAMING lounge for films and TV: dark flat-screen television on right rear displaying only soft abstract cinematic light with no content/text, a premium black remote control in right foreground on walnut coffee table, comfortable dark sofa and plum curtain. Restrained plum-violet screen glow with warm amber practical lamp. Silo here is a streaming application, NOT an agricultural silo, NOT an archive or a specific television series.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/silo.webp",
+    "card": "public/art/silo-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "night",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. General NUIT ambience: luxurious quiet interior on a rainy blue night, dark velvet armchair and low walnut table on the right by a tall rain-speckled window, distant city lights blurred into subtle bokeh. Restrained ink blue light, one tiny warm brass lamp, rich shadow and tactile fabrics. No screens, no technology hero object.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/night.webp",
+    "card": "public/art/night-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
+  },
+  {
+    "name": "dusk",
+    "prompt": "Create a premium photographic 16:9 landscape background for a living-room TV launcher, at least 1920x1080. Use the attached Spotify image ONLY as a reference for art direction: cinematic realistic interior still life, tactile dark materials, beautifully restrained colored practical light, deep layered shadows, believable photographic grain and depth. Do NOT copy the turntable or the Spotify green color. Composition MUST reserve the entire LEFT 45% as naturally dark quiet negative space for white interface text; arrange recognizable hero object in RIGHT half, and keep top edge subdued. One coherent scene, no collage, no people, no words, no lettering, no logos, no interface, no watermark. Not a generic 3D icon, not neon gaming cliché, not a bright stock photo. General CREPUSCULE ambience: warm quiet architectural interior at sunset, dark low lounge chair on the right, large textured earthy plaster wall, a low stone side table and linen curtain, a narrow shaft of soft copper dusk sunlight grazing tactile surfaces. Muted amber, terracotta and charcoal, warm sanctuary, no desert landscape, no screens.",
+    "method": "Built-in image_gen, Spotify visual reference, WebP export",
+    "background": "public/art/dusk.webp",
+    "card": "public/art/dusk-card.webp",
+    "reference": "public/art/spotify.webp",
+    "generated": "2026-10-17"
   }
 ]

@@ -72,6 +72,72 @@ mod tests {
     use super::*;
     use crate::model::{AppEntry, Target, TargetKind};
     #[test]
+    fn ambiance_defaults_migrate_and_custom_settings_survive_reload() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(d.path().into());
+        let mut legacy = serde_json::to_value(Config::default()).unwrap();
+        let settings = legacy["settings"].as_object_mut().unwrap();
+        for key in [
+            "soundVolume",
+            "dynamicBackground",
+            "generalAmbiance",
+            "backgroundBrightness",
+            "backgroundBlur",
+        ] {
+            settings.remove(key);
+        }
+        settings.insert("sound".into(), false.into());
+        fs::write(
+            d.path().join("config.json"),
+            serde_json::to_vec(&legacy).unwrap(),
+        )
+        .unwrap();
+        let (mut config, warning) = store.load();
+        assert!(warning.is_none());
+        assert!(!config.settings.sound);
+        assert_eq!(config.settings.sound_volume, 0.5);
+        assert!(config.settings.dynamic_background);
+        assert_eq!(config.settings.general_ambiance, "home");
+        assert_eq!(config.settings.background_brightness, 1.0);
+        assert_eq!(config.settings.background_blur, 0.0);
+        config.settings.sound_volume = 0.25;
+        config.settings.dynamic_background = false;
+        config.settings.general_ambiance = "night".into();
+        config.settings.background_brightness = 0.65;
+        config.settings.background_blur = 8.0;
+        store.save(&config).unwrap();
+        let (loaded, warning) = store.load();
+        assert!(warning.is_none());
+        assert_eq!(
+            serde_json::to_value(loaded).unwrap(),
+            serde_json::to_value(config).unwrap()
+        );
+    }
+    #[test]
+    fn invalid_ambiance_settings_do_not_replace_saved_config() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(d.path().into());
+        let original = Config::default();
+        store.save(&original).unwrap();
+        let mut invalid_theme = original.clone();
+        invalid_theme.settings.general_ambiance = "unknown".into();
+        assert!(store.save(&invalid_theme).is_err());
+        for (field, value) in [
+            ("soundVolume", 1.1),
+            ("backgroundBrightness", 0.0),
+            ("backgroundBlur", 13.0),
+        ] {
+            let mut invalid = serde_json::to_value(&original).unwrap();
+            invalid["settings"][field] = value.into();
+            let config: Config = serde_json::from_value(invalid).unwrap();
+            assert!(store.save(&config).is_err());
+        }
+        assert_eq!(
+            serde_json::to_value(store.load().0).unwrap(),
+            serde_json::to_value(original).unwrap()
+        );
+    }
+    #[test]
     fn spotify_and_internet_survive_config_reload() {
         let d = tempfile::tempdir().unwrap();
         let store = ConfigStore::new(d.path().into());

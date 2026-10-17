@@ -44,6 +44,11 @@ pub struct Settings {
     pub scale: f64,
     pub motion: bool,
     pub sound: bool,
+    pub sound_volume: f64,
+    pub dynamic_background: bool,
+    pub general_ambiance: String,
+    pub background_brightness: f64,
+    pub background_blur: f64,
     pub deadzone: f32,
     pub return_shortcut: String,
     pub remote_bindings: Vec<crate::remote_shortcut::RemoteBinding>,
@@ -59,6 +64,11 @@ impl Default for Settings {
             scale: 1.0,
             motion: true,
             sound: true,
+            sound_volume: 0.5,
+            dynamic_background: true,
+            general_ambiance: "home".into(),
+            background_brightness: 1.0,
+            background_blur: 0.0,
             deadzone: 0.24,
             return_shortcut: "xbox".into(),
             remote_home: None,
@@ -204,6 +214,10 @@ impl Config {
         }
         if !s.scale.is_finite()
             || !(0.8..=1.4).contains(&s.scale)
+            || !(0.0..=1.0).contains(&s.sound_volume)
+            || !(0.3..=1.0).contains(&s.background_brightness)
+            || !(0.0..=12.0).contains(&s.background_blur)
+            || !["home", "spotify", "night", "dusk"].contains(&s.general_ambiance.as_str())
             || !s.deadzone.is_finite()
             || !(0.1..=0.5).contains(&s.deadzone)
             || !(600..=4000).contains(&s.hold_ms)

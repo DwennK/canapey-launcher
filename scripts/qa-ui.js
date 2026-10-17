@@ -85,8 +85,9 @@ async (page) => {
   await page.getByRole('button',{name:'Mises à jour',exact:true}).click();
   await page.getByRole('button',{name:'Rechercher une mise à jour',exact:true}).click();
   await page.getByText('Les mises à jour ne sont pas encore configurées pour cette distribution.').waitFor();
-  await page.getByRole('button',{name:'Manette & ambiance',exact:true}).click();
+  await page.getByRole('button',{name:'Manettes',exact:true}).click();
   await page.getByRole('combobox').selectOption('disabled');
+  await page.getByRole('button',{name:'Ambiance',exact:true}).click();
   await page.getByRole('switch',{name:'Sons de navigation',exact:true}).check();
   await page.getByRole('dialog',{name:'Paramètres'}).waitFor();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('.overlay')).opacity==='1');
