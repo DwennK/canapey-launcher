@@ -135,7 +135,12 @@ async (page) => {
   await page.reload();await open();
   for(const [button,action] of [['digit4','taskView'],['digit5','closeWindow'],['digit6','escape']])assert((await bindings()).some(b=>b.button===button&&b.action===action&&b.global),'Windows action was not persisted globally');
   await choose('4');await page.screenshot({path:'output/playwright/remote-windows-actions-desktop.png'});
+  await page.getByRole('button',{name:'Mises à jour',exact:true}).click();
+  await page.screenshot({path:'output/playwright/update-icon-desktop.png'});
   await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'Rechercher une mise à jour',exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:'output/playwright/update-icon-mobile.png'});
+  await page.getByRole('button',{name:'Télécommande',exact:true}).click();
   await page.locator('.remote-heading').scrollIntoViewIfNeeded();await page.screenshot({path:'output/playwright/remote-full-mobile-photo.png'});
   await choose('Lecture / pause');await page.keyboard.press('MediaPlayPause');
   await page.getByRole('combobox',{name:'Action',exact:true}).scrollIntoViewIfNeeded();await save();

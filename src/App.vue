@@ -1940,7 +1940,7 @@ onUnmounted(() => {
                     :disabled="!!working"
                     @click="checkUpdates"
                   >
-                    <Icon name="refresh" :size="18" />Rechercher une mise à jour</button
+                    <Icon name="update" :size="18" />Rechercher une mise à jour</button
                   ><button
                     v-if="update?.state === 'available'"
                     class="small-button"

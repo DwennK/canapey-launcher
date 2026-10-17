@@ -24,6 +24,7 @@ const paths: Record<string, string> = {
   globe:
     "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 0c5 5 5 15 0 20-5-5-5-15 0-20ZM2 12h20",
   download: "M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5",
+  update: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 16V8m-4 4 4-4 4 4",
   moon: "M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11Z",
   restart: "M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8M21 3v5h-5",
   refresh:
