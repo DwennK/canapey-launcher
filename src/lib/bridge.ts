@@ -13,6 +13,7 @@ import {
   type UpdateInfo,
   type Action,
   type ControllerSnapshot,
+  type RemoteBinding,
 } from "./types";
 export const native = isTauri();
 const browserKey = "canapey-ui-preview-v1";
@@ -123,10 +124,12 @@ export async function subscribe(handlers: {
   error: (v: string) => void;
   controllerSnapshot: (v: ControllerSnapshot) => void;
   controllerTestEnded: () => void;
+  remoteAction: (event: {binding: RemoteBinding; pressed: boolean; foregrounded: boolean}) => void;
 }) {
   if (!native) return () => {};
   const stops = await Promise.all([
     listen<Action>("input", (e) => handlers.action(e.payload)),
+    listen<{binding: RemoteBinding; pressed: boolean; foregrounded: boolean}>("remote-action", e => handlers.remoteAction(e.payload)),
     listen<string | null>("controller", (e) => handlers.controller(e.payload)),
     listen<Session[]>("sessions", (e) => handlers.sessions(e.payload)),
     listen("home", handlers.home),

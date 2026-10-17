@@ -890,39 +890,38 @@ pub fn desktop() -> Result<(), String> {
     }
 }
 
-/// Send only fixed media commands. Global bindings cannot use these output keys,
-/// so the generated events cannot recursively trigger the registered shortcuts.
+/// Dispatch a media command without generating keyboard input. In particular,
+/// mapping MediaPlayPause to playPause must not trigger its own global hotkey.
 pub fn media_command(action: &str) -> Result<(), String> {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
-    let vk = match action {
-        "volumeUp" => VK_VOLUME_UP,
-        "volumeDown" => VK_VOLUME_DOWN,
-        "mute" => VK_VOLUME_MUTE,
-        "playPause" => VK_MEDIA_PLAY_PAUSE,
-        "previousTrack" => VK_MEDIA_PREV_TRACK,
-        "nextTrack" => VK_MEDIA_NEXT_TRACK,
-        "stop" => VK_MEDIA_STOP,
+    use windows_sys::Win32::System::SystemServices::*;
+    let command = match action {
+        "volumeUp" => APPCOMMAND_VOLUME_UP,
+        "volumeDown" => APPCOMMAND_VOLUME_DOWN,
+        "mute" => APPCOMMAND_VOLUME_MUTE,
+        "playPause" => APPCOMMAND_MEDIA_PLAY_PAUSE,
+        "previousTrack" => APPCOMMAND_MEDIA_PREVIOUSTRACK,
+        "nextTrack" => APPCOMMAND_MEDIA_NEXTTRACK,
+        "stop" => APPCOMMAND_MEDIA_STOP,
         _ => return Err("Commande multimédia inconnue.".into()),
     };
-    let inputs = [0, KEYEVENTF_KEYUP].map(|flags| INPUT {
-        r#type: INPUT_KEYBOARD,
-        Anonymous: INPUT_0 {
-            ki: KEYBDINPUT {
-                wVk: vk,
-                dwFlags: flags,
-                ..Default::default()
-            },
-        },
-    });
-    if unsafe {
-        SendInput(
-            inputs.len() as u32,
-            inputs.as_ptr(),
-            std::mem::size_of::<INPUT>() as i32,
-        )
-    } != inputs.len() as u32
-    {
-        return Err("Windows n’a pas accepté la commande multimédia.".into());
+    unsafe {
+        let mut target = GetForegroundWindow();
+        if target.is_null() {
+            target = GetShellWindow();
+        }
+        if target.is_null()
+            || SendMessageTimeoutW(
+                target,
+                WM_APPCOMMAND,
+                target as usize,
+                (command as isize) << 16,
+                SMTO_ABORTIFHUNG,
+                1000,
+                std::ptr::null_mut(),
+            ) == 0
+        {
+            return Err("Windows n’a pas accepté la commande multimédia.".into());
+        }
     }
     Ok(())
 }

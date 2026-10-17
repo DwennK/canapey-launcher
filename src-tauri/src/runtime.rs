@@ -634,15 +634,53 @@ async fn execute_remote(
     }
 }
 #[cfg(windows)]
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteActionEvent {
+    binding: crate::remote_shortcut::RemoteBinding,
+    pressed: bool,
+    foregrounded: bool,
+}
+#[cfg(windows)]
 pub(crate) fn dispatch_remote(
     app: tauri::AppHandle,
     binding: crate::remote_shortcut::RemoteBinding,
+    pressed: bool,
 ) {
-    tauri::async_runtime::spawn(async move {
-        if let Err(error) = execute_remote(app.clone(), binding).await {
-            let _ = app.emit("native-error", error);
-        }
-    });
+    if pressed {
+        log::info!(
+            "remote_action button={} action={}",
+            binding.button,
+            binding.action
+        );
+    }
+    if crate::remote_shortcut::interface_action(&binding.action) {
+        // Queue both edges on the UI thread to preserve down/up ordering, even
+        // when restoring a minimized WebView. Do not reset its current panel.
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            let focused = handle
+                .get_webview_window("main")
+                .is_some_and(|w| w.is_focused().unwrap_or(false));
+            if pressed && !focused {
+                foreground(&handle);
+            }
+            let _ = handle.emit(
+                "remote-action",
+                RemoteActionEvent {
+                    binding,
+                    pressed,
+                    foregrounded: pressed && !focused,
+                },
+            );
+        });
+    } else if pressed {
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = execute_remote(app.clone(), binding).await {
+                let _ = app.emit("native-error", error);
+            }
+        });
+    }
 }
 
 #[tauri::command]

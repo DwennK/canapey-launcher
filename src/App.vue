@@ -69,6 +69,31 @@ function executeRemote(binding: RemoteBinding) {
   else if (native.value) void runRemoteAction(binding.button).catch(notify);
   else notify('Cette action nécessite Canapey sous Windows.');
 }
+// Native hotkeys arrive independently of DOM focus, including while minimized.
+let remoteEventChain = Promise.resolve();
+let nativeRemoteAccept: string | null = null;
+function nativeRemoteAction(event: {binding: RemoteBinding; pressed: boolean; foregrounded: boolean}) {
+  remoteEventChain = remoteEventChain.then(async () => {
+    const {binding, pressed, foregrounded} = event;
+    if (remoteCapturing.value) return;
+    if (!pressed) {
+      if (nativeRemoteAccept === binding.button) { nativeRemoteAccept = null; releaseAccept('remote-native'); }
+      return;
+    }
+    // Learning is handled separately; do not execute interface mappings
+    // while the remote editor is open.
+    if (panel.value === 'settings' && settingsTab.value === 'remote') return;
+    if (!panel.value && (foregrounded || binding.action === 'options' || !launcherRoot.value?.contains(document.activeElement))) {
+      await nextTick(); await focusCard();
+    }
+    if (binding.action === 'accept') {
+      if (nativeRemoteAccept === binding.button) return;
+      nativeRemoteAccept = binding.button; beginAccept('remote-native');
+    } else if (binding.action === 'menu') {
+      void openSettings();
+    } else executeRemote(binding);
+  }).catch(notify);
+}
 const OnScreenKeyboard = defineAsyncComponent(
   () => import("./components/OnScreenKeyboard.vue"),
 );
@@ -1201,6 +1226,7 @@ onMounted(async () => {
         if (controllerTesting.value) controllerSnapshot.value = snapshot;
       },
       controllerTestEnded: endControllerTest,
+      remoteAction: nativeRemoteAction,
       controller: (v) => {
         cancelHold();
         controller.value = v;

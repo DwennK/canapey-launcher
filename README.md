@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.3.0-experimental-78664E?style=flat-square" alt="Version 0.3.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.3.1-experimental-78664E?style=flat-square" alt="Version 0.3.1 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.1"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -87,7 +87,7 @@
 
 ## Downloads
 
-**Current project version: 0.3.0.** Download the Windows installer from [the v0.3.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.3.1.** Download the Windows installer from [the v0.3.1 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.3.1), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -118,7 +118,7 @@ On first launch, choose **Add applications** to discover installed applications 
 
 In **Settings → Télécommande**, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
-Flirc must already send a distinct keyboard key for each button: Canapey learns that key, not the infrared signal, and does not reprogram the receiver. Ordinary arrows, Enter, Esc and typing keys can be mapped inside Canapey. Home, app launch/resume and media actions can also work globally while Canapey is running, using a dedicated shortcut such as **Ctrl + Alt + H**. A physical keyboard triggers the same actions. Existing Flirc media keys already act directly in Windows; program a dedicated keyboard shortcut before remapping them here.
+Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Activer dans tout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. Interface actions restore Canapey before executing. The same physical keyboard keys are affected and may lose their usual behavior in other applications. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
 
 A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Annuler l’écoute**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
 

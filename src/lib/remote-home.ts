@@ -12,21 +12,17 @@ export const setRemoteCapture = (enabled: boolean) => invoke<void>("set_remote_c
 export const onRemoteCapture = (handler: (key: RemoteShortcut) => void) =>
   listen<RemoteShortcut>("remote-home-captured", (event) => handler(event.payload));
 
-export const shortcutHelp = "Choisissez Ctrl + Alt + une lettre, ou une touche dédiée (Home, F2–F11, F13–F24). Flèches, Entrée et Échap restent réservés à la navigation.";
-export function validRemoteShortcut(key: RemoteShortcut) {
-  const f = /^F([2-9]|10|11|1[3-9]|2[0-4])$/.test(key.code);
-  const dedicated = f || ["Home", "Pause"].includes(key.code);
-  return (dedicated && !key.ctrl && !key.alt && !key.shift)
-    || (key.ctrl && key.alt && (/^Key[A-Z]$|^Digit[0-9]$/.test(key.code) || f));
-}
+export const shortcutHelp = "Cette touche ne peut pas être réservée. Les touches Windows, F12 et les combinaisons système restent exclues.";
+export const validRemoteShortcut = (key: RemoteShortcut) => validLocalShortcut(key);
+export const canonicalCode = (code: string) => code === 'NumpadEnter' ? 'Enter' : code === 'MediaPause' ? 'Pause' : code;
 export function captureShortcut(event: KeyboardEvent, global = true): RemoteShortcut | null {
   if (event.repeat || event.isComposing || ["Control", "Shift", "Alt", "Meta", "AltGraph"].includes(event.key)) return null;
   if (event.metaKey || event.getModifierState("AltGraph")) throw new Error(shortcutHelp);
   // RegisterHotKey uses logical Windows letters, not physical US keyboard positions.
-  const code = /^[a-z]$/i.test(event.key) ? `Key${event.key.toUpperCase()}`
-    : /^[0-9]$/.test(event.key) ? `Digit${event.key}` : event.code || event.key;
+  const code = /^Numpad/.test(event.code) ? (['End','Home','PageUp','PageDown','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Insert','Delete'].includes(event.key) ? event.key : canonicalCode(event.code)) : /^[a-z]$/i.test(event.key) ? `Key${event.key.toUpperCase()}`
+    : /^[0-9]$/.test(event.key) ? `Digit${event.key}` : canonicalCode(event.code && event.code !== 'Unidentified' ? event.code : event.key);
   const key = { code, ctrl: event.ctrlKey, alt: event.altKey, shift: event.shiftKey };
-  if (global ? !validRemoteShortcut(key) : !validLocalShortcut(key)) throw new Error(global ? shortcutHelp : "Choisissez une touche clavier. Les touches Windows, Alt + Tab, Alt + F4 et Ctrl + Maj + Q sont réservées. Pour un bouton multimédia, programmez un raccourci dédié dans Flirc.");
+  if (global ? !validRemoteShortcut(key) : !validLocalShortcut(key)) throw new Error(shortcutHelp);
   return key;
 }
 export function shortcutLabel(key: RemoteShortcut | null | undefined) {
@@ -35,8 +31,9 @@ export function shortcutLabel(key: RemoteShortcut | null | undefined) {
 }
 
 export function validLocalShortcut(key: RemoteShortcut) {
-  const supported = /^(Key[A-Z]|Digit[0-9]|F([1-9]|1[0-1]|1[3-9]|2[0-4]))$/.test(key.code)
-    || ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','NumpadEnter','Escape','Backspace','Space','Tab','Home','End','PageUp','PageDown','Insert','Delete','Pause'].includes(key.code);
-  return supported && !(key.alt && ['Tab','F4'].includes(key.code)) && !(key.ctrl && key.shift && key.code === 'KeyQ');
+  const supported = /^(Key[A-Z]|Digit[0-9]|Numpad[0-9]|F([1-9]|1[0-1]|1[3-9]|2[0-4]))$/.test(key.code)
+    || ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','NumpadEnter','Escape','Backspace','Space','Tab','Home','End','PageUp','PageDown','Insert','Delete','Pause','CapsLock','NumLock','ScrollLock','PrintScreen','Equal','Comma','Minus','Period','Semicolon','Slash','Backquote','BracketLeft','Backslash','BracketRight','Quote','NumpadAdd','NumpadDecimal','NumpadDivide','NumpadMultiply','NumpadSubtract','AudioVolumeUp','AudioVolumeDown','AudioVolumeMute','MediaPlay','MediaPause','MediaPlayPause','MediaStop','MediaTrackNext','MediaTrackPrevious'].includes(key.code);
+  return supported && !(key.alt && ['Tab','F4'].includes(key.code)) && !(key.ctrl && key.shift && key.code === 'KeyQ') && !(key.ctrl && key.alt && ['Delete','Escape'].includes(key.code)) && !(key.ctrl && key.shift && key.code === 'Escape');
 }
+export const isMediaShortcut = (key: RemoteShortcut) => /^(AudioVolume|Media)/.test(key.code);
 export const runRemoteAction = (button: string) => invoke<void>('run_remote_action', { button });

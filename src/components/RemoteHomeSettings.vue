@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import type { AppEntry, RemoteAction, RemoteBinding, RemoteShortcut } from '../lib/types';
-import { captureShortcut, onRemoteCapture, remoteHomeStatus, setRemoteCapture, shortcutLabel, validRemoteShortcut, type RemoteHomeStatus } from '../lib/remote-home';
+import { captureShortcut, isMediaShortcut, onRemoteCapture, remoteHomeStatus, setRemoteCapture, shortcutLabel, validRemoteShortcut, type RemoteHomeStatus } from '../lib/remote-home';
 import { actionLabel, remoteActions, remoteButtons, sameShortcut, type RemoteButton } from '../lib/remote-layout';
 
 const props = defineProps<{ native: boolean; bindings: RemoteBinding[]; apps: AppEntry[]; saveBindings: (bindings: RemoteBinding[]) => Promise<boolean> }>();
@@ -85,7 +85,8 @@ async function save(remove = false) {
   if (!remove) {
     if (!key.value) { error.value = 'Appuyez d’abord sur « Apprendre la touche ».'; return; }
     if (conflict.value) { error.value = `Cette touche est déjà attribuée à « ${label(conflict.value.button)} ». Programmez une touche distincte dans Flirc ou retirez cette association.`; return; }
-    if (global.value && !validRemoteShortcut(key.value)) { error.value = 'Pour agir depuis une autre application, programmez un raccourci dédié dans Flirc, par exemple Ctrl + Alt + H ou F10. Les flèches et touches de saisie restent dans Canapey.'; return; }
+    if (!global.value && isMediaShortcut(key.value)) { error.value = 'Activez le mode global pour remplacer l’action Windows de cette touche multimédia.'; return; }
+    if (global.value && !validRemoteShortcut(key.value)) { error.value = 'Cette touche est réservée par le système ou n’est pas prise en charge. Choisissez une autre touche.'; return; }
     if (action.value === 'launch' && !appId.value) { error.value = 'Choisissez une application.'; return; }
   }
   busy.value = true;
@@ -135,19 +136,19 @@ onUnmounted(() => {
           <button v-if="selected === 'colors'" class="small-button" @click="choose('red')">Associer les touches de couleur</button>
         </template>
         <template v-else>
-          <div class="remote-signal" :class="{listening}"><div><span class="remote-label">{{ listening ? 'À l’écoute…' : 'Touche reçue via Flirc' }}</span><kbd>{{ listening ? 'Appuyez sur la télécommande' : shortcutLabel(key) }}</kbd></div><span v-if="listening" class="listening-dot" aria-hidden="true"></span></div>
+          <div class="remote-signal" :class="{listening}"><div><span class="remote-label">{{ listening ? 'À l’écoute…' : 'Touche reçue' }}</span><kbd>{{ listening ? 'Appuyez sur la télécommande' : shortcutLabel(key) }}</kbd></div><span v-if="listening" class="listening-dot" aria-hidden="true"></span></div>
           <div class="remote-capture-actions"><button v-if="listening" class="small-button" @click="cancelCapture()">Annuler l’écoute</button><button v-else class="small-button" :disabled="busy || (native && !status?.available)" @click="beginCapture">{{ key ? 'Réapprendre la touche' : 'Apprendre la touche' }}</button><small v-if="listening">15 secondes · même Échap peut être associé</small></div>
           <label class="remote-field"><span>Action</span><select v-model="action" :disabled="busy || listening" @change="changeAction"><optgroup v-for="group in groups" :key="group" :label="group"><option v-for="a in remoteActions.filter(a => a.group === group)" :key="a.id" :value="a.id">{{ a.label }}</option></optgroup></select></label>
           <label v-if="action === 'launch'" class="remote-field"><span>Application</span><select v-model="appId" :disabled="busy || listening"><option :value="null">Choisir une application</option><option v-if="appId && !apps.some(a => a.id === appId)" :value="appId">Application retirée — choisissez-en une autre</option><option v-for="app in apps" :key="app.id" :value="app.id">{{ app.name }}</option></select><small v-if="!apps.length">Ajoutez d’abord des applications à votre bibliothèque.</small></label>
-          <label v-if="globalAllowed" class="remote-scope"><input v-model="global" type="checkbox" role="switch" :disabled="busy || listening" /><span>Même depuis une autre application<small>Canapey doit rester ouvert.</small></span></label>
-          <p v-else class="remote-scope-note">Cette action s’utilise dans Canapey.</p>
+          <label v-if="globalAllowed" class="remote-scope"><input v-model="global" type="checkbox" role="switch" :disabled="busy || listening" /><span>Activer dans tout Windows<small>Canapey doit rester ouvert, même en arrière-plan.</small></span></label>
+          <p v-if="global" class="remote-scope-note">Cette touche sera réservée sur tout Windows, y compris sur votre clavier. Elle peut remplacer son usage habituel dans les autres applications.</p><p v-else class="remote-scope-note">Mode local : cette association fonctionne uniquement dans Canapey. Activez le mode global pour l’utiliser ailleurs.</p>
           <p v-if="conflict" class="remote-error" role="alert">Touche déjà associée au bouton « {{ label(conflict.button) }} ».</p>
           <div class="remote-save-actions"><button class="primary" :disabled="busy || listening || !key || !!conflict" @click="save()">Enregistrer</button><button v-if="saved" class="small-button" :disabled="busy || listening" @click="save(true)">Retirer l’association</button></div>
           <p v-if="saved" class="remote-saved">{{ actionLabel(saved.action) }} · {{ saved.global ? (!native ? 'Aperçu global' : status?.active.some(b => b.button === saved?.button) ? 'Global actif' : 'Global inactif') : 'Dans Canapey' }}</p>
         </template>
         <p v-if="error || status?.error" class="remote-error" role="alert">{{ error || status?.error }}</p>
         <p v-if="message" class="remote-message" role="status">{{ message }}</p>
-        <details class="remote-help"><summary>Préparer les boutons dans Flirc</summary><p>Chaque bouton doit envoyer une touche ou un raccourci distinct. Canapey associe ce qu’il reçoit à l’action de votre choix ; il ne programme pas les signaux infrarouges du récepteur.</p><p>Pour les actions globales, utilisez par exemple Ctrl + Alt + une lettre. Les boutons déjà configurés en touches multimédias agissent directement dans Windows : utilisez un raccourci distinct pour les réaffecter ici.</p><p>Les mêmes touches du clavier physique déclenchent aussi ces actions. La sélection A/B/C et le passage en mode couleurs restent gérés par la Skip 1s.</p></details>
+        <details class="remote-help"><summary>Comment fonctionne l’association ?</summary><p>Appuyez sur la télécommande ou un clavier : Canapey apprend la touche reçue et lui affecte votre action, sans dépendre du récepteur utilisé. Flèches, lettres, chiffres et touches multimédias sont acceptés lorsque Windows peut les réserver.</p><p>Canapey signale les raccourcis déjà occupés. Un bouton qui n’envoie aucune touche doit d’abord être configuré dans le logiciel de votre récepteur.</p><p>Les mêmes touches du clavier physique déclenchent aussi ces actions. La sélection A/B/C et le passage en mode couleurs restent gérés par la Skip 1s.</p></details>
         <p v-if="!native" class="remote-preview">Aperçu interactif. Les actions Windows nécessitent l’application installée.</p>
       </div>
     </div>

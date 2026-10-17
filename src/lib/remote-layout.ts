@@ -1,3 +1,4 @@
+import { canonicalCode } from './remote-home';
 import type { RemoteAction, RemoteBinding, RemoteShortcut } from './types';
 export interface RemoteButton { id: string; label: string; x: number; y: number; w: number; h: number; action: RemoteAction; hardware?: string; color?: string }
 // Centres and hit areas on the original 1000 × 1000 product photo, cropped in CSS.
@@ -19,20 +20,20 @@ export const remoteButtons: RemoteButton[] = [
   { ...b('yellow', 'Jaune', 556, 385, 'launch', 40, 55), color:'yellow' },
   { ...b('blue', 'Bleu', 500, 441, 'launch', 55, 40), color:'blue' },
 ];
-export const remoteActions: {id: RemoteAction; label: string; group: string; global?: boolean}[] = [
+export const remoteActions: {id: RemoteAction; label: string; group: string; global: boolean}[] = [
   {id:'home',label:'Revenir à Canapey',group:'Canapey',global:true},
   {id:'launch',label:'Ouvrir / reprendre une application',group:'Canapey',global:true},
-  {id:'library',label:'Afficher la bibliothèque',group:'Canapey'},
-  {id:'menu',label:'Ouvrir les paramètres',group:'Canapey'},
-  {id:'options',label:'Actions de la carte',group:'Canapey'},
-  {id:'audio',label:'Commandes rapides',group:'Canapey'},
-  {id:'power',label:'Menu d’alimentation',group:'Canapey'},
-  {id:'desktop',label:'Afficher le bureau Windows',group:'Canapey'},
-  ...(['up','down','left','right','accept','back'] as const).map((id,i) => ({ id, label:['Haut','Bas','Gauche','Droite','Valider / OK','Retour'][i]!, group:'Navigation' })),
+  {id:'library',label:'Afficher la bibliothèque',group:'Canapey',global:true},
+  {id:'menu',label:'Ouvrir les paramètres',group:'Canapey',global:true},
+  {id:'options',label:'Actions de la carte',group:'Canapey',global:true},
+  {id:'audio',label:'Commandes rapides',group:'Canapey',global:true},
+  {id:'power',label:'Menu d’alimentation',group:'Canapey',global:true},
+  {id:'desktop',label:'Afficher le bureau Windows',group:'Canapey',global:true},
+  ...(['up','down','left','right','accept','back'] as const).map((id,i) => ({ id, label:['Haut','Bas','Gauche','Droite','Valider / OK','Retour'][i]!, group:'Navigation',global:true })),
   ...(['volumeUp','volumeDown','mute','playPause','previousTrack','nextTrack','stop'] as const).map((id,i) => ({ id, label:['Volume +','Volume −','Activer / couper le son','Lecture / pause','Piste précédente','Piste suivante','Arrêter la lecture'][i]!, group:'Son et lecture', global:true })),
 ];
 export function sameShortcut(a: RemoteShortcut, b: RemoteShortcut) {
-  return a.code === b.code && a.ctrl === b.ctrl && a.alt === b.alt && a.shift === b.shift;
+  return canonicalCode(a.code) === canonicalCode(b.code) && a.ctrl === b.ctrl && a.alt === b.alt && a.shift === b.shift;
 }
 export function findRemoteBinding(bindings: RemoteBinding[], key: RemoteShortcut) { return bindings.find(b => sameShortcut(b.key, key)); }
 export function actionLabel(action: RemoteAction) { return remoteActions.find(a => a.id === action)?.label ?? action; }

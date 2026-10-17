@@ -1,4 +1,4 @@
-//! A deliberately small set of global keys, shared by configuration and registration.
+//! Keyboard inputs supported by the Windows global shortcut backend.
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -11,29 +11,7 @@ pub struct RemoteShortcut {
 }
 impl RemoteShortcut {
     pub fn validate(&self) -> Result<(), String> {
-        let function = self
-            .code
-            .strip_prefix('F')
-            .and_then(|s| s.parse::<u8>().ok())
-            .is_some_and(|n| {
-                ((2..=11).contains(&n) || (13..=24).contains(&n)) && self.code == format!("F{n}")
-            });
-        let dedicated = function || matches!(self.code.as_str(), "Home" | "Pause");
-        let letter = self
-            .code
-            .strip_prefix("Key")
-            .is_some_and(|s| s.len() == 1 && s.as_bytes()[0].is_ascii_uppercase());
-        let digit = self
-            .code
-            .strip_prefix("Digit")
-            .is_some_and(|s| s.len() == 1 && s.as_bytes()[0].is_ascii_digit());
-        if (dedicated && !self.ctrl && !self.alt && !self.shift)
-            || (self.ctrl && self.alt && (letter || digit || function))
-        {
-            Ok(())
-        } else {
-            Err("Choisissez Ctrl + Alt + une lettre, ou une touche dédiée (Home, F2–F11, F13–F24). Flèches, Entrée et Échap restent réservés à la navigation.".into())
-        }
+        self.validate_local()
     }
     pub fn validate_local(&self) -> Result<(), String> {
         let letter = self
@@ -43,6 +21,10 @@ impl RemoteShortcut {
         let digit = self
             .code
             .strip_prefix("Digit")
+            .is_some_and(|s| s.len() == 1 && s.as_bytes()[0].is_ascii_digit());
+        let numpad = self
+            .code
+            .strip_prefix("Numpad")
             .is_some_and(|s| s.len() == 1 && s.as_bytes()[0].is_ascii_digit());
         let function = self
             .code
@@ -67,15 +49,44 @@ impl RemoteShortcut {
             "Insert",
             "Delete",
             "Pause",
+            "CapsLock",
+            "NumLock",
+            "ScrollLock",
+            "PrintScreen",
+            "Equal",
+            "Comma",
+            "Minus",
+            "Period",
+            "Semicolon",
+            "Slash",
+            "Backquote",
+            "BracketLeft",
+            "Backslash",
+            "BracketRight",
+            "Quote",
+            "NumpadAdd",
+            "NumpadDecimal",
+            "NumpadDivide",
+            "NumpadMultiply",
+            "NumpadSubtract",
+            "AudioVolumeUp",
+            "AudioVolumeDown",
+            "AudioVolumeMute",
+            "MediaPlay",
+            "MediaPause",
+            "MediaPlayPause",
+            "MediaStop",
+            "MediaTrackNext",
+            "MediaTrackPrevious",
         ]
         .contains(&self.code.as_str());
-        if !(letter || digit || function || special)
+        if !(letter || digit || numpad || function || special)
             || (self.alt && ["Tab", "F4"].contains(&self.code.as_str()))
-            || (self.ctrl && self.shift && self.code == "KeyQ")
+            || (self.ctrl && self.shift && ["KeyQ", "Escape"].contains(&self.code.as_str()))
+            || (self.ctrl && self.alt && ["Delete", "Escape"].contains(&self.code.as_str()))
         {
             return Err(
-                "Touche invalide ou réservée. Programmez un raccourci clavier dédié dans Flirc."
-                    .into(),
+                "Touche invalide ou réservée par Windows. Choisissez une autre touche.".into(),
             );
         }
         Ok(())
@@ -91,7 +102,11 @@ impl RemoteShortcut {
         if self.shift {
             parts.push("Shift");
         }
-        parts.push(&self.code);
+        parts.push(match self.code.as_str() {
+            "NumpadEnter" => "Enter",
+            "MediaPause" => "Pause",
+            code => code,
+        });
         parts.join("+")
     }
 }
@@ -105,17 +120,10 @@ pub struct RemoteBinding {
     pub global: bool,
     pub app_id: Option<String>,
 }
-pub fn global_action(action: &str) -> bool {
+pub fn interface_action(action: &str) -> bool {
     [
-        "home",
-        "launch",
-        "volumeUp",
-        "volumeDown",
-        "mute",
-        "playPause",
-        "previousTrack",
-        "nextTrack",
-        "stop",
+        "up", "down", "left", "right", "accept", "back", "menu", "options", "library", "audio",
+        "power",
     ]
     .contains(&action)
 }
@@ -161,7 +169,7 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
         if !(digit || known) || !buttons.insert(&binding.button) {
             return Err("Bouton inconnu ou associé plusieurs fois.".into());
         }
-        if !keys.insert(&binding.key) {
+        if !keys.insert(binding.key.accelerator()) {
             return Err("Cette touche est déjà associée à un autre bouton. Utilisez une touche distincte dans Flirc.".into());
         }
         binding.key.validate_local()?;
@@ -192,10 +200,13 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
         {
             return Err("Action de télécommande inconnue.".into());
         }
+        if !binding.global
+            && (binding.key.code.starts_with("AudioVolume")
+                || binding.key.code.starts_with("Media"))
+        {
+            return Err("Activez le mode global pour réaffecter une touche multimédia.".into());
+        }
         if binding.global {
-            if !global_action(&binding.action) {
-                return Err("Cette action fonctionne dans Canapey uniquement.".into());
-            }
             binding.key.validate()?;
         }
         if binding.action == "launch"
@@ -219,7 +230,10 @@ pub fn replace_bindings(
 ) -> Result<(), String> {
     let added: Vec<_> = new
         .iter()
-        .filter(|b| !old.iter().any(|o| o.key == b.key))
+        .filter(|b| {
+            !old.iter()
+                .any(|o| o.key.accelerator() == b.key.accelerator())
+        })
         .collect();
     let mut reserved = Vec::new();
     for binding in added {
@@ -237,7 +251,10 @@ pub fn replace_bindings(
         }
         return Err(error);
     }
-    for binding in old.iter().filter(|b| !new.iter().any(|n| n.key == b.key)) {
+    for binding in old.iter().filter(|b| {
+        !new.iter()
+            .any(|n| n.key.accelerator() == b.key.accelerator())
+    }) {
         unregister(&binding.key);
     }
     Ok(())
@@ -265,7 +282,7 @@ mod tests {
         }
     }
     #[test]
-    fn local_navigation_is_allowed_but_global_navigation_is_rejected() {
+    fn ordinary_and_media_keys_are_accepted_globally() {
         for code in [
             "Enter",
             "Escape",
@@ -277,12 +294,23 @@ mod tests {
             "F1",
         ] {
             assert!(key(code).validate_local().is_ok());
-            assert!(key(code).validate().is_err());
+            assert!(key(code).validate().is_ok());
         }
-        for code in ["F12", "F25", "F02", "AudioVolumeUp"] {
+        for code in ["F12", "F25", "F02", "NumpadEqual"] {
             assert!(key(code).validate_local().is_err());
         }
-        for code in ["Home", "Pause", "F2", "F11", "F13", "F24"] {
+        for code in [
+            "Home",
+            "Pause",
+            "F2",
+            "F11",
+            "F13",
+            "F24",
+            "AudioVolumeUp",
+            "MediaPlayPause",
+            "Numpad1",
+            "Semicolon",
+        ] {
             assert!(key(code).validate().is_ok());
         }
         let mut h = key("KeyH");
@@ -302,10 +330,31 @@ mod tests {
         b.app_id = Some("app".into());
         assert!(validate_bindings(&[b.clone()]).is_ok());
         b.action = "up".into();
-        assert!(validate_bindings(&[b.clone()]).is_err());
+        assert!(validate_bindings(&[b.clone()]).is_ok());
         b.global = false;
         b.key = key("ArrowUp");
         assert!(validate_bindings(&[b]).is_ok());
+    }
+    #[test]
+    fn windows_key_aliases_conflict_and_interface_actions_route() {
+        assert!(
+            validate_bindings(&[binding("home", "Enter"), binding("info", "NumpadEnter")]).is_err()
+        );
+        assert!(
+            validate_bindings(&[binding("home", "Pause"), binding("info", "MediaPause")]).is_err()
+        );
+        for action in [
+            "up", "down", "left", "right", "accept", "back", "menu", "options", "library", "audio",
+            "power",
+        ] {
+            assert!(interface_action(action));
+            let mut b = binding("home", "KeyH");
+            b.action = action.into();
+            assert!(validate_bindings(&[b]).is_ok());
+        }
+        for action in ["home", "launch", "desktop", "mute", "playPause", "unknown"] {
+            assert!(!interface_action(action));
+        }
     }
     #[test]
     fn conflict_rolls_back_new_keys_without_saving_or_removing_old() {
@@ -347,6 +396,14 @@ mod tests {
         let mut new = old.clone();
         new[0].action = "mute".into();
         replace_bindings(&old, &new, |_| panic!(), || Ok(()), |_| panic!()).unwrap();
+        replace_bindings(
+            &[binding("home", "NumpadEnter")],
+            &[binding("home", "Enter")],
+            |_| panic!("alias must reuse reservation"),
+            || Ok(()),
+            |_| panic!("alias must stay registered"),
+        )
+        .unwrap();
         let calls = RefCell::new(vec![]);
         replace_bindings(
             &old,

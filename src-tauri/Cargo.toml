@@ -1,6 +1,6 @@
 [package]
 name = "canapey-launcher"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 rust-version = "1.90"
 description = "A quiet, controller-first Windows living-room launcher"
@@ -36,7 +36,7 @@ log = { version = "0.4", optional = true }
 tauri-plugin-global-shortcut = { version = "2", optional = true }
 gilrs = "0.11"
 windows = { version = "0.61", features = ["Win32_System_Com", "Win32_UI_Shell", "Win32_Media_Audio_Endpoints", "Win32_Devices_FunctionDiscovery", "Win32_UI_Shell_PropertiesSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Variant"] }
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Memory", "Win32_System_Power", "Win32_System_SystemInformation", "Win32_Graphics_Dwm", "Win32_Security", "Win32_System_LibraryLoader", "Win32_UI_Input_XboxController", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Memory", "Win32_System_Power", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_Graphics_Dwm", "Win32_Security", "Win32_System_LibraryLoader", "Win32_UI_Input_XboxController", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [profile.release]
 panic = "abort"

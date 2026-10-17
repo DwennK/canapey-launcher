@@ -53,7 +53,7 @@ fn register(app: &tauri::AppHandle, key: &RemoteShortcut) -> Result<(), String> 
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
     key.validate()?;
     app.global_shortcut().register(key.accelerator().as_str())
-        .map_err(|_| "Ce raccourci est déjà utilisé ou réservé par Windows. Choisissez une autre touche dans Flirc ; votre ancien réglage est conservé.".into())
+        .map_err(|_| "Ce raccourci est déjà utilisé ou réservé par Windows. Choisissez une autre touche ; votre ancien réglage est conservé.".into())
 }
 #[cfg(windows)]
 fn unregister(app: &tauri::AppHandle, key: &RemoteShortcut) {
@@ -122,9 +122,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|app, shortcut, event| {
-            if event.state() != ShortcutState::Pressed {
-                return;
-            }
+            let pressed = event.state() == ShortcutState::Pressed;
             let Some(state) = app.try_state::<RemoteHomeState>() else {
                 return;
             };
@@ -145,15 +143,19 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 let repeated = inner.last_press.as_ref().is_some_and(|(button, last)| {
                     button == &binding.button
                         && now.duration_since(*last).as_millis()
-                            < if ["volumeUp", "volumeDown"].contains(&binding.action.as_str()) {
+                            < if ["volumeUp", "volumeDown", "up", "down", "left", "right"]
+                                .contains(&binding.action.as_str())
+                            {
                                 100
                             } else {
                                 500
                             }
                 });
-                inner.last_press = Some((binding.button.clone(), now));
-                if repeated {
-                    return;
+                if pressed {
+                    inner.last_press = Some((binding.button.clone(), now));
+                    if repeated && binding.action != "accept" {
+                        return;
+                    }
                 }
                 let capturing = inner.capture_until.is_some_and(|deadline| deadline > now)
                     && app
@@ -162,9 +164,11 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 (binding, capturing)
             };
             if capturing {
-                let _ = app.emit("remote-home-captured", binding.key);
+                if pressed {
+                    let _ = app.emit("remote-home-captured", binding.key);
+                }
             } else {
-                crate::runtime::dispatch_remote(app.clone(), binding);
+                crate::runtime::dispatch_remote(app.clone(), binding, pressed);
             }
         })
         .build()
