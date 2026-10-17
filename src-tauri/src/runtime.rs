@@ -754,9 +754,6 @@ async fn check_update(app: tauri::AppHandle) -> Result<UpdateInfo, String> {
             notes: None,
         });
     }
-    if !state.sessions.lock().unwrap().is_empty() {
-        return Err("Fermez les applications suivies avant de rechercher une mise à jour.".into());
-    }
     let update = app
         .updater_builder()
         .timeout(Duration::from_secs(12))
@@ -787,24 +784,52 @@ async fn check_update(app: tauri::AppHandle) -> Result<UpdateInfo, String> {
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     let state = app.state::<State>();
+    let update = state
+        .update
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("Recherchez d’abord une mise à jour.")?;
     {
         let launching = state.launching.lock().unwrap();
-        if !launching.is_empty() || !state.sessions.lock().unwrap().is_empty() {
-            return Err("Fermez les applications suivies avant d’installer.".into());
+        if !launching.is_empty() {
+            return Err("Une application démarre. Réessayez dans un instant.".into());
         }
         if state.updating.swap(true, Ordering::SeqCst) {
             return Err("Installation déjà en cours.".into());
         }
     }
-    let update = state.update.lock().unwrap().take();
-    let result = if let Some(u) = update {
-        u.download_and_install(|_, _| {}, || {}).await.map_err(|e| {
+    let result = async {
+        let handle = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let state = handle.state::<State>();
+            let deadline = Instant::now() + Duration::from_secs(30);
+            let mut previous = Vec::new();
+            let mut requested = HashSet::new();
+            loop {
+                let pending = crate::update_flow::close_for_update(
+                    &mut state.sessions.lock().unwrap(), now(&state), &mut requested, platform::close,
+                )?;
+                if pending.is_empty() { return Ok::<(), String>(()); }
+                if pending != previous {
+                    let _ = handle.emit("update-status", format!("Fermeture de {}… Confirmez toute demande d’enregistrement dans l’application.", pending.join(", ")));
+                    emit_sessions(&handle);
+                    previous = pending.clone();
+                }
+                if Instant::now() >= deadline {
+                    return Err(format!("{} attend encore une fermeture. Enregistrez votre travail ou fermez sa fenêtre, puis réessayez. La mise à jour n’a pas été installée.", pending.join(", ")));
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        }).await.map_err(|e| e.to_string())??;
+        let _ = app.emit("update-status", "Téléchargement de la mise à jour…");
+        update.download_and_install(|_, _| {}, || {
+            let _ = app.emit("update-status", "Installation de la mise à jour…");
+        }).await.map_err(|e| {
             log::error!("Updater install: {e}");
             "Installation impossible. Vos réglages sont conservés.".to_owned()
         })
-    } else {
-        Err("Recherchez d’abord une mise à jour.".into())
-    };
+    }.await;
     state.updating.store(false, Ordering::SeqCst);
     if result.is_ok() {
         app.restart();
@@ -839,7 +864,9 @@ fn start_tracking(app: tauri::AppHandle) {
                 drop(sessions);
                 if return_home {
                     *state.active.lock().unwrap() = None;
-                    show_home(&app);
+                    if !state.updating.load(Ordering::SeqCst) {
+                        show_home(&app);
+                    }
                 }
             }
             let views = session_views(&state);

@@ -11,6 +11,7 @@ pub mod remote_shortcut;
 #[cfg(feature = "desktop")]
 mod runtime;
 pub mod tracking;
+pub mod update_flow;
 #[cfg(feature = "desktop")]
 mod xbox_home;
 #[cfg(feature = "desktop")]

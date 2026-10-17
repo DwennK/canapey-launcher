@@ -43,6 +43,9 @@ const RemoteHomeSettings = defineAsyncComponent(
   () => import("./components/RemoteHomeSettings.vue"),
 );
 const ReleaseNotes = defineAsyncComponent(() => import('./components/ReleaseNotes.vue'));
+const updateStatus = ref('');
+const installingUpdate = ref(false);
+const appsToClose = computed(() => sessions.value.filter(session => session.status !== 'untracked'));
 const remoteCapturing = ref(false);
 function remoteCaptureChanged(value: boolean) {
   cancelHold();
@@ -672,6 +675,7 @@ async function openPanel(p: Panel) {
     );
 }
 async function closePanel() {
+  if (installingUpdate.value) return;
   const closingQuick = panel.value === "quick" || panel.value === "move";
   editingControl.value = null;
   const previous = panelHistory.pop();
@@ -1144,6 +1148,24 @@ async function checkUpdates() {
     }
   });
 }
+function requestUpdateInstall() {
+  const names = appsToClose.value.map(session => session.name);
+  confirm(
+    'Installer la mise à jour ?',
+    names.length
+      ? `Canapey demandera la fermeture normale de ${names.join(', ')}, puis installera la mise à jour et redémarrera. Confirmez toute demande d’enregistrement dans ces applications.`
+      : 'Canapey va installer la mise à jour et redémarrer. Vos paramètres et vos visuels seront conservés.',
+    names.length ? 'Fermer les applications et installer' : 'Télécharger et installer',
+    async () => {
+      installingUpdate.value = true;
+      updateError.value = '';
+      updateStatus.value = names.length ? 'Fermeture des applications…' : 'Préparation de la mise à jour…';
+      try { await api.installUpdate(); }
+      catch (error) { updateError.value = error instanceof Error ? error.message : String(error); throw error; }
+      finally { installingUpdate.value = false; updateStatus.value = ''; }
+    },
+  );
+}
 function tileImage(t: Tile) {
   if (t.special === "add" || t.special === "windows") return "";
   return api.imageUrl(t.entry?.card) || `/art/${t.theme}-card.webp`;
@@ -1260,6 +1282,7 @@ onMounted(async () => {
       },
       controllerTestEnded: endControllerTest,
       remoteAction: nativeRemoteAction,
+      updateStatus: (message) => { updateStatus.value = message; },
       controller: (v) => {
         cancelHold();
         controller.value = v;
@@ -1296,7 +1319,7 @@ onMounted(async () => {
     }
   }
   updateTimer = setTimeout(async () => {
-    if (native.value && !sessions.value.length)
+    if (native.value)
       try {
         update.value = await api.checkUpdate();
         if (update.value.state === "available")
@@ -1606,7 +1629,7 @@ onUnmounted(() => {
                 }}
               </h2>
             </div>
-            <button class="icon-button" aria-label="Fermer" @click="closePanel">
+            <button class="icon-button" aria-label="Fermer" :disabled="installingUpdate" @click="closePanel">
               <Icon name="close" />
             </button>
           </div>
@@ -1937,9 +1960,10 @@ onUnmounted(() => {
                     }}
                   </h3>
                   <p class="muted">
-                    Les mises à jour s’installent quand vos applications sont
-                    fermées.
+                    Canapey ferme les applications suivies avant l’installation,
+                    puis redémarre. Vos réglages sont conservés.
                   </p>
+                  <p v-if="sessions.some(session => session.status === 'untracked')" class="note">Les fenêtres partagées ou non identifiables restent ouvertes.</p>
                   <p v-if="update?.state === 'disabled'" class="note">
                     Les mises à jour ne sont pas encore configurées pour cette
                     distribution.
@@ -1947,7 +1971,7 @@ onUnmounted(() => {
                   <p v-if="updateError" class="inline-error">
                     {{ updateError }}
                   </p>
-                  <ReleaseNotes v-if="update?.notes" :notes="update.notes" />
+                  <div class="update-actions">
                   <button
                     class="primary-button"
                     :disabled="!!working"
@@ -1957,18 +1981,12 @@ onUnmounted(() => {
                   ><button
                     v-if="update?.state === 'available'"
                     class="small-button"
-                    :disabled="sessions.length > 0"
-                    @click="
-                      confirm(
-                        'Installer la mise à jour ?',
-                        'Canapey va redémarrer. Vos paramètres et vos visuels seront conservés.',
-                        'Télécharger et installer',
-                        api.installUpdate,
-                      )
-                    "
+                    :disabled="!!working"
+                    @click="requestUpdateInstall"
                   >
-                    Télécharger et installer
-                  </button></template
+                    {{ appsToClose.length ? 'Fermer les applications et installer' : 'Télécharger et installer' }}
+                  </button></div>
+                  <ReleaseNotes v-if="update?.notes" :notes="update.notes" /></template
                 >
                 <template v-if="settingsTab === 'diagnostic'"
                   ><h3>Diagnostic</h3>
@@ -2374,8 +2392,9 @@ onUnmounted(() => {
           >
           <template v-else-if="panel === 'confirm'"
             ><p class="confirm-copy">{{ confirmText }}</p>
+            <p v-if="installingUpdate" class="update-progress" role="status">{{ updateStatus }}</p>
             <div class="confirm-actions">
-              <button class="small-button" @click="closePanel">Annuler</button
+              <button class="small-button" :disabled="installingUpdate" @click="closePanel">Annuler</button
               ><button
                 class="primary-button"
                 :disabled="!!working"

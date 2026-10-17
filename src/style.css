@@ -929,6 +929,8 @@ textarea {
   color: #d2d5db;
   overflow-wrap: anywhere;
 }
+.update-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.update-progress { color: var(--cream); font-size: 14px; line-height: 1.8; }
 .release-notes h4 {
   margin: 24px 0 10px;
   color: #f5f3ef;
