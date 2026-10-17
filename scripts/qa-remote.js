@@ -37,6 +37,16 @@ async (page) => {
   const save=async()=>{await page.getByRole('button',{name:'Enregistrer',exact:true}).click();await page.getByText('Association enregistrée.',{exact:true}).waitFor();};
   const bindings=()=>page.evaluate(()=>window.__remoteQA.config.settings.remoteBindings);
   await open();
+  const remoteBounds = await page.locator('.settings-panel').boundingBox();
+  await page.getByRole('button',{name:'Écran & démarrage',exact:true}).click();
+  const otherBounds = await page.locator('.settings-panel').boundingBox();
+  assert(remoteBounds.width===otherBounds.width && remoteBounds.height===otherBounds.height,'Remote settings changes the shared window size');
+  await page.getByRole('button',{name:'Télécommande',exact:true}).click();
+  await page.locator('.remote-photo img').waitFor();
+  const saveBounds = await page.getByRole('button',{name:'Enregistrer',exact:true}).boundingBox();
+  const contentBounds = await page.locator('.settings-content').boundingBox();
+  assert(saveBounds.y>=contentBounds.y && saveBounds.y+saveBounds.height<=contentBounds.y+contentBounds.height,'Initial save action is below the desktop fold');
+  assert(await page.locator('.remote-inspector').evaluate(e=>getComputedStyle(e).overflowY==='visible'),'Remote editor adds a nested scrollbar');
   assert(await page.locator('.remote-hotspot').count()===34,'Missing physical buttons');
   const photo=await page.locator('.remote-photo').boundingBox();assert(Math.abs(photo.width/photo.height-240/920)<.01,'Photo/hotspot aspect ratio is distorted');
   await page.screenshot({path:'output/playwright/remote-full-desktop.png'});
@@ -71,6 +81,8 @@ async (page) => {
   assert((await bindings()).length===7,'Mappings lost after reload');
   await page.getByRole('button',{name:'Couleurs',exact:true}).click();await choose('Rouge');
   assert(await page.getByRole('combobox',{name:'Application',exact:true}).inputValue()==='spotify','Application target lost');
+  const configuredSaveBounds = await page.getByRole('button',{name:'Enregistrer',exact:true}).boundingBox();
+  assert(configuredSaveBounds.y+configuredSaveBounds.height<=contentBounds.y+contentBounds.height,'Application mapping pushes save below the desktop fold');
   await page.screenshot({path:'output/playwright/remote-full-configured.png'});
   await learn('3','ArrowDown');
   await page.getByRole('combobox',{name:'Application',exact:true}).selectOption('spotify');await save();
@@ -142,6 +154,12 @@ async (page) => {
   await page.screenshot({path:'output/playwright/update-icon-mobile.png'});
   await page.getByRole('button',{name:'Télécommande',exact:true}).click();
   await page.locator('.remote-heading').scrollIntoViewIfNeeded();await page.screenshot({path:'output/playwright/remote-full-mobile-photo.png'});
+  assert(!await page.locator('.remote-photo').isVisible(),'Mobile photo should be optional');
+  await page.getByRole('combobox',{name:'Bouton',exact:true}).selectOption('play');
+  await page.getByText('À l’écoute…',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Annuler l’écoute',exact:true}).click();
+  await page.getByRole('button',{name:'Choisir sur la télécommande',exact:true}).click();
+  await page.locator('.remote-photo').waitFor();
   await choose('Lecture / pause');await page.keyboard.press('MediaPlayPause');
   await page.getByRole('combobox',{name:'Action',exact:true}).scrollIntoViewIfNeeded();await save();
   await page.screenshot({path:'output/playwright/remote-full-mobile-editor.png'});

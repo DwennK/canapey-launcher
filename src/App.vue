@@ -1576,7 +1576,6 @@ onUnmounted(() => {
             compact: ['power', 'confirm', 'session'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
-            'remote-settings-panel': panel === 'settings' && settingsTab === 'remote',
             'controller-test-active': controllerTesting,
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
