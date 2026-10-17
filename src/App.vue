@@ -3,6 +3,7 @@ import {
   computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
 } from "vue";
 import { isSystemTool } from "./lib/discovery";
+import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import AudioControls from "./components/AudioControls.vue";
@@ -346,13 +347,7 @@ const columns = computed(() =>
 const selectedSession = computed(() =>
   sessions.value.find((s) => s.appId === current.value.id),
 );
-const ps = computed(() => {
-  const name = controller.value?.trim() ?? "";
-  return (
-    /sony|playstation|dualshock|dualsense/i.test(name) ||
-    /^wireless controller$/i.test(name)
-  );
-});
+const inputLabels = computed(() => controllerLabels(controller.value));
 const time = computed(() =>
   clock.value.toLocaleTimeString("fr-CH", {
     hour: "2-digit",
@@ -1422,12 +1417,7 @@ onUnmounted(() => {
         </button>
       </nav>
       <div class="top-right">
-        <span
-          class="controller-status"
-          :title="controller ?? 'Navigation au clavier'"
-          ><Icon :name="controller ? 'controller' : 'monitor'" :size="20" /><i
-            v-if="controller" /></span
-        ><button
+        <button
           class="icon-button audio-trigger"
           :class="{ 'is-muted': audioState?.muted }"
           :title="`Commandes rapides · ${volumeDescription}`"
@@ -1539,20 +1529,23 @@ onUnmounted(() => {
       </div>
     </section>
     <footer class="bottom-bar" :inert="!!panel">
-      <div class="hints">
+      <div class="hints" :data-controller-family="inputLabels.family">
+        <span class="controller-status" role="img" :aria-label="inputLabels.device" :title="controller ?? 'Navigation au clavier'">
+          <Icon :name="controller ? 'controller' : 'keyboard'" :size="22" /><i v-if="controller" />
+        </span>
         <span
-          ><kbd>{{ controller ? (ps ? "×" : "A") : "↵" }}</kbd
+          ><kbd :class="{ 'pad-key': controller }">{{ inputLabels.accept }}</kbd
           >OK</span
         ><span
-          ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
+          ><kbd :class="{ 'pad-key': controller }">{{ inputLabels.back }}</kbd
           >Retour</span
         ><span
-          ><kbd>{{ controller ? "☰" : "F1" }}</kbd
+          ><kbd>{{ inputLabels.menu }}</kbd
           >Paramètres</span
         >
       </div>
       <span v-if="current.entry" class="quick-hint"
-        >Maintenir {{ controller ? (ps ? "Croix" : "A") : "Entrée" }} ·
+        >Maintenir {{ inputLabels.acceptName }} ·
         Actions</span
       >
       <span v-if="!native" class="preview-badge"
@@ -1886,7 +1879,7 @@ onUnmounted(() => {
                     <div>
                       {{ controller ?? "Aucune manette connectée"
                       }}<small
-                        >Xbox et PlayStation compatibles avec Windows</small
+                        >Xbox, PlayStation et Nintendo reconnues par Windows</small
                       >
                     </div>
                   </div>
@@ -1994,6 +1987,7 @@ onUnmounted(() => {
                 <ControllerTester
                   v-if="settingsTab === 'controllerTest'"
                   :snapshot="controllerSnapshot"
+                  :controller-name="controller"
                   :testing="controllerTesting"
                   :native="native"
                   :deadzone="config.settings.deadzone"
@@ -2461,12 +2455,12 @@ onUnmounted(() => {
           >
           <div class="panel-footer" aria-live="polite">
             <span v-if="controllerTesting"
-              >Maintenir B / Rond 1,2 s : arrêter le test · Échap au
+              >Maintenir {{ inputLabels.backName }} 1,2 s : arrêter le test · Échap au
               clavier</span
             >
             <template v-else
               ><span
-                ><kbd>{{ controller ? (ps ? "○" : "B") : "⌫ / esc" }}</kbd
+                ><kbd :class="{ 'pad-key': controller }">{{ inputLabels.back }}</kbd
                 >Retour</span
               ><span v-if="editingControl">{{
                 isTextControl(editingControl)
@@ -2475,10 +2469,10 @@ onUnmounted(() => {
               }}</span
               ><span v-else-if="panel === 'audio'"
                 >↑ ↓ Naviguer · ← → Volume ·
-                {{ controller ? "A / Croix" : "Entrée" }} Choisir</span
+                {{ inputLabels.acceptName }} Choisir</span
               ><span v-else>{{
                 controller
-                  ? "Croix directionnelle : naviguer · A / Croix : OK"
+                  ? `Croix directionnelle : naviguer · ${inputLabels.acceptName} : OK`
                   : "Flèches : naviguer · Entrée : OK / modifier"
               }}</span></template
             >

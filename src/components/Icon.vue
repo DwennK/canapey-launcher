@@ -18,6 +18,7 @@ const paths: Record<string, string> = {
   check: "m5 12 4 4L19 6",
   search: "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6",
   power: "M12 2v10M6 5a9 9 0 1 0 12 0",
+  keyboard: "M3 5h18v14H3zM6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10",
   monitor: "M3 4h18v13H3zM8 21h8m-4-4v4",
   controller:
     "M7 7h10c3 0 4 3 5 9 1 4-3 5-5 1H7c-2 4-6 3-5-1C3 10 4 7 7 7Zm-1 4v4m-2-2h4m8-1h.01M18 14h.01",

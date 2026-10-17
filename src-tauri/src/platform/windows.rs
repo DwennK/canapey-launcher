@@ -623,15 +623,19 @@ pub fn start_controller(app: tauri::AppHandle) {
         let mut test_exit = Hold::default();
         let mut test_direction = None;
         let mut test_published = None;
-        let publish = |g: &Gilrs| {
-            let name = g.gamepads().next().map(|(_, p)| p.name().to_owned());
-            *app.state::<crate::runtime::State>()
-                .controller
-                .lock()
-                .unwrap() = name.clone();
-            let _ = app.emit("controller", name);
+        let publish = |g: &Gilrs, active: Option<gilrs::GamepadId>| {
+            let name = active
+                .and_then(|id| g.gamepads().find(|(i, _)| *i == id))
+                .or_else(|| g.gamepads().next())
+                .map(|(_, p)| p.name().to_owned());
+            let state = app.state::<crate::runtime::State>();
+            let mut previous_name = state.controller.lock().unwrap();
+            if *previous_name != name {
+                *previous_name = name.clone();
+                let _ = app.emit("controller", name);
+            }
         };
-        publish(&gilrs);
+        publish(&gilrs, active);
         loop {
             let now = start.elapsed().as_millis() as u64;
             let foreground = foreground_is_ours();
@@ -670,7 +674,7 @@ pub fn start_controller(app: tauri::AppHandle) {
             while let Some(event) = gilrs.next_event() {
                 match event.event {
                     EventType::Connected | EventType::Disconnected => {
-                        publish(&gilrs);
+                        publish(&gilrs, None);
                         repeat.reset();
                         hold = Hold::default();
                         test_exit = Hold::default();
@@ -684,6 +688,7 @@ pub fn start_controller(app: tauri::AppHandle) {
                     }
                     EventType::ButtonPressed(b, _) => {
                         active = Some(event.id);
+                        publish(&gilrs, active);
                         let was = buttons.insert((event.id, b), true).unwrap_or(false);
                         if !was && foreground && !block_until_release && !testing {
                             match b {
@@ -722,7 +727,10 @@ pub fn start_controller(app: tauri::AppHandle) {
                             let _ = app.emit("input", "menu");
                         }
                     }
-                    EventType::AxisChanged(_, v, _) if v.abs() > 0.4 => active = Some(event.id),
+                    EventType::AxisChanged(_, v, _) if v.abs() > 0.4 => {
+                        active = Some(event.id);
+                        publish(&gilrs, active);
+                    }
                     _ => {}
                 }
             }

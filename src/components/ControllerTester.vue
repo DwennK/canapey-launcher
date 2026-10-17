@@ -1,35 +1,20 @@
 <script setup lang="ts">
+import { controllerLabels } from "../lib/controller-labels";
 import { computed } from "vue";
 import type { ControllerSnapshot } from "../lib/types";
 const props = defineProps<{
   snapshot: ControllerSnapshot | null;
+  controllerName: string | null;
   testing: boolean;
   native: boolean;
   deadzone: number;
 }>();
 const emit = defineEmits<{ toggle: []; deadzone: [value: number] }>();
-const ps = computed(() => {
-  const name = props.snapshot?.name?.trim() ?? "";
-  return /dualsense|dualshock|playstation|sony/i.test(name) || /^wireless controller$/i.test(name);
-});
+const labels = computed(() => controllerLabels(props.snapshot?.name ?? props.controllerName));
 const buttons = computed(() => [
-  ["south", ps.value ? "Croix" : "A"],
-  ["east", ps.value ? "Rond" : "B"],
-  ["west", ps.value ? "Carré" : "X"],
-  ["north", ps.value ? "Triangle" : "Y"],
-  ["lb", ps.value ? "L1" : "LB"],
-  ["rb", ps.value ? "R1" : "RB"],
-  ["lt", ps.value ? "L2" : "LT"],
-  ["rt", ps.value ? "R2" : "RT"],
-  ["ls", "L3"],
-  ["rs", "R3"],
-  ["select", ps.value ? "Share" : "Back"],
-  ["start", ps.value ? "Options" : "Start"],
-  ["guide", "Guide"],
-  ["up", "↑"],
-  ["down", "↓"],
-  ["left", "←"],
-  ["right", "→"],
+  ...(['south', 'east', 'west', 'north', 'lb', 'rb', 'lt', 'rt'] as const).map(id => [id, labels.value[id]]),
+  ['ls', 'L3'], ['rs', 'R3'], ['select', labels.value.select], ['start', labels.value.menu],
+  ['guide', 'Guide'], ['up', '↑'], ['down', '↓'], ['left', '←'], ['right', '→'],
 ]);
 const axes = computed(() => props.snapshot?.axes ?? [0, 0, 0, 0]);
 const directions = { left: "Gauche", right: "Droite", up: "Haut", down: "Bas" };
@@ -51,8 +36,7 @@ function adjust(delta: number) {
       simulée dans cet aperçu.
     </p>
     <p class="note" v-else-if="!testing">
-      Activez le test puis essayez chaque bouton et les sticks. Maintenez B /
-      Rond 1,2 s, ou appuyez sur Échap, pour arrêter le test.
+      Activez le test puis essayez chaque bouton et les sticks. Maintenez {{ labels.backName }} 1,2 s, ou appuyez sur Échap, pour arrêter le test.
     </p>
     <div class="test-toolbar">
       <button
