@@ -1622,8 +1622,12 @@ onUnmounted(() => {
           @keydown.tab="trapFocus"
         >
           <div class="panel-heading">
-            <div>
-              <span class="eyebrow">CANAPEY LAUNCHER</span>
+            <div class="panel-identity">
+              <img v-if="(panel === 'quick' || panel === 'move') && quickApp"
+                class="quick-app-art" :src="api.imageUrl(quickApp.card) || `/art/${quickApp.theme}-card.webp`" alt="" />
+              <span v-else-if="panel === 'settings'" class="settings-emblem"><Icon name="settings" :size="25" /></span>
+              <div class="panel-title">
+              <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
                 {{
                   panel === "audio"
@@ -1645,6 +1649,10 @@ onUnmounted(() => {
                                   : confirmTitle
                 }}
               </h2>
+              <span v-if="panel === 'quick' && quickSession" class="quick-session-status">
+                <i />{{ { starting: 'Démarrage…', running: 'En cours', closing: 'Fermeture…', untracked: 'Suivi limité' }[quickSession.status] }}
+              </span>
+              </div>
             </div>
             <button class="icon-button" aria-label="Fermer" :disabled="installingUpdate" @click="closePanel">
               <Icon name="close" />
@@ -1691,13 +1699,13 @@ onUnmounted(() => {
                 Fenêtre partagée ou non identifiable : reprenez-la avec Alt +
                 Tab.
               </p>
-              <button @click="edit(quickApp)">
+              <button :class="{ 'action-group-start': !!quickSession }" @click="edit(quickApp)">
                 <Icon name="edit" /><span>Modifier</span>
               </button>
               <button @click="openPanel('move')">
                 <Icon name="right" /><span>Déplacer</span>
               </button>
-              <button class="danger" @click="removeQuick">
+              <button class="danger action-remove" @click="removeQuick">
                 <Icon name="trash" /><span>Retirer la carte</span>
               </button>
             </div>
@@ -1726,25 +1734,27 @@ onUnmounted(() => {
             <div class="settings-layout">
               <nav class="settings-nav" aria-label="Catégories des paramètres">
                 <button
-                  v-for="(label, key) in {
-                    general: 'Écran & démarrage',
-                    apps: 'Applications',
-                    controls: 'Manettes',
-                    ambiance: 'Ambiance',
-                    remote: 'Télécommande',
-                    controllerTest: 'Test de la manette',
-                    updates: 'Mises à jour',
-                    diagnostic: 'Diagnostic',
+                  v-for="(category, key) in {
+                    general: { label: 'Écran & démarrage', icon: 'monitor' },
+                    apps: { label: 'Applications', icon: 'grid' },
+                    controls: { label: 'Manettes', icon: 'controller' },
+                    ambiance: { label: 'Ambiance', icon: 'ambiance' },
+                    remote: { label: 'Télécommande', icon: 'remote' },
+                    controllerTest: { label: 'Test de la manette', icon: 'controller' },
+                    updates: { label: 'Mises à jour', icon: 'update' },
+                    diagnostic: { label: 'Diagnostic', icon: 'info' },
                   }"
                   :key="key"
                   :data-focus-key="`settings:${key}`"
                   :class="{ active: settingsTab === key }"
+                  :aria-current="settingsTab === key ? 'page' : undefined"
                   @click="settingsTab = key"
                 >
-                  {{ label }}<Icon name="right" :size="16" /></button
-                ><button @click="openPanel('power')">
-                  <span>Alimentation</span
-                  ><Icon name="power" :size="16" /></button
+                  <Icon class="settings-category-icon" :name="category.icon" :size="19" />
+                  <span>{{ category.label }}</span><Icon class="settings-chevron" name="right" :size="15" /></button
+                ><button class="settings-power" @click="openPanel('power')">
+                  <Icon class="settings-category-icon" name="power" :size="19" /><span>Alimentation</span>
+                  </button
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
