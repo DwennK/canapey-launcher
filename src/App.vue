@@ -513,10 +513,17 @@ const sleepPc = () => api.power("sleep"),
   restartPc = () => api.power("restart"),
   shutdownPc = () => api.power("shutdown");
 const resumeCurrent = () => api.resume(current.value.id),
-  closeCurrent = () => api.closeApp(current.value.id),
   forceCurrent = () => api.closeApp(current.value.id, true);
 const resumeSession = (id: string) => run("Reprise", () => api.resume(id));
-const closeSession = (id: string) => run("Fermeture", () => api.closeApp(id));
+function closeSession(id: string, dismissMenu = false) {
+  const origin = panel.value;
+  return run("Fermeture", async () => {
+    await api.closeApp(id);
+    if (dismissMenu && panel.value === origin &&
+        ((origin === "quick" && quickId.value === id) ||
+         (origin === "session" && current.value.id === id))) await closePanel();
+  });
+}
 const forceSession = (id: string) =>
   confirm(
     "Forcer la fermeture ?",
@@ -1618,7 +1625,7 @@ onUnmounted(() => {
                 >
                   <Icon name="play" /><span>Reprendre</span>
                 </button>
-                <button @click="closeSession(quickApp.id)">
+                <button @click="closeSession(quickApp.id, true)">
                   <Icon name="close" /><span>{{
                     quickSession.status === "untracked"
                       ? "Ne plus suivre"
@@ -2326,7 +2333,7 @@ onUnmounted(() => {
                 @click="run('Reprise', resumeCurrent)"
               >
                 <Icon name="play" /><span>Reprendre</span></button
-              ><button @click="run('Fermeture', closeCurrent)">
+              ><button @click="closeSession(current.id, true)">
                 <Icon name="close" /><span>{{
                   selectedSession?.status === "untracked"
                     ? "Ne plus suivre ce lancement"

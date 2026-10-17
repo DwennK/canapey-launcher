@@ -19,6 +19,7 @@ async (page) => {
         if(cmd==='save_config'){if(qa.fail)throw Error('Raccourci déjà réservé par Windows.');qa.config=structuredClone(args.config);sessionStorage.setItem('remote-map-qa',JSON.stringify(qa.config));return structuredClone(qa.config);}
         if(cmd==='remote_home_status')return {available:true,active:qa.config.settings.remoteBindings.filter(b=>b.global),error:null};
         if(cmd==='launch_app')return {appId:args.id,name:'Spotify',status:'running',canForce:false};
+        if(cmd==='close_app' && qa.closeFail)throw Error('Fermeture refusée pour le test.');
         if(cmd==='audio_state')return {outputs:[],defaultId:null,volume:null,muted:false};
         if(cmd==='list_monitors')return [];
         if(cmd==='check_update')return {state:'disabled'};
@@ -106,6 +107,26 @@ async (page) => {
   await page.getByRole('button',{name:'Quitter le launcher',exact:true}).waitFor({state:'hidden'});
   await sendUI('accept');await sendUI('accept',false);
   await page.waitForFunction(()=>window.__remoteQA.calls.some(c=>c.cmd==='launch_app'));
+  // Closing a running app dismisses its menu only after a successful request.
+  await sendUI('options');await page.getByRole('button',{name:'Fermer normalement',exact:true}).waitFor();
+  await page.evaluate(()=>window.__remoteQA.closeFail=true);
+  await page.getByRole('button',{name:'Fermer normalement',exact:true}).click();
+  await page.getByText('Fermeture refusée pour le test.',{exact:true}).waitFor();
+  assert(await page.getByRole('button',{name:'Modifier',exact:true}).isVisible(),'Failed close dismissed the menu');
+  await page.evaluate(()=>window.__remoteQA.closeFail=false);
+  await page.getByRole('button',{name:'Fermer normalement',exact:true}).click();
+  await page.getByRole('button',{name:'Modifier',exact:true}).waitFor({state:'hidden'});
+  assert(await page.evaluate(()=>document.activeElement?.matches('.app-card')),'Quick-menu close did not restore card focus');
+  // The secondary session menu must close too, even if the session still exists.
+  await page.evaluate(()=>window.__remoteQA.emit('sessions',[{appId:'spotify',name:'Spotify',status:'closing',canForce:false}]));
+  await sendUI('accept');await sendUI('accept',false);
+  await page.getByRole('button',{name:'Fermer normalement',exact:true}).click();
+  await page.getByRole('button',{name:'Fermer normalement',exact:true}).waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'Paramètres',exact:true}).click();
+  await page.getByRole('button',{name:'Diagnostic',exact:true}).click();
+  await page.locator('.session-detail').getByRole('button',{name:'Fermer',exact:true}).click();
+  assert(await page.locator('.session-detail').isVisible(),'Diagnostic panel was dismissed when closing a session');
+  await page.getByRole('button',{name:'Fermer',exact:true}).first().click();
   await open();await choose('Home');await page.getByRole('button',{name:'Retirer l’association',exact:true}).click();await page.getByText('Association retirée.',{exact:true}).waitFor();
   assert((await bindings()).length===7 && !(await bindings()).some(b=>b.button==='home'),'Removal affected other mappings');
   await learn('4','F8');await page.getByRole('combobox',{name:'Action',exact:true}).selectOption({label:'Vue des tâches (Windows + Tab)'});await save();
