@@ -446,6 +446,7 @@ fn launch_tracked(app: &tauri::AppHandle, item: AppEntry) -> Result<SessionView,
         known,
         owned,
         windows: vec![],
+        maximized_windows: HashSet::new(),
         baseline,
         expected_path: path,
         launched_at: t,
@@ -455,9 +456,10 @@ fn launch_tracked(app: &tauri::AppHandle, item: AppEntry) -> Result<SessionView,
         closing_at: None,
     };
     session.update(&before, &windows, t);
+    session.maximize_new_windows(platform::maximize);
     if existing.is_some() {
         for w in &session.windows {
-            platform::focus(w.handle);
+            platform::focus_app(w);
         }
     }
     let view = session.view(t);
@@ -496,7 +498,11 @@ fn resume_app(app: tauri::AppHandle, id: String) -> Result<(), String> {
                 .any(|live| live.handle == w.handle && live.process == w.process)
         })
         .ok_or("La fenêtre n’est pas encore disponible.")?;
-    if !platform::focus(valid.handle) {
+    // Check all associated windows: the first in Z-order may be a dialog.
+    for window in &session.windows {
+        platform::maximize(window);
+    }
+    if !platform::focus_app(valid) {
         return Err(
             "Windows a gardé le focus. Sélectionnez l’application dans la barre des tâches.".into(),
         );
@@ -689,6 +695,8 @@ fn start_tracking(app: tauri::AppHandle) {
                 for (id, s) in sessions.iter_mut() {
                     if s.update(&processes, &windows, time) {
                         ended.push(id.clone());
+                    } else {
+                        s.maximize_new_windows(platform::maximize);
                     }
                 }
                 let active = state.active.lock().unwrap().clone();

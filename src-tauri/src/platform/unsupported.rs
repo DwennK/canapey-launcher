@@ -12,6 +12,12 @@ pub fn snapshot() -> (Vec<Process>, Vec<Window>) {
 pub fn focus(_: isize) -> bool {
     false
 }
+pub fn focus_app(_: &Window) -> bool {
+    false
+}
+pub fn maximize(_: &Window) -> bool {
+    false
+}
 pub fn close(_: &Window) -> Result<(), String> {
     supported()
 }

@@ -12,6 +12,16 @@ Ce rapport conserve les preuves de la livraison locale initiale, avant publicati
 
 ## Ce qui a réellement été exécuté
 
+### Ajout du 17 octobre 2026 — maximisation des applications
+
+- `npm run check` réussi : build, 46 tests JavaScript et 21 tests Rust. Les nouveaux tests couvrent l’apparition tardive d’une fenêtre enfant, l’attente d’une fenêtre redimensionnable, une seule demande automatique par fenêtre, le remplacement d’une fenêtre et l’exclusion des sessions partagées ou en fermeture.
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` et `git diff --check` réussis.
+- `PATH="/opt/homebrew/opt/llvm/bin:$PATH" cargo xwin clippy --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings` réussi. Le code Windows et les tests natifs de maximisation, de reprise, de conservation des contrôles de fermeture et d’exclusion des dialogues sont compilés ; ces tests Windows ne sont pas exécutés sur le Mac.
+- À vérifier sur Windows 11 : lancer Spotify fermé puis déjà ouvert ; reprendre depuis une fenêtre normale, réduite puis maximisée ; vérifier la croix et le retour à Canapey après fermeture ; ouvrir un dialogue ; redimensionner manuellement puis attendre quelques secondes pour vérifier l’absence de maximisation répétée. Une fenêtre partagée de navigateur doit rester inchangée.
+- Aucun changement d’interface Web : les captures desktop/mobile du navigateur ne permettent pas de vérifier ce comportement natif. Aucun essai interactif Windows, push ou nouvelle publication réalisé pour cette modification.
+
+### Validation initiale
+
 Environnement : macOS ARM64, Node 26, Rust 1.94.1. Compilation croisée avec cargo-xwin déjà présent, LLVM 23 installé via Homebrew et NSIS 3.13 déjà présent. Le PATH de compilation a été limité aux commandes, sans modifier le profil shell. Tests de navigateur avec **Google Chrome système**, contexte isolé sans profil personnel. Aucun téléchargement de Chromium Playwright.
 
 | Vérification | Résultat |

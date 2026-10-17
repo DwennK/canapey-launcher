@@ -2,6 +2,8 @@
 
 ## À venir
 
+- Applications suivies maximisées à l’apparition de leur fenêtre principale et à la reprise depuis Canapey, avec leurs contrôles de fermeture conservés. Dialogues, fenêtres à taille fixe et fenêtres partagées exclus ; le redimensionnement manuel reste possible après l’ouverture.
+
 - Retour à l’accueil par la touche Xbox avec Start + Back en secours pour les nouvelles configurations ; choix Start + Back, LB + RB + Start et Désactivé conservés. Test de détection de 15 secondes et accès au réglage Windows Game Bar dans les paramètres. Détection native à valider sur une manette physique sous Windows.
 
 - Clavier à l’écran AZERTY accessible à la manette pour rechercher et modifier les champs texte : accents, majuscules, symboles, correction et annulation avant validation.

@@ -23,6 +23,7 @@ pub struct Session {
     pub known: HashSet<ProcessKey>,
     pub owned: HashSet<ProcessKey>,
     pub windows: Vec<Window>,
+    pub maximized_windows: HashSet<(isize, ProcessKey)>,
     pub baseline: HashSet<ProcessKey>,
     pub expected_path: Option<String>,
     pub launched_at: u64,
@@ -40,6 +41,23 @@ pub struct SessionView {
     pub can_force: bool,
 }
 impl Session {
+    pub fn maximize_new_windows(&mut self, mut maximize: impl FnMut(&Window) -> bool) {
+        if self.untracked || self.closing_at.is_some() {
+            return;
+        }
+        self.maximized_windows.retain(|(handle, process)| {
+            self.windows
+                .iter()
+                .any(|w| w.handle == *handle && w.process == *process)
+        });
+        for window in &self.windows {
+            let key = (window.handle, window.process);
+            // Retry until the real, resizable window is ready, then leave manual resizing alone.
+            if !self.maximized_windows.contains(&key) && maximize(window) {
+                self.maximized_windows.insert(key);
+            }
+        }
+    }
     pub fn update(&mut self, processes: &[Process], windows: &[Window], now: u64) -> bool {
         let live: HashMap<_, _> = processes.iter().map(|p| (p.key.pid, p)).collect();
         // Retain lineage for vanished bootstrap processes, but never follow a reused PID.
@@ -140,6 +158,7 @@ mod tests {
             known: HashSet::from([p(1, 0, 1).key]),
             owned: HashSet::from([p(1, 0, 1).key]),
             windows: vec![],
+            maximized_windows: HashSet::new(),
             baseline: HashSet::new(),
             expected_path: None,
             launched_at: 0,
@@ -215,5 +234,77 @@ mod tests {
         assert!(!s.owned.contains(&other.key));
         s.closing_at = Some(500);
         assert!(!s.view(6000).can_force);
+    }
+    #[test]
+    fn delayed_child_window_is_maximized_once_when_ready() {
+        let mut s = session();
+        let child = p(2, 1, 2);
+        s.update(std::slice::from_ref(&child), &[], 100);
+        s.maximize_new_windows(|_| panic!("no window yet"));
+        let win = Window {
+            handle: 10,
+            process: child.key,
+        };
+        s.update(
+            std::slice::from_ref(&child),
+            std::slice::from_ref(&win),
+            500,
+        );
+        let mut attempts = 0;
+        s.maximize_new_windows(|_| {
+            attempts += 1;
+            false // Splash screen or main window not yet resizable.
+        });
+        s.maximize_new_windows(|w| {
+            assert_eq!(w.handle, win.handle);
+            attempts += 1;
+            true
+        });
+        s.update(&[child], &[win], 900);
+        s.maximize_new_windows(|_| panic!("do not override subsequent manual resizing"));
+        assert_eq!(attempts, 2);
+    }
+    #[test]
+    fn maximization_skips_untracked_and_closing_sessions() {
+        let mut s = session();
+        s.windows.push(Window {
+            handle: 10,
+            process: p(1, 0, 1).key,
+        });
+        s.untracked = true;
+        s.maximize_new_windows(|_| panic!("shared windows must not be changed"));
+        s.untracked = false;
+        s.closing_at = Some(100);
+        s.maximize_new_windows(|_| panic!("do not reopen a closing window"));
+        assert!(s.maximized_windows.is_empty());
+    }
+    #[test]
+    fn replacement_window_does_not_inherit_maximization_state() {
+        let mut s = session();
+        let process = p(1, 0, 1).key;
+        s.windows = vec![Window {
+            handle: 10,
+            process,
+        }];
+        s.maximize_new_windows(|_| true);
+        s.windows.clear();
+        s.maximize_new_windows(|_| panic!("window has disappeared"));
+        assert!(s.maximized_windows.is_empty());
+        s.windows = vec![Window {
+            handle: 10,
+            process,
+        }];
+        let mut attempts = 0;
+        s.maximize_new_windows(|_| {
+            attempts += 1;
+            true
+        });
+        // A reused handle from a different process must also be treated independently.
+        s.windows[0].process = p(2, 0, 2).key;
+        s.maximize_new_windows(|_| {
+            attempts += 1;
+            true
+        });
+        assert_eq!(attempts, 2);
     }
 }

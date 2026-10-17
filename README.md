@@ -206,6 +206,8 @@ Tracking uses **PID + creation time**, follows descendants and recognises existi
 
 Normal close requests use `WM_CLOSE`. After five seconds, the interface may offer an explicitly confirmed force close, restricted to processes started by Canapey and their identified descendants. Existing instances cannot be force-closed. Tracked sessions remain available in Diagnostics even after their card is removed.
 
+Tracked applications are maximized when their resizable main window appears and when resumed from Canapey, preserving the application's title bar and close controls. Dialogs, tool windows and fixed-size windows are left unchanged. Automatic maximization happens once per window so subsequent manual resizing remains possible. Shared browser/URI windows are excluded; applications that refuse Windows window commands may retain their own size or fullscreen mode.
+
 **Tracking limits:**
 
 - Browser and URI launches often share processes or windows. Their launch is real, but their session is not individually identifiable: use Alt + Tab to resume and the global shortcut to return. Force close is unavailable. Stopping tracking does not close the browser.

@@ -102,12 +102,55 @@ pub fn foreground_is_ours() -> bool {
     }
 }
 pub fn focus(handle: isize) -> bool {
+    focus_window(handle, false)
+}
+pub fn focus_app(window: &Window) -> bool {
+    window_still_owned(window) && focus_window(window.handle, true)
+}
+fn can_maximize(hwnd: HWND) -> bool {
+    unsafe {
+        let style = GetWindowLongW(hwnd, GWL_STYLE) as u32;
+        let extended = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
+        let required = WS_MAXIMIZEBOX | WS_THICKFRAME | WS_SYSMENU;
+        let mut class = [0u16; 256];
+        let len = GetClassNameW(hwnd, class.as_mut_ptr(), class.len() as i32);
+        IsWindowVisible(hwnd) != 0
+            && GetWindow(hwnd, GW_OWNER).is_null()
+            && style & (WS_CHILD | WS_DISABLED) == 0
+            && style & required == required
+            && extended & (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) == 0
+            && len > 0
+            && String::from_utf16_lossy(&class[..len as usize]) != "#32770"
+    }
+}
+pub fn maximize(window: &Window) -> bool {
+    if !window_still_owned(window) || !can_maximize(window.handle as HWND) {
+        return false;
+    }
+    unsafe {
+        let hwnd = window.handle as HWND;
+        // Use the app's normal maximize command without changing decorations or taking focus.
+        // Posting also keeps an unresponsive app from blocking session tracking.
+        IsZoomed(hwnd) != 0 || PostMessageW(hwnd, WM_SYSCOMMAND, SC_MAXIMIZE as usize, 0) != 0
+    }
+}
+fn show_for_focus(hwnd: HWND, maximize: bool) {
+    unsafe {
+        if maximize && can_maximize(hwnd) {
+            ShowWindowAsync(hwnd, SW_MAXIMIZE);
+        } else if IsIconic(hwnd) != 0 {
+            // Restoring an already maximized window would shrink it to its previous size.
+            ShowWindowAsync(hwnd, SW_RESTORE);
+        }
+    }
+}
+fn focus_window(handle: isize, maximize: bool) -> bool {
     unsafe {
         let hwnd = handle as HWND;
         if IsWindow(hwnd) == 0 {
             return false;
         }
-        ShowWindow(hwnd, SW_RESTORE);
+        show_for_focus(hwnd, maximize);
         if SetForegroundWindow(hwnd) != 0 {
             return true;
         }
@@ -850,6 +893,133 @@ pub fn desktop() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct TestWindow(HWND);
+    impl TestWindow {
+        fn new(class: &str, style: u32, extended: u32, owner: HWND) -> Self {
+            unsafe {
+                let hwnd = CreateWindowExW(
+                    extended,
+                    wide(class).as_ptr(),
+                    wide("Canapey window test").as_ptr(),
+                    style,
+                    40,
+                    40,
+                    400,
+                    300,
+                    owner,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                );
+                assert!(
+                    !hwnd.is_null(),
+                    "create test window: {}",
+                    std::io::Error::last_os_error()
+                );
+                ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                Self(hwnd)
+            }
+        }
+        fn tracked(&self) -> Window {
+            Window {
+                handle: self.0 as isize,
+                process: process_key(std::process::id()).unwrap(),
+            }
+        }
+    }
+    impl Drop for TestWindow {
+        fn drop(&mut self) {
+            unsafe {
+                DestroyWindow(self.0);
+            }
+        }
+    }
+    fn dispatch_window_messages() {
+        unsafe {
+            let mut message: MSG = std::mem::zeroed();
+            while PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
+                TranslateMessage(&message);
+                DispatchMessageW(&message);
+            }
+        }
+    }
+    #[test]
+    fn maximization_keeps_window_controls_and_normal_close() {
+        let window = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        assert!(maximize(&window.tracked()));
+        dispatch_window_messages();
+        unsafe {
+            assert_ne!(IsZoomed(window.0), 0);
+            let style = GetWindowLongW(window.0, GWL_STYLE) as u32;
+            assert_eq!(style & WS_OVERLAPPEDWINDOW, WS_OVERLAPPEDWINDOW);
+            assert_eq!(
+                GetMenuState(GetSystemMenu(window.0, 0), SC_CLOSE, MF_BYCOMMAND)
+                    & (MF_DISABLED | MF_GRAYED),
+                0
+            );
+        }
+        close(&window.tracked()).unwrap();
+        dispatch_window_messages();
+        assert_eq!(unsafe { IsWindow(window.0) }, 0);
+    }
+    #[test]
+    fn resume_maximizes_normal_and_minimized_windows_and_preserves_maximized_state() {
+        let window = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        for state in [SW_SHOWNORMAL, SW_MINIMIZE, SW_MAXIMIZE] {
+            unsafe {
+                ShowWindow(window.0, state);
+            }
+            show_for_focus(window.0, true);
+            dispatch_window_messages();
+            assert_ne!(unsafe { IsZoomed(window.0) }, 0);
+        }
+        show_for_focus(window.0, false);
+        dispatch_window_messages();
+        assert_ne!(unsafe { IsZoomed(window.0) }, 0);
+    }
+    #[test]
+    fn maximization_ignores_dialogs_fixed_windows_tools_and_stale_processes() {
+        let owner = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        for (class, style, extended, parent) in [
+            (
+                "STATIC",
+                WS_OVERLAPPEDWINDOW & !WS_THICKFRAME,
+                0,
+                std::ptr::null_mut(),
+            ),
+            (
+                "STATIC",
+                WS_OVERLAPPEDWINDOW & !WS_MAXIMIZEBOX,
+                0,
+                std::ptr::null_mut(),
+            ),
+            (
+                "STATIC",
+                WS_OVERLAPPEDWINDOW,
+                WS_EX_TOOLWINDOW,
+                std::ptr::null_mut(),
+            ),
+            (
+                "STATIC",
+                WS_OVERLAPPEDWINDOW,
+                WS_EX_NOACTIVATE,
+                std::ptr::null_mut(),
+            ),
+            ("STATIC", WS_OVERLAPPEDWINDOW, 0, owner.0),
+            ("#32770", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut()),
+        ] {
+            let window = TestWindow::new(class, style, extended, parent);
+            assert!(!maximize(&window.tracked()));
+            show_for_focus(window.0, true);
+            dispatch_window_messages();
+            assert_eq!(unsafe { IsZoomed(window.0) }, 0);
+        }
+        let mut stale = owner.tracked();
+        stale.process.born += 1;
+        assert!(!maximize(&stale));
+        assert!(!focus_app(&stale));
+    }
     #[test]
     fn desktop_shell_can_be_created() {
         use windows::Win32::System::Com::*;
