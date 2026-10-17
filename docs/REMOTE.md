@@ -26,7 +26,7 @@ Home remet Canapey au premier plan sans fermer l’application courante. Ouvrir/
 ## Implémentation
 
 - `Settings.remoteBindings` conserve bouton, touche, action, portée et identifiant d’application éventuel. Les anciens `remoteHome` sont migrés vers une association Home globale.
-- Les actions d’interface globales passent par un événement `remote-action`, avec appui et relâchement ordonnés sur le thread UI. Valider conserve la gestion appui court / appui long. Les actions d’interface sont suspendues dans l’éditeur de télécommande ; les actions natives, dont Home et les médias, restent globales.
+- Les actions d’interface globales passent par un événement `remote-action`, avec appui et relâchement ordonnés sur le thread UI. Valider conserve la gestion appui court / appui long. Les actions d’interface sont suspendues lorsque l’éditeur de télécommande a le focus ; un déclenchement depuis une autre application quitte cet éditeur et exécute l’action ; les actions natives, dont Home et les médias, restent globales.
 - Le plugin officiel `tauri-plugin-global-shortcut`, limité à Windows, réserve uniquement les raccourcis globaux validés. Aucune permission générale d’enregistrement de raccourcis n’est exposée au JavaScript.
 - Les nouvelles réservations précèdent la sauvegarde. Les anciennes sont libérées après sa réussite. Un conflit ou une erreur disque conserve toutes les anciennes associations et libère les nouvelles réservations temporaires.
 - Au démarrage, les raccourcis disponibles restent actifs même si un autre est occupé. L’erreur est visible dans les réglages ; les sauvegardes sans changement de télécommande ne sont pas bloquées par ce conflit.

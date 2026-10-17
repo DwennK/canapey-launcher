@@ -1,6 +1,6 @@
 [package]
 name = "canapey-launcher"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 rust-version = "1.90"
 description = "A quiet, controller-first Windows living-room launcher"

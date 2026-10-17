@@ -82,7 +82,10 @@ function nativeRemoteAction(event: {binding: RemoteBinding; pressed: boolean; fo
     }
     // Learning is handled separately; do not execute interface mappings
     // while the remote editor is open.
-    if (panel.value === 'settings' && settingsTab.value === 'remote') return;
+    if (panel.value === 'settings' && settingsTab.value === 'remote') {
+      if (!foregrounded) return;
+      dismissPanels();
+    }
     if (!panel.value && (foregrounded || binding.action === 'options' || !launcherRoot.value?.contains(document.activeElement))) {
       await nextTick(); await focusCard();
     }

@@ -82,9 +82,12 @@ async (page) => {
   await page.getByRole('button',{name:'Écran & démarrage',exact:true}).click();
   await page.getByRole('button',{name:'Télécommande',exact:true}).click();
   assert(!await page.getByText('À l’écoute…',{exact:true}).isVisible(),'Capture survived unmount');
-  await page.getByRole('button',{name:'Fermer',exact:true}).click();
   const nativeAction=async(button,pressed=true,foregrounded=true)=>page.evaluate(({button,pressed,foregrounded})=>window.__remoteQA.emit('remote-action',{binding:window.__remoteQA.config.settings.remoteBindings.find(b=>b.button===button),pressed,foregrounded}),{button,pressed,foregrounded});
+  await nativeAction('info',true,false);
+  assert(await page.locator('.remote-photo').isVisible(),'Focused editor executed a global interface action');
+  // Test immediately after configuring: restoring from another app must exit the editor.
   await nativeAction('info');await page.locator('main.grid-mode').waitFor();
+  await page.locator('.remote-photo').waitFor({state:'hidden'});
   await nativeAction('up');
   // Every interface action is delivered by the native event, without DOM keydown.
   await page.evaluate(()=>window.__remoteQA.emit('remote-action',{binding:{button:'menu',key:{code:'KeyM',ctrl:false,alt:false,shift:false},action:'menu',global:true,appId:null},pressed:true,foregrounded:true}));

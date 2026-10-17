@@ -1,6 +1,6 @@
 # Notes de version
 
-## 0.3.1 — 2026-10-17
+## 0.3.2 — 2026-10-17
 
 - Télécommande : toutes les actions sont disponibles globalement, avec apprentissage des touches ordinaires, de navigation, du pavé numérique et multimédias, indépendamment du récepteur. Les actions d’interface ramènent Canapey au premier plan ; les anciennes associations locales restent modifiables.
 - Réservations Windows avec conflits explicites et indication de leur effet sur le clavier physique. Commandes multimédias sans réinjection de touches pour éviter les boucles ; doublons des alias Windows détectés.
