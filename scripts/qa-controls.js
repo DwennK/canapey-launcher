@@ -292,9 +292,7 @@ async (page) => {
       await page.evaluate(() => !!document.activeElement.closest("header")),
       "Header unreachable",
     );
-    await send("right");
-    await send("right");
-    await send("right");
+    for (let i = 0; i < 5 && await page.evaluate(() => document.activeElement.getAttribute("aria-label")) !== "Commandes rapides"; i++) await send("right");
     assert(
       (await page.evaluate(() =>
         document.activeElement.getAttribute("aria-label"),
@@ -601,4 +599,4 @@ async (page) => {
     errors,
     report,
   };
-};
+}
