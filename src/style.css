@@ -356,11 +356,11 @@ svg {
   border-radius: 12px;
   z-index: -1;
 }
-.app-card.selected .card-visual {
+.launcher[data-card-focus="true"] .app-card.selected .card-visual {
   transform: scale(1.035);
   box-shadow: 0 14px 36px #0006;
 }
-.app-card.selected .card-visual:after {
+.launcher[data-card-focus="true"] .app-card.selected .card-visual:after {
   border-color: #e2d9ca;
   box-shadow: 0 0 20px #fff1;
 }

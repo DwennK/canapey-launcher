@@ -151,6 +151,7 @@ const selected = ref(0),
   view = ref<"carousel" | "grid">("carousel"),
   panel = ref<Panel>("");
 const launcherRoot = ref<HTMLElement>();
+const cardsFocused = ref(false);
 const editingControl = ref<HTMLElement | null>(null);
 const keyboardTarget = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 const screenKeyboard = ref<InstanceType<typeof OnScreenKeyboard>>();
@@ -412,16 +413,28 @@ let bgTimer: ReturnType<typeof setTimeout>;
 const holdingCard = ref(false);
 const quickId = ref<string | null>(null);
 const quickAnchor = ref({ left: 16, top: 16 });
+const quickSize = ref({ width: 360, height: 540, zoom: 1 });
 const quickPosition = computed(() => {
   const top = Math.max(
     16,
-    Math.min(quickAnchor.value.top - 24, height.value - 540),
+    Math.min(quickAnchor.value.top - 24, height.value - quickSize.value.height - 16),
   );
   return {
-    left: `${Math.max(16, Math.min(quickAnchor.value.left, width.value - 376))}px`,
-    top: `${top}px`,
-    maxHeight: `${Math.max(0, height.value - top - 16)}px`,
+    left: `${Math.max(16, Math.min(quickAnchor.value.left, width.value - quickSize.value.width - 16)) / quickSize.value.zoom}px`,
+    top: `${top / quickSize.value.zoom}px`,
+    maxHeight: `${Math.max(0, height.value - 32) / quickSize.value.zoom}px`,
   };
+});
+const quickObserver = new ResizeObserver(() => {
+  const element = panelRoot.value;
+  if (!element || !['quick', 'move'].includes(panel.value)) return;
+  const zoom = Number.parseFloat(getComputedStyle(element).zoom) || 1;
+  quickSize.value = { width: element.offsetWidth * zoom, height: element.offsetHeight * zoom, zoom };
+});
+watch(() => [panel.value, width.value, height.value], async () => {
+  quickObserver.disconnect();
+  await nextTick();
+  if (panelRoot.value && ['quick', 'move'].includes(panel.value)) quickObserver.observe(panelRoot.value);
 });
 const quickApp = computed(() =>
   config.value.apps.find((a) => a.id === quickId.value),
@@ -984,7 +997,8 @@ function pointerInput(e: PointerEvent) {
     : null;
 }
 function focusChanged() {
-  if (!cardsRoot.value?.contains(document.activeElement)) cancelHold();
+  cardsFocused.value = !!cardsRoot.value?.contains(document.activeElement);
+  if (!cardsFocused.value) cancelHold();
   if (editingControl.value !== document.activeElement)
     editingControl.value = null;
 }
@@ -1297,6 +1311,7 @@ onUnmounted(() => {
   document.removeEventListener("focusin", focusChanged);
   motionPreference.removeEventListener("change", motionChanged);
   resizeObserver?.disconnect();
+  quickObserver.disconnect();
   clearInterval(clockTimer);
   clearInterval(audioTimer);
   clearTimeout(updateTimer);
@@ -1310,6 +1325,7 @@ onUnmounted(() => {
   <main
     ref="launcherRoot"
     :data-editing="!!editingControl"
+    :data-card-focus="cardsFocused && !panel"
     class="launcher"
     :class="{
       'reduce-motion': !config.settings.motion || osReducedMotion,

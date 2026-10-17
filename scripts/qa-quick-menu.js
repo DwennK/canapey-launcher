@@ -304,6 +304,8 @@ async (page) => {
   await dialog()
     .getByRole("button", { name: "Fermer normalement", exact: true })
     .click();
+  await dialog().waitFor({ state: "hidden" });
+  await card("Internet").click({ button: "right" });
   await dialog()
     .getByRole("button", { name: "Forcer la fermeture", exact: true })
     .click();
@@ -331,6 +333,30 @@ async (page) => {
     "Untracked label missing",
   );
   await close();
+  // Menus grow when an app is running; include the desktop zoom breakpoint.
+  for (const viewport of [{width:1440,height:900},{width:1920,height:1080},{width:1920,height:720},{width:390,height:550}]) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => window.__qa.emit('sessions', [{appId:'internet',name:'Internet',status:'running',canForce:false}]));
+    await card('Internet').focus();
+    await page.keyboard.down('Enter');await dialog().waitFor();await page.keyboard.up('Enter');
+    await page.evaluate(() => window.__qa.emit('sessions', [{appId:'internet',name:'Internet',status:'closing',canForce:true}]));
+    await page.getByRole('button',{name:'Forcer la fermeture',exact:true}).waitFor();
+    await page.waitForFunction(() => {const r=document.querySelector('.quick-panel')?.getBoundingClientRect();return r&&r.top>=15&&r.bottom<=innerHeight-15&&r.left>=15&&r.right<=innerWidth-15;});
+    const last = page.getByRole('button',{name:'Retirer la carte',exact:true});
+    await last.focus();await last.scrollIntoViewIfNeeded();
+    const bottom=await last.boundingBox();assert(bottom.y+bottom.height<=viewport.height-15,'Last action is clipped');
+    await page.screenshot({path:`output/playwright/quick-contained-${viewport.width}x${viewport.height}.png`});
+    await close();
+  }
+  await page.setViewportSize({width:1440,height:900});
+  await page.getByRole('button',{name:'Paramètres',exact:true}).click();
+  await page.getByRole('button',{name:'Fermer',exact:true}).click();
+  await dialog().waitFor({state:'hidden'});
+  assert(await page.locator('main').getAttribute('data-card-focus')==='false','Card remains highlighted with header focus');
+  assert(await page.locator('.app-card.selected .card-visual').evaluate(el=>getComputedStyle(el,'::after').borderTopColor)==='rgba(0, 0, 0, 0)','Card still has a focus ring');
+  await card('Internet').focus();await page.keyboard.press('F1');await page.keyboard.press('Escape');
+  await dialog().waitFor({state:'hidden'});
+  assert(await page.locator('main').getAttribute('data-card-focus')==='true','Card focus not restored after keyboard settings');
   // Grid, outside dismissal and touch in a real emulated touch surface.
   await card("Internet").focus();
   await page.keyboard.press("ArrowDown");
@@ -382,7 +408,7 @@ async (page) => {
   assert(errors.length === 0, errors.join("\n"));
   return {
     result: "passed",
-    viewports: ["1440x900", "390x844"],
+    viewports: ["1440x900", "1920x1080", "1920x720", "390x550", "390x844"],
     errors,
     launches: await launches(),
     nativeHardware: "not tested",
