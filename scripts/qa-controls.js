@@ -519,8 +519,15 @@ async (page) => {
     await send("left");
     await send("accept");
     await send("accept");
-    await page.getByRole("dialog", { name: "Application en cours" }).waitFor();
-    await mapPanel("Active session");
+    assert(await page.evaluate(() => window.__qa.calls.some(call => call.cmd === "resume_app")), "Short press did not resume the active app");
+    if (driver === "keyboard") {
+      await page.keyboard.down("Enter");
+      await page.locator('.quick-panel').waitFor();
+      await page.keyboard.up("Enter");
+    } else {
+      await send("options");
+    }
+    await mapPanel("Active session actions");
     await go(button("Forcer la fermeture"));
     await send("accept");
     await mapPanel("Force-close confirmation");
