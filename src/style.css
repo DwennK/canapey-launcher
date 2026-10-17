@@ -919,11 +919,36 @@ textarea {
   font-size: 10px;
 }
 .release-notes {
-  font: 12px/1.8 inherit;
-  white-space: pre-wrap;
-  max-height: 160px;
-  overflow: auto;
-  color: #b9c2ce;
+  margin: 24px 0;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff03;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #d2d5db;
+  overflow-wrap: anywhere;
+}
+.release-notes h4 {
+  margin: 24px 0 10px;
+  color: #f5f3ef;
+  font-size: 16px;
+  font-weight: 600;
+}
+.release-notes:focus-visible,
+:root[data-input-mode="directional"] .release-notes:focus { outline: 2px solid var(--cream); outline-offset: -2px; }
+.release-notes > :first-child { margin-top: 0; }
+.release-notes > :last-child { margin-bottom: 0; }
+.release-notes p { margin: 12px 0; }
+.release-notes ul { margin: 12px 0; padding-left: 22px; }
+.release-notes li { padding-left: 4px; margin: 8px 0; }
+.release-notes li::marker { color: var(--cream); }
+.release-notes strong { color: #f5f3ef; font-weight: 600; }
+.release-notes code {
+  font-size: .9em;
+  background: #ffffff0a;
+  border-radius: 4px;
+  padding: 2px 5px;
 }
 .diagnostic {
   font-size: 12px;

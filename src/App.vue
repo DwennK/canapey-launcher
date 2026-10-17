@@ -42,6 +42,7 @@ const XboxHomeSettings = defineAsyncComponent(
 const RemoteHomeSettings = defineAsyncComponent(
   () => import("./components/RemoteHomeSettings.vue"),
 );
+const ReleaseNotes = defineAsyncComponent(() => import('./components/ReleaseNotes.vue'));
 const remoteCapturing = ref(false);
 function remoteCaptureChanged(value: boolean) {
   cancelHold();
@@ -775,6 +776,13 @@ function dispatch(action: Action) {
   }
   if (working.value) return;
   const element = document.activeElement as HTMLElement;
+  if (element.matches('.release-notes') && (action === 'up' || action === 'down')) {
+    const scroller = element.closest('.settings-content');
+    if (scroller && (action === 'down' ? scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1 : scroller.scrollTop > 0)) {
+      scroller.scrollBy({ top: action === 'down' ? 120 : -120, behavior: 'instant' });
+      return;
+    }
+  }
   if (
     panel.value === "audio" &&
     panelRoot.value &&
@@ -1939,9 +1947,7 @@ onUnmounted(() => {
                   <p v-if="updateError" class="inline-error">
                     {{ updateError }}
                   </p>
-                  <pre v-if="update?.notes" class="release-notes">{{
-                    update.notes
-                  }}</pre>
+                  <ReleaseNotes v-if="update?.notes" :notes="update.notes" />
                   <button
                     class="primary-button"
                     :disabled="!!working"
