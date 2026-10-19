@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.4.0-experimental-78664E?style=flat-square" alt="Version 0.4.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.5.0-experimental-78664E?style=flat-square" alt="Version 0.5.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.4.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -76,6 +76,7 @@
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
 | **Shortcuts** | Executables, Windows shortcuts and supported URIs |
 | **Quick controls** | Header audio button, Windows master volume/mute, default output selection and confirmed sleep; controller-accessible side panel |
+| **iPhone remote** | Experimental Apple TV Remote receiver in Rust: PIN pairing, navigation, Home and media controls; disabled by default, private IPv4 networks only |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
 | **App sessions** | Launch, resume and request a normal close for identifiable apps; return when their last tracked window closes |
 | **Personalisation** | Card ordering, bundled themes, custom card/background images and interface scaling |
@@ -87,7 +88,7 @@
 
 ## Downloads
 
-**Current project version: 0.4.0.** Download the Windows installer from [the v0.4.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.4.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.5.0.** Download the Windows installer from [the v0.5.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -113,6 +114,14 @@ On first launch, choose **Add applications** to discover installed applications 
 | Return globally without closing the running app | Configurable in **Settings → Télécommande** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
+
+### iPhone / Apple TV Remote
+
+In **Settings → Télécommande → iPhone**, enable the receiver and choose **Associer un iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
+
+Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active application's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
+
+This feature remains experimental: real Windows/iPhone compatibility and wake-from-sleep recovery have not yet been validated. Mouse mode, Siri, AirPlay, playback information and waking the PC are outside this version. See [implementation, upstream tracking and hardware checks](docs/APPLE_REMOTE.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ### Skip 1s / Flirc remote
 

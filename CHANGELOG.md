@@ -1,6 +1,6 @@
 # Notes de version
 
-## Non publié
+## 0.5.0 — 2026-10-19
 
 - Télécommande iPhone expérimentale, native en Rust : association par PIN, navigation dans Canapey et les applications Windows, retour à l’accueil et commandes multimédias. Désactivée par défaut, limitée aux réseaux privés IPv4 ; compatibilité sur iPhone réel à confirmer.
 - Paramètres dédiés, appareils révocables et identité protégée par Windows DPAPI.

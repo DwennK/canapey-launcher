@@ -1,9 +1,10 @@
 # Télécommande iPhone / Apple TV Remote
 
-État au **19 octobre 2026** : portage Rust local expérimental, désactivé par défaut,
+État au **19 octobre 2026** : portage Rust expérimental pour v0.5.0, désactivé par défaut,
 réservé à Windows. Interopérabilité automatisée avec pyatv vérifiée ; **la découverte
 et le fonctionnement avec un vrai iPhone sur Windows restent à confirmer**.
-Cette modification n’a pas été publiée.
+Consulter la [release v0.5.0](https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0)
+pour les fichiers distribués et les résultats de livraison.
 
 ## Utilisation
 
@@ -35,7 +36,7 @@ n’ajoute aucune exception automatiquement.
 
 | Source | Dernière référence examinée | Référence portée / utilisée |
 | --- | --- | --- |
-| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0 ; HEAD vérifié le 19/10/2026 | Sous-ensemble Companion de ce commit, adapté en Rust dans ce changement local ; pas de reprise intégrale |
+| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0 ; HEAD vérifié le 19/10/2026 | Sous-ensemble Companion de ce commit, adapté en Rust pour v0.5.0 ; pas de reprise intégrale |
 | [pyatv](https://github.com/postlund/pyatv) | [`v0.18.0`, `d88abc960e188d3cd2498d19117e75d7711d8600`](https://github.com/postlund/pyatv/tree/v0.18.0), fichiers Companion, HAP/SRP, OPACK et ChaCha20 | Oracle d’interopérabilité `pyatv==0.18.0` ; conventions cryptographiques et sérialisation adaptées |
 | [Documentation Companion](https://pyatv.dev/documentation/protocols/#companion-link) | Consultée le 19/10/2026 | Description du protocole ; aucun engagement de compatibilité Apple |
 
@@ -151,7 +152,8 @@ est attendu ; l’API audio avec retour absolu n’est pas prise en charge.
 
 Le job CI `companion-interop` exécute le même oracle sous Linux. Le job Windows
 existant exécute les tests natifs, dont DPAPI et les messages clavier ciblés.
-**Les workflows modifiés ne sont pas encore exécutés sur GitHub : aucun push.**
+Les résultats de livraison sont consultables dans [GitHub Actions](https://github.com/DwennK/canapey-launcher/actions).
+Le bilan ci-dessous décrit les contrôles locaux effectués avant cette livraison.
 
 Vérifications locales du 19/10/2026 :
 
