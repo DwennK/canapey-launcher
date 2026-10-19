@@ -228,6 +228,7 @@ const clock = ref(new Date()),
   sessions = ref<Session[]>([]),
   toast = ref(""),
   working = ref("");
+const checkingUpdates = computed(() => working.value === "Recherche de mises à jour");
 const panelRoot = ref<HTMLElement>(),
   cardsRoot = ref<HTMLElement>(),
   width = ref(window.innerWidth),
@@ -1141,6 +1142,8 @@ async function imagePick(kind: "card" | "background") {
   });
 }
 async function checkUpdates() {
+  if (working.value) return;
+  update.value = null;
   updateError.value = "";
   await run("Recherche de mises à jour", async () => {
     try {
@@ -1558,7 +1561,7 @@ onUnmounted(() => {
         >Aperçu interface · fonctions Windows indisponibles</span
       ><span v-else class="footer-date">{{ date }}</span>
     </footer>
-    <div v-if="working" class="busy-pill" role="status">
+    <div v-if="working && !checkingUpdates" class="busy-pill" role="status">
       <span class="spinner" />{{ working }}
     </div>
     <Transition name="toast"
@@ -2018,16 +2021,21 @@ onUnmounted(() => {
                     <img src="/brand/canapey-mark.svg" width="48" height="48" alt="" /><span>canapey.</span
                     ><small>Version {{ version }}</small>
                   </div>
-                  <h3>
+                  <h3 aria-live="polite" aria-atomic="true">
                     {{
-                      update?.state === "available"
-                        ? `Version ${update.version} disponible`
-                        : update?.state === "current"
-                          ? "Vous êtes à jour."
-                          : "Mises à jour"
+                      checkingUpdates
+                        ? "Recherche de mises à jour…"
+                        : update?.state === "available"
+                          ? `Version ${update.version} disponible`
+                          : update?.state === "current"
+                            ? "Vous êtes à jour."
+                            : "Mises à jour"
                     }}
                   </h3>
-                  <p class="muted">
+                  <p v-if="update?.state === 'current'" class="muted">
+                    Vous utilisez la dernière version disponible de Canapey.
+                  </p>
+                  <p v-else class="muted">
                     Canapey ferme les applications suivies avant l’installation,
                     puis redémarre. Vos réglages sont conservés.
                   </p>
