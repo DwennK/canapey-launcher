@@ -117,7 +117,7 @@ onUnmounted(() => {
 <template>
   <section class="remote-config" aria-labelledby="remote-title">
     <header class="remote-heading">
-      <div><h3 id="remote-title">Télécommande</h3><p>Un bouton, une action. Même en dehors de Canapey.</p></div>
+      <div><slot name="title"><h3 id="remote-title">Télécommande</h3></slot><p>Un bouton, une action. Même en dehors de Canapey.</p></div>
       <span class="remote-count">{{ bindings.length }} associé{{ bindings.length > 1 ? 's' : '' }}</span>
     </header>
     <button class="remote-photo-toggle small-button" :aria-expanded="photoExpanded" aria-controls="remote-device" @click="photoExpanded = !photoExpanded">{{ photoExpanded ? 'Masquer la télécommande' : 'Choisir sur la télécommande' }}</button>

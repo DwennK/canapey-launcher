@@ -41,6 +41,19 @@ import {
 const XboxHomeSettings = defineAsyncComponent(
   () => import("./components/XboxHomeSettings.vue"),
 );
+const AppleRemoteSettings = defineAsyncComponent(() => import("./components/AppleRemoteSettings.vue"));
+const remoteDevice = ref<"flirc" | "iphone">("flirc");
+async function saveAppleRemote(settings: import("./lib/apple-remote").AppleRemoteSettings) {
+  config.value.settings.appleRemote = settings;
+  return queueSave();
+}
+let appleAccept: number | null = null;
+function appleInput(event: {action: Action; connection: number}) {
+  if (event.action === "accept-cancel") { if (event.connection === 0 || appleAccept === event.connection) { appleAccept = null; cancelHold(); } return; }
+  if (event.action === "accept-down") { if (remoteCapturing.value || appleAccept !== null) return; appleAccept = event.connection; beginAccept("iphone"); return; }
+  if (event.action === "accept-up") { if (appleAccept === event.connection) { appleAccept = null; releaseAccept("iphone"); } return; }
+  dispatch(event.action);
+}
 const RemoteHomeSettings = defineAsyncComponent(
   () => import("./components/RemoteHomeSettings.vue"),
 );
@@ -1265,6 +1278,7 @@ onMounted(async () => {
     if (b.warning) notify(b.warning);
     startupMark("subscribeStart");
     stopNative = await api.subscribe({
+      appleInput,
       action: (action) => {
         if (!controllerTesting.value) dispatch(action);
       },
@@ -1742,14 +1756,28 @@ onUnmounted(() => {
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
+                <div v-if="settingsTab === 'remote'">
+                  <div v-if="remoteDevice === 'iphone'" class="remote-device-tabs" role="group" aria-label="Type de télécommande">
+                    <button class="small-button" aria-pressed="false" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
+                    <button class="small-button" aria-pressed="true" @click="remoteDevice = 'iphone'">iPhone</button>
+                  </div>
+                  <AppleRemoteSettings v-if="remoteDevice === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
                 <RemoteHomeSettings
-                  v-if="settingsTab === 'remote'"
+                  v-else
                   :native="native"
                   :bindings="config.settings.remoteBindings ?? []"
                   :apps="config.apps"
                   :save-bindings="saveRemoteBindings"
                   @capturing="remoteCaptureChanged"
-                />
+                >
+                  <template #title>
+                    <div id="remote-title" class="remote-device-tabs in-heading" role="group" aria-label="Type de télécommande">
+                      <button class="small-button" aria-pressed="true" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
+                      <button class="small-button" aria-pressed="false" @click="remoteDevice = 'iphone'">iPhone</button>
+                    </div>
+                  </template>
+                </RemoteHomeSettings>
+                </div>
                 <template v-if="settingsTab === 'general'"
                   ><h3>Écran et démarrage</h3>
                   <label class="setting-row"
@@ -2480,3 +2508,7 @@ onUnmounted(() => {
     />
   </main>
 </template>
+
+<style scoped>
+.remote-device-tabs{display:flex;gap:8px;margin-bottom:22px}.remote-device-tabs.in-heading{margin-bottom:0}.remote-device-tabs.in-heading button{padding:6px 10px;font-size:12px}.remote-device-tabs button[aria-pressed="true"]{background:#ffffff18;border-color:#ffffff50;color:#fff}
+</style>

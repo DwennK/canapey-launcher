@@ -950,10 +950,49 @@ pub fn close_foreground_window() -> Result<(), String> {
 }
 
 pub fn escape() -> Result<(), String> {
+    remote_navigation("back")
+}
+
+pub fn remote_navigation(action: &str) -> Result<(), String> {
+    drop(navigation_press(action, true)?);
+    Ok(())
+}
+
+/// Keep the original recipient until release, even if the foreground changes.
+pub struct RemoteKeyPress {
+    target: HWND,
+    thread: u32,
+    key: u16,
+    flags: isize,
+}
+impl Drop for RemoteKeyPress {
+    fn drop(&mut self) {
+        unsafe {
+            if IsWindow(self.target) != 0
+                && GetWindowThreadProcessId(self.target, std::ptr::null_mut()) == self.thread
+            {
+                PostMessageW(
+                    self.target,
+                    WM_KEYUP,
+                    self.key as usize,
+                    self.flags | 0xc000_0000,
+                );
+            }
+        }
+    }
+}
+
+pub fn remote_navigation_press(action: &str) -> Result<RemoteKeyPress, String> {
+    // Network events must not wait behind a physical modifier: a queued command
+    // could otherwise outlive revocation or the original foreground window.
+    navigation_press(action, false)
+}
+
+fn navigation_press(action: &str, wait_for_modifiers: bool) -> Result<RemoteKeyPress, String> {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     static ACTIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let Ok(_guard) = ACTIVE.try_lock() else {
-        return Ok(());
+        return Err("Une commande de navigation est déjà en cours.".into());
     };
     let foreground = unsafe { GetForegroundWindow() };
     let deadline = Instant::now() + Duration::from_secs(2);
@@ -961,44 +1000,65 @@ pub fn escape() -> Result<(), String> {
         .iter()
         .any(|key| unsafe { GetAsyncKeyState(*key as i32) < 0 })
     {
-        if Instant::now() >= deadline {
-            return Err("Relâchez les touches puis réessayez d’envoyer Échap.".into());
+        if !wait_for_modifiers || Instant::now() >= deadline {
+            return Err("Relâchez les touches puis réessayez d’envoyer la commande.".into());
         }
         std::thread::sleep(Duration::from_millis(10));
     }
     unsafe {
         if GetForegroundWindow() != foreground {
-            return Err("La fenêtre active a changé. Réessayez d’envoyer Échap.".into());
+            return Err("La fenêtre active a changé. Réessayez d’envoyer la commande.".into());
         }
         let mut info: GUITHREADINFO = std::mem::zeroed();
         info.cbSize = std::mem::size_of::<GUITHREADINFO>() as u32;
         if GetGUIThreadInfo(0, &mut info) == 0 {
-            return Err("Impossible d’identifier la fenêtre active pour Échap.".into());
+            return Err("Impossible d’identifier la fenêtre active pour la navigation.".into());
         }
         let target = if info.hwndFocus.is_null() {
             info.hwndActive
         } else {
             info.hwndFocus
         };
-        post_escape(target)
+        post_remote_press(target, action)
     }
 }
 
-fn post_escape(target: HWND) -> Result<(), String> {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::VK_ESCAPE;
+fn post_remote_press(target: HWND, action: &str) -> Result<RemoteKeyPress, String> {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
+    let key = match action {
+        "up" => VK_UP,
+        "down" => VK_DOWN,
+        "left" => VK_LEFT,
+        "right" => VK_RIGHT,
+        "accept" => VK_RETURN,
+        "back" => VK_ESCAPE,
+        _ => return Err("Commande de navigation invalide.".into()),
+    };
     unsafe {
         if target.is_null() || IsWindow(target) == 0 {
-            return Err("Aucune fenêtre active pour recevoir Échap.".into());
+            return Err("Aucune fenêtre active pour recevoir la commande.".into());
         }
         // Target the focused control's queue directly: SendInput would be caught
         // again if Escape is reserved by any of our global remote bindings.
-        let down = PostMessageW(target, WM_KEYDOWN, VK_ESCAPE as usize, 0x0001_0001);
-        let up = PostMessageW(target, WM_KEYUP, VK_ESCAPE as usize, 0xc001_0001);
-        if down == 0 || up == 0 {
-            return Err("Windows n’a pas accepté la touche Échap.".into());
+        let scan = MapVirtualKeyW(key as u32, MAPVK_VK_TO_VSC);
+        let flags = 1
+            | ((scan as isize) << 16)
+            | if matches!(key, VK_UP | VK_DOWN | VK_LEFT | VK_RIGHT) {
+                1 << 24
+            } else {
+                0
+            };
+        let thread = GetWindowThreadProcessId(target, std::ptr::null_mut());
+        if PostMessageW(target, WM_KEYDOWN, key as usize, flags) == 0 {
+            return Err("Windows n’a pas accepté la commande.".into());
         }
+        Ok(RemoteKeyPress {
+            target,
+            thread,
+            key,
+            flags,
+        })
     }
-    Ok(())
 }
 
 fn request_window_close(target: HWND) -> Result<(), String> {
@@ -1157,8 +1217,16 @@ mod tests {
     #[test]
     fn remote_escape_targets_window_queue_with_both_key_edges() {
         let window = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
-        assert!(post_escape(std::ptr::null_mut()).is_err());
-        post_escape(window.0).unwrap();
+        assert!(post_remote_press(std::ptr::null_mut(), "back").is_err());
+        let press = post_remote_press(window.0, "back").unwrap();
+        unsafe {
+            let mut message: MSG = std::mem::zeroed();
+            assert_eq!(
+                PeekMessageW(&mut message, window.0, WM_KEYUP, WM_KEYUP, PM_REMOVE),
+                0
+            );
+        }
+        drop(press);
         unsafe {
             let mut message: MSG = std::mem::zeroed();
             for (kind, flags) in [(WM_KEYDOWN, 0x0001_0001), (WM_KEYUP, 0xc001_0001)] {

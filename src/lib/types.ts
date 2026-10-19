@@ -40,6 +40,7 @@ export interface Settings {
   returnShortcut: "xbox" | "startBack" | "shouldersStart" | "disabled";
   remoteHome: RemoteShortcut | null; // Legacy Home-only configuration, migrated on load.
   remoteBindings: RemoteBinding[];
+  appleRemote?: import("./apple-remote").AppleRemoteSettings;
   holdMs: number;
 }
 export interface RemoteShortcut {
@@ -126,6 +127,7 @@ export const defaults = (): Config => ({
     returnShortcut: "xbox",
     remoteHome: null,
     remoteBindings: [],
+    appleRemote: { enabled: false, name: "Canapey — Salon", interface: null },
     holdMs: 1200,
   },
 });

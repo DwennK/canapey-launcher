@@ -52,6 +52,7 @@ pub struct Settings {
     pub deadzone: f32,
     pub return_shortcut: String,
     pub remote_bindings: Vec<crate::remote_shortcut::RemoteBinding>,
+    pub apple_remote: crate::apple_remote::Settings,
     pub remote_home: Option<crate::remote_shortcut::RemoteShortcut>,
     pub hold_ms: u64,
 }
@@ -73,6 +74,7 @@ impl Default for Settings {
             return_shortcut: "xbox".into(),
             remote_home: None,
             remote_bindings: vec![],
+            apple_remote: Default::default(),
             hold_ms: 1200,
         }
     }
@@ -209,6 +211,7 @@ impl Config {
         }
         let s = &self.settings;
         crate::remote_shortcut::validate_bindings(&s.remote_bindings)?;
+        s.apple_remote.validate()?;
         if let Some(shortcut) = &s.remote_home {
             shortcut.validate()?;
         }

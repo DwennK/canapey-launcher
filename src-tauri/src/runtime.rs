@@ -137,6 +137,7 @@ fn frontend_painted(app: tauri::AppHandle, state: tauri::State<State>, timings: 
             serde_json::to_string(&timings).unwrap_or_default()
         );
         schedule_tray(&app);
+        crate::apple_remote_desktop::start(&app);
     }
 }
 #[derive(serde::Deserialize, Serialize)]
@@ -219,6 +220,9 @@ async fn save_config(
     let display_changed = config.settings.monitor != current.settings.monitor
         || config.settings.fullscreen != current.settings.fullscreen;
     *state.config.lock().unwrap() = config.clone();
+    if config.settings.apple_remote != current.settings.apple_remote {
+        crate::apple_remote_desktop::configure(&app, config.settings.apple_remote.clone());
+    }
     if display_changed {
         if let Err(error) = apply_display(&app, &config) {
             log::warn!("Display settings: {error}");
@@ -1039,6 +1043,9 @@ pub fn run() {
                 active: Mutex::new(None),
             });
             app.manage(crate::xbox_home::XboxHomeState::default());
+            app.manage(crate::apple_remote_desktop::AppleRemoteState::new(
+                config.settings.apple_remote.clone(),
+            ));
             app.manage(crate::remote_home::RemoteHomeState::default());
             crate::remote_home::start(app.handle(), &config.settings.remote_bindings);
             let display_started = Instant::now();
@@ -1085,6 +1092,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             run_remote_action,
+            crate::apple_remote_desktop::apple_remote_status,
+            crate::apple_remote_desktop::apple_remote_pair,
+            crate::apple_remote_desktop::apple_remote_cancel_pairing,
+            crate::apple_remote_desktop::apple_remote_forget,
             crate::remote_home::remote_home_status,
             crate::remote_home::set_remote_capture,
             crate::xbox_home::xbox_home_status,
@@ -1113,6 +1124,11 @@ pub fn run() {
             check_update,
             install_update
         ])
-        .run(tauri::generate_context!())
-        .expect("Impossible de démarrer Canapey Launcher");
+        .build(tauri::generate_context!())
+        .expect("Impossible de démarrer Canapey Launcher")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                crate::apple_remote_desktop::shutdown(app);
+            }
+        });
 }

@@ -118,6 +118,7 @@ export const imageUrl = (path: string | null | undefined) =>
     : "";
 export async function subscribe(handlers: {
   action: (v: Action) => void;
+  appleInput: (v: {action: Action; connection: number}) => void;
   controller: (v: string | null) => void;
   sessions: (v: Session[]) => void;
   home: (preservePanel: boolean) => void;
@@ -129,6 +130,7 @@ export async function subscribe(handlers: {
 }) {
   if (!native) return () => {};
   const stops = await Promise.all([
+    listen<{action: Action; connection: number}>("apple-input", e => handlers.appleInput(e.payload)),
     listen<Action>("input", (e) => handlers.action(e.payload)),
     listen<string>("update-status", (e) => handlers.updateStatus(e.payload)),
     listen<{binding: RemoteBinding; pressed: boolean; foregrounded: boolean}>("remote-action", e => handlers.remoteAction(e.payload)),

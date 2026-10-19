@@ -1,5 +1,11 @@
 # Notes de version
 
+## Non publié
+
+- Télécommande iPhone expérimentale, native en Rust : association par PIN, navigation dans Canapey et les applications Windows, retour à l’accueil et commandes multimédias. Désactivée par défaut, limitée aux réseaux privés IPv4 ; compatibilité sur iPhone réel à confirmer.
+- Paramètres dédiés, appareils révocables et identité protégée par Windows DPAPI.
+- Tests d’interopérabilité Companion avec pyatv et suivi documenté des projets d’origine avant chaque release.
+
 ## 0.4.0 — 2026-10-17
 
 - Nouvel onglet Ambiance séparé des Manettes : ambiances générales Salon, Émeraude, Nuit et Crépuscule, fond fixe ou lié à l’application, luminosité, flou, animations et volume des sons.

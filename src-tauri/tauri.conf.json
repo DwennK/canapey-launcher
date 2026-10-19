@@ -59,6 +59,9 @@
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       }
+    },
+    "resources": {
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
     }
   },
   "plugins": {

@@ -1,3 +1,6 @@
+pub mod apple_remote;
+#[cfg(feature = "desktop")]
+mod apple_remote_desktop;
 pub mod audio;
 pub mod config;
 pub mod home_shortcut;
