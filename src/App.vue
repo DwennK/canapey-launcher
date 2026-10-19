@@ -2274,6 +2274,7 @@ onUnmounted(() => {
                   inert
                   :name="editing.name"
                   :theme="editing.theme"
+                  :icon="api.imageUrl(editing.icon)"
                   :image="
                     api.imageUrl(editing.card) ||
                     `/art/${editing.theme}-card.webp`

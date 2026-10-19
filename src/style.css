@@ -411,71 +411,27 @@ svg {
   line-height: 1.1;
   text-shadow: 0 2px 15px #0003;
 }
-.card-wordmark.netflix {
-  font-family: "Arial Narrow", Impact, sans-serif;
-  text-transform: uppercase;
-  font-weight: 800;
-  color: #ff3e43;
-  font-stretch: condensed;
-  font-size: clamp(28px, 3vw, 56px);
-  letter-spacing: 1px;
-}
-.card-wordmark.youtube {
-  font-family: "Arial Narrow", "Segoe UI", sans-serif;
-  font-weight: 700;
-  font-size: clamp(19px, 2.05vw, 42px);
-  letter-spacing: -1.3px;
-}
-.youtube-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2em;
-  height: 0.9em;
-  background: #ff242d;
-  color: white;
-  font-size: 0.85em;
-  border-radius: 6px;
-  padding-left: 2px;
-}
-.card-wordmark.plezy {
-  font-size: clamp(26px, 3.2vw, 62px);
-  font-weight: 600;
-  letter-spacing: -2px;
-}
-.card-wordmark.spotify {
-  color: #5aee91;
-  font-weight: 800;
-  letter-spacing: -1.5px;
-}
-.card-wordmark.internet {
-  font-weight: 500;
-  letter-spacing: -1px;
-}
 .card-wordmark .brand-icon {
   width: 1em;
   height: 1em;
   flex-shrink: 0;
 }
-.card-wordmark.steam {
-  text-transform: uppercase;
-  font-size: clamp(22px, 2.3vw, 48px);
-  letter-spacing: 4px;
-  font-weight: 700;
+.card-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72%;
+  height: 48%;
 }
-.card-wordmark.silo {
-  font-size: clamp(27px, 3.3vw, 62px);
-  letter-spacing: 6px;
-  font-weight: 400;
-  text-transform: uppercase;
-}
-.card-wordmark.home {
-  font-size: 22px;
-}
-.card-wordmark img {
-  width: 36px;
-  height: 36px;
+.card-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+}
+.card-logo .native-app-icon {
+  width: 64px;
+  height: 64px;
 }
 .card-caption {
   display: flex;

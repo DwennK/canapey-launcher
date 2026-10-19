@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { CardHold } from "../lib/hold";
 import Icon from "./Icon.vue";
 import type { Theme } from "../lib/types";
@@ -17,6 +17,25 @@ const props = defineProps<{
   holding?: boolean;
 }>();
 const emit = defineEmits<{ select: []; activate: []; options: [] }>();
+// Identity comes from the app, never from the selected background theme.
+const brandLogos = new Map([
+  ["netflix", "/brands/netflix.svg"],
+  ["youtube", "/brands/youtube.svg"],
+  ["spotify", "/brands/spotify.png"],
+  ["steam", "/brands/steam.svg"],
+  ["plezy", "/brands/plezy.svg"],
+  ["silo", "/brands/silo.svg"],
+]);
+const failedLogos = ref<string[]>([]);
+const logo = computed(() =>
+  [props.icon, brandLogos.get(props.name.trim().toLowerCase())].find(
+    (src) => src && !failedLogos.value.includes(src),
+  ),
+);
+watch(() => [props.icon, props.name], () => { failedLogos.value = []; });
+function logoFailed() {
+  if (logo.value) failedLogos.value.push(logo.value);
+}
 const touching = ref(false);
 let pointer: { id: number; x: number; y: number } | null = null;
 let suppressClick = false;
@@ -125,17 +144,19 @@ onUnmounted(() => {
       <span v-else-if="special === 'windows'" class="windows-mark"
         ><i v-for="n in 4" :key="n"
       /></span>
-      <span v-else class="card-wordmark" :class="theme"
-        ><img
-          v-if="icon && theme === 'home'"
-          :src="icon"
+      <span v-else-if="logo" class="card-logo">
+        <img
+          :key="logo"
+          :src="logo"
+          :class="{ 'native-app-icon': logo === icon }"
           alt=""
-          @error="($event.target as HTMLImageElement).style.display = 'none'"
-        /><span v-if="theme === 'youtube'" class="youtube-mark">▶</span
-        ><Icon v-if="theme === 'internet'" name="globe" class="brand-icon" />{{
-          name
-        }}</span
-      >
+          draggable="false"
+          @error="logoFailed"
+        />
+      </span>
+      <span v-else class="card-wordmark">
+        <Icon v-if="name === 'Internet'" name="globe" class="brand-icon" />{{ name }}
+      </span>
       <span v-if="web" class="web-label"
         ><Icon name="globe" :size="10" />WEB</span
       >
