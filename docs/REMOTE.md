@@ -21,14 +21,14 @@ Les mêmes touches du clavier physique sont concernées. Une touche réservée g
 
 L’écoute prend priorité sur la navigation : Échap peut donc être appris. Elle s’arrête avec **Annuler l’écoute**, à la perte de focus, en quittant l’onglet ou après 15 secondes. Le périphérique n’est pas identifié : Canapey apprend la touche reçue, que la source soit Flirc, un autre récepteur ou un clavier.
 
-Les actions d’interface globales remettent Canapey au premier plan sans réinitialiser le panneau courant, puis appliquent la commande. Les touches multimédias réaffectées sont traduites en commandes Windows sans réinjecter la touche clavier, pour éviter une boucle de raccourcis.
+Les commandes globales de navigation ciblent l’application active : **Valider / OK → Entrée**, directions → flèches, **Retour → Échap**. Dans Canapey, elles conservent la navigation et l’appui long pour les options. Seule l’action **Revenir à Canapey (Accueil)** rappelle le launcher ; les commandes de panneaux (paramètres, bibliothèque, options, audio, alimentation) restent sans effet lorsque Canapey est en arrière-plan. Les fenêtres administrateur et les applications qui ignorent les messages clavier Windows peuvent refuser ces commandes. Les touches multimédias réaffectées sont traduites en commandes Windows sans réinjecter la touche clavier, pour éviter une boucle de raccourcis.
 
 Home remet Canapey au premier plan sans fermer l’application courante. Ouvrir/reprendre réutilise le comportement des cartes du launcher. Le bouton d’alimentation ouvre le menu existant, sans arrêter directement le PC.
 
 ## Implémentation
 
 - `Settings.remoteBindings` conserve bouton, touche, action, portée et identifiant d’application éventuel. Les anciens `remoteHome` sont migrés vers une association Home globale.
-- Les actions d’interface globales passent par un événement `remote-action`, avec appui et relâchement ordonnés sur le thread UI. Valider conserve la gestion appui court / appui long. Les actions d’interface sont suspendues lorsque l’éditeur de télécommande a le focus ; un déclenchement depuis une autre application quitte cet éditeur et exécute l’action ; les actions natives, dont Home et les médias, restent globales.
+- Un worker ordonne les appuis/relâchements sans bloquer l’interface. Les commandes destinées à Canapey passent par `remote-action` ; une validation commencée dans Canapey est annulée au relâchement si le focus a changé. Une validation externe garde sa fenêtre destinataire jusqu’au relâchement, sans réinjecter de raccourci global ni répéter OK. Les actions d’interface restent suspendues dans l’éditeur de télécommande ; Home et les médias restent globaux.
 - Le plugin officiel `tauri-plugin-global-shortcut`, limité à Windows, réserve uniquement les raccourcis globaux validés. Aucune permission générale d’enregistrement de raccourcis n’est exposée au JavaScript.
 - Les nouvelles réservations précèdent la sauvegarde. Les anciennes sont libérées après sa réussite. Un conflit ou une erreur disque conserve toutes les anciennes associations et libère les nouvelles réservations temporaires.
 - Au démarrage, les raccourcis disponibles restent actifs même si un autre est occupé. L’erreur est visible dans les réglages ; les sauvegardes sans changement de télécommande ne sont pas bloquées par ce conflit.

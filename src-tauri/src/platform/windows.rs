@@ -988,6 +988,10 @@ pub fn remote_navigation_press(action: &str) -> Result<RemoteKeyPress, String> {
     navigation_press(action, false)
 }
 
+pub fn shortcut_navigation_press(action: &str) -> Result<RemoteKeyPress, String> {
+    navigation_press(action, true)
+}
+
 fn navigation_press(action: &str, wait_for_modifiers: bool) -> Result<RemoteKeyPress, String> {
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     static ACTIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -1213,6 +1217,34 @@ mod tests {
         dispatch_window_messages();
         assert_eq!(unsafe { IsWindow(window.0) }, 0);
         assert!(request_window_close(window.0).is_err());
+    }
+    #[test]
+    fn remote_enter_releases_original_window_without_hotkey_feedback() {
+        let original = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        let other = TestWindow::new("STATIC", WS_OVERLAPPEDWINDOW, 0, std::ptr::null_mut());
+        let press = post_remote_press(original.0, "accept").unwrap();
+        unsafe {
+            SetForegroundWindow(other.0);
+        }
+        drop(press);
+        unsafe {
+            let mut message: MSG = std::mem::zeroed();
+            for kind in [WM_KEYDOWN, WM_KEYUP] {
+                assert_ne!(
+                    PeekMessageW(&mut message, original.0, kind, kind, PM_REMOVE),
+                    0
+                );
+                assert_eq!(message.wParam, 0x0d);
+                assert_eq!(
+                    PeekMessageW(&mut message, other.0, kind, kind, PM_REMOVE),
+                    0
+                );
+            }
+            assert_eq!(
+                PeekMessageW(&mut message, original.0, WM_HOTKEY, WM_HOTKEY, PM_REMOVE),
+                0
+            );
+        }
     }
     #[test]
     fn remote_escape_targets_window_queue_with_both_key_edges() {

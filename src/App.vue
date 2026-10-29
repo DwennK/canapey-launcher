@@ -116,21 +116,18 @@ function executeRemote(binding: RemoteBinding) {
 // Native hotkeys arrive independently of DOM focus, including while minimized.
 let remoteEventChain = Promise.resolve();
 let nativeRemoteAccept: string | null = null;
-function nativeRemoteAction(event: {binding: RemoteBinding; pressed: boolean; foregrounded: boolean}) {
+function nativeRemoteAction(event: {binding: RemoteBinding; pressed: boolean; cancelled?: boolean}) {
   remoteEventChain = remoteEventChain.then(async () => {
-    const {binding, pressed, foregrounded} = event;
+    const {binding, pressed} = event;
     if (remoteCapturing.value) return;
     if (!pressed) {
-      if (nativeRemoteAccept === binding.button) { nativeRemoteAccept = null; releaseAccept('remote-native'); }
+      if (nativeRemoteAccept === binding.button) { nativeRemoteAccept = null; if (event.cancelled) cancelHold(); else releaseAccept('remote-native'); }
       return;
     }
     // Learning is handled separately; do not execute interface mappings
     // while the remote editor is open.
-    if (panel.value === 'settings' && settingsTab.value === 'remote') {
-      if (!foregrounded) return;
-      dismissPanels();
-    }
-    if (!panel.value && (foregrounded || binding.action === 'options' || !launcherRoot.value?.contains(document.activeElement))) {
+    if (panel.value === 'settings' && settingsTab.value === 'remote') return;
+    if (!panel.value && (binding.action === 'options' || !launcherRoot.value?.contains(document.activeElement))) {
       await nextTick(); await focusCard();
     }
     if (binding.action === 'accept') {

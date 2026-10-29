@@ -712,53 +712,61 @@ async fn execute_remote(
     }
 }
 #[cfg(windows)]
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemoteActionEvent {
-    binding: crate::remote_shortcut::RemoteBinding,
-    pressed: bool,
-    foregrounded: bool,
-}
-#[cfg(windows)]
-pub(crate) fn dispatch_remote(
+pub(crate) fn remote_dispatcher(
     app: tauri::AppHandle,
-    binding: crate::remote_shortcut::RemoteBinding,
-    pressed: bool,
-) {
-    if pressed {
-        log::info!(
-            "remote_action button={} action={}",
-            binding.button,
-            binding.action
-        );
-    }
-    if crate::remote_shortcut::interface_action(&binding.action) {
-        // Queue both edges on the UI thread to preserve down/up ordering, even
-        // when restoring a minimized WebView. Do not reset its current panel.
-        let handle = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            let focused = handle
+) -> std::sync::mpsc::Sender<(crate::remote_shortcut::RemoteBinding, bool)> {
+    use crate::remote_navigation::{Delivery, RemoteNavigation};
+    let (tx, rx) = std::sync::mpsc::channel::<(crate::remote_shortcut::RemoteBinding, bool)>();
+    // One worker preserves edge ordering and can wait for shortcut modifiers
+    // without blocking the UI. Window guards remain on their owning thread.
+    std::thread::spawn(move || {
+        let mut navigation = RemoteNavigation::default();
+        while let Ok((binding, pressed)) = rx.recv() {
+            if pressed {
+                log::info!(
+                    "remote_action button={} action={}",
+                    binding.button,
+                    binding.action
+                );
+            }
+            let focused = app
                 .get_webview_window("main")
                 .is_some_and(|w| w.is_focused().unwrap_or(false));
-            if pressed && !focused {
-                foreground(&handle);
-            }
-            let _ = handle.emit(
-                "remote-action",
-                RemoteActionEvent {
-                    binding,
+            if crate::remote_shortcut::interface_action(&binding.action) || !pressed {
+                let result = navigation.dispatch(
+                    &binding.button,
+                    &binding.action,
                     pressed,
-                    foregrounded: pressed && !focused,
-                },
-            );
-        });
-    } else if pressed {
-        tauri::async_runtime::spawn(async move {
-            if let Err(error) = execute_remote(app.clone(), binding).await {
-                let _ = app.emit("native-error", error);
+                    focused,
+                    platform::shortcut_navigation_press,
+                );
+                match result {
+                    Ok(Delivery::None) => {}
+                    Ok(delivery) => {
+                        let _ = app.emit(
+                            "remote-action",
+                            serde_json::json!({
+                                "binding": binding,
+                                "pressed": delivery == Delivery::Press,
+                                "cancelled": delivery == Delivery::Cancel,
+                            }),
+                        );
+                    }
+                    Err(error) => {
+                        let _ = app.emit("native-error", error);
+                    }
+                }
+            } else {
+                let handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = execute_remote(handle.clone(), binding).await {
+                        let _ = handle.emit("native-error", error);
+                    }
+                });
             }
-        });
-    }
+        }
+    });
+    tx
 }
 
 #[tauri::command]

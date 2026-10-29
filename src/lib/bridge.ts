@@ -126,7 +126,7 @@ export async function subscribe(handlers: {
   error: (v: string) => void;
   controllerSnapshot: (v: ControllerSnapshot) => void;
   controllerTestEnded: () => void;
-  remoteAction: (event: {binding: RemoteBinding; pressed: boolean; foregrounded: boolean}) => void;
+  remoteAction: (event: {binding: RemoteBinding; pressed: boolean; cancelled?: boolean}) => void;
   updateStatus: (message: string) => void;
 }) {
   if (!native) return () => {};
@@ -134,7 +134,7 @@ export async function subscribe(handlers: {
     listen<{action: Action; connection: number}>("apple-input", e => handlers.appleInput(e.payload)),
     listen<Action>("input", (e) => handlers.action(e.payload)),
     listen<string>("update-status", (e) => handlers.updateStatus(e.payload)),
-    listen<{binding: RemoteBinding; pressed: boolean; foregrounded: boolean}>("remote-action", e => handlers.remoteAction(e.payload)),
+    listen<{binding: RemoteBinding; pressed: boolean; cancelled?: boolean}>("remote-action", e => handlers.remoteAction(e.payload)),
     listen<string | null>("controller", (e) => handlers.controller(e.payload)),
     listen<Session[]>("sessions", (e) => handlers.sessions(e.payload)),
     listen<boolean>("home", (e) => handlers.home(e.payload === true)),

@@ -10,6 +10,7 @@ pub mod model;
 mod platform;
 #[cfg(feature = "desktop")]
 mod remote_home;
+pub mod remote_navigation;
 pub mod remote_shortcut;
 #[cfg(feature = "desktop")]
 mod runtime;

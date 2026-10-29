@@ -12,6 +12,8 @@ struct Inner {
     capture_until: Option<Instant>,
     #[cfg(windows)]
     last_press: Option<(String, Instant)>,
+    #[cfg(windows)]
+    dispatch: Option<std::sync::mpsc::Sender<(RemoteBinding, bool)>>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -99,6 +101,7 @@ pub fn save_with_binding(
 pub fn start(app: &tauri::AppHandle, desired: &[RemoteBinding]) {
     #[cfg(windows)]
     {
+        let dispatch = crate::runtime::remote_dispatcher(app.clone());
         let mut active = Vec::new();
         let mut errors = Vec::new();
         for binding in desired.iter().filter(|b| b.global) {
@@ -109,6 +112,7 @@ pub fn start(app: &tauri::AppHandle, desired: &[RemoteBinding]) {
         }
         let state = app.state::<RemoteHomeState>();
         let mut inner = state.0.lock().unwrap();
+        inner.dispatch = Some(dispatch);
         inner.active = active;
         inner.error = (!errors.is_empty()).then(|| errors.join("\n"));
     }
@@ -167,8 +171,8 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 if pressed {
                     let _ = app.emit("remote-home-captured", binding.key);
                 }
-            } else {
-                crate::runtime::dispatch_remote(app.clone(), binding, pressed);
+            } else if let Some(tx) = &state.0.lock().unwrap().dispatch {
+                let _ = tx.send((binding, pressed));
             }
         })
         .build()
