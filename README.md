@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.5.0-experimental-78664E?style=flat-square" alt="Version 0.5.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.6.0-experimental-78664E?style=flat-square" alt="Version 0.6.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.6.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -88,7 +88,7 @@
 
 ## Downloads
 
-**Current project version: 0.5.0.** Download the Windows installer from [the v0.5.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.6.0.** Download the Windows installer from [the v0.6.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.6.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -127,7 +127,7 @@ This feature remains experimental: real Windows/iPhone compatibility and wake-fr
 
 Home shows running applications first, followed by favorites without duplicates. Before favorites are selected, it offers up to six applications. Use **Actions → Ajouter aux favoris**, or the favorite control in **Settings → Applications**. **Bibliothèque** contains all applications, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the application editor; changing artwork does not change categorization. **Retour au bureau Windows** is in the power menu and **Démarrage et système**.
 
-Settings now have five sections: **Affichage et ambiance**, **Applications**, **Manettes et télécommandes**, **Démarrage et système**, and **Aide et mises à jour**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. These changes are unreleased; the download above remains v0.5.0.
+Settings now have five sections: **Affichage et ambiance**, **Applications**, **Manettes et télécommandes**, **Démarrage et système**, and **Aide et mises à jour**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. These changes are included in v0.6.0.
 
 ### Skip 1s / Flirc remote
 

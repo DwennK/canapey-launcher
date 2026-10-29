@@ -36,8 +36,8 @@ n’ajoute aucune exception automatiquement.
 
 | Source | Dernière référence examinée | Référence portée / utilisée |
 | --- | --- | --- |
-| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0 ; HEAD vérifié le 19/10/2026 | Sous-ensemble Companion de ce commit, adapté en Rust pour v0.5.0 ; pas de reprise intégrale |
-| [pyatv](https://github.com/postlund/pyatv) | [`v0.18.0`, `d88abc960e188d3cd2498d19117e75d7711d8600`](https://github.com/postlund/pyatv/tree/v0.18.0), fichiers Companion, HAP/SRP, OPACK et ChaCha20 | Oracle d’interopérabilité `pyatv==0.18.0` ; conventions cryptographiques et sérialisation adaptées |
+| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0 ; HEAD revérifié le 29/10/2026 | Sous-ensemble Companion de ce commit, adapté en Rust pour v0.5.0 ; pas de reprise intégrale |
+| [pyatv](https://github.com/postlund/pyatv) | [`b277a4c8222ecdcbaab8a24e3e713ca44765adb4`](https://github.com/postlund/pyatv/tree/b277a4c8222ecdcbaab8a24e3e713ca44765adb4), HEAD revérifié le 29/10/2026 ; comparaison avec `v0.18.0` pour Companion, HAP/SRP, OPACK et ChaCha20 | Oracle d’interopérabilité `pyatv==0.18.0` ; conventions cryptographiques et sérialisation adaptées |
 | [Documentation Companion](https://pyatv.dev/documentation/protocols/#companion-link) | Consultée le 19/10/2026 | Description du protocole ; aucun engagement de compatibilité Apple |
 
 Les licences MIT et copyrights complets sont conservés dans
@@ -88,6 +88,7 @@ pas une affirmation que tous ses changements ultérieurs ont été examinés.
 | Examen avant release | Références examinées | Décision et vérification |
 | --- | --- | --- |
 | 19/10/2026, préparation de v0.5.0 | windows-apple-remote `c8a494d` ; pyatv `b277a4c8222ecdcbaab8a24e3e713ca44765adb4` comparé à `v0.18.0` | HEAD windows-apple-remote inchangé, aucun signalement ouvert au moment de l’examen ; aucun changement Companion/OPACK/HAP-SRP/ChaCha20/TLV8 dans la comparaison pyatv. Aucun correctif supplémentaire à reprendre ; références intégrées inchangées. Oracle pyatv et contrôles de release relancés. |
+| 29/10/2026, préparation de v0.6.0 | windows-apple-remote `c8a494dcb656c79248fd24d60a814b35aa051e54`, dernière release `v0.2.0` ; pyatv `b277a4c8222ecdcbaab8a24e3e713ca44765adb4` | Les deux HEAD sont inchangés depuis le 19/10 ; aucun signalement ouvert windows-apple-remote. La comparaison pyatv avec `v0.18.0` ne touche que `CHANGES.md` et `pyatv/const.py`, aucun fichier Companion/cryptographie. Aucun nouveau correctif retenu ou écarté ; références effectivement portées inchangées. Tests Rust locaux et oracle Companion en CI requis pour cette release. |
 
 ## Architecture et limites de protection
 

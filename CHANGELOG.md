@@ -1,13 +1,21 @@
 # Notes de version
 
-## Non publié — YouTube du 2026-10-29
+## 0.6.0 — 2026-10-29
+
+### Télécommande
+
+- OK valide dans l’application active : Entrée à l’extérieur, validation et appui long dans Canapey. Les flèches et Retour ciblent aussi l’application active. Seule l’action Accueil rappelle Canapey ; les panneaux du launcher ne volent plus le focus.
+- Un appui OK conserve son destinataire jusqu’au relâchement ; les répétitions ne créent pas de double validation. Une perte de focus annule la validation commencée dans Canapey.
+- Les associations existantes sont conservées. Les applications ignorant les messages clavier Windows et les fenêtres administrateur peuvent refuser les commandes ; essais matériels sur HTPC à effectuer.
+
+### YouTube
 
 - Carte YouTube proposée même sans installation, avec le visuel intégré et les actions Installer / Ouvrir.
 - Détection et réutilisation de VacuumTube ; installation de sa dernière release stable GitHub, avec progression, annulation et vérification SHA-256 avant ouverture de l’assistant Windows.
 - Enregistrement sans doublon natif, réparation d’un chemin déplacé et conservation des préférences. Les raccourcis Web existants restent disponibles.
 - Validation et limites Windows documentées dans `docs/YOUTUBE.md`.
 
-## Non publié — itération bibliothèque du 2026-10-29
+### Bibliothèque
 
 - Chargement immédiat des premières rangées de cartes ; récupération automatique par les visuels intégrés si une image personnalisée ou de thème ne peut pas être décodée. Un changement de visuel réinitialise les erreurs de la carte.
 - Restauration de la dernière carte retirée, avec sa position, son favori et sa catégorie, depuis la bibliothèque ou les paramètres. Disponible pendant la session jusqu’à fermeture du message ou au retrait suivant.
@@ -15,7 +23,7 @@
 - Déplacer une carte active le tri « Mon ordre » pour rendre le changement visible.
 - Oracle de test Companion : dépendance SRP compatible figée pour rétablir l’interopérabilité pyatv en CI.
 
-## Non publié — sprint UX du 2026-10-29
+### Interface et configuration
 
 - Accueil centré sur les applications en cours et les favoris, accès explicite à la bibliothèque et actions Ouvrir / Reprendre.
 - Bibliothèque avec recherche insensible aux accents, filtres Tout / Favoris / Jeux / Vidéo / Musique / Autres, tri et catégories modifiables.
@@ -23,7 +31,7 @@
 - Guide des dix boutons essentiels de la télécommande, reprise des étapes incomplètes et résumé des associations. Les conflits et protections de capture existants sont conservés.
 - Détection des applications dès la première ouverture de l’ajout, recherche focalisée et bouton indiquant le nombre d’applications à ajouter.
 - Textes, contrôles et aides agrandis ; navigation mobile visible ; retour Windows déplacé dans les commandes système. Focus préservé entre sous-pages et clavier virtuel utilisable dans la bibliothèque.
-- Préférences enregistrées dans la configuration native avec migration rétrocompatible ; validation locale détaillée dans `docs/UX_SPRINT.md`. Aucune nouvelle release publiée.
+- Préférences enregistrées dans la configuration native avec migration rétrocompatible ; validation locale détaillée dans `docs/UX_SPRINT.md`.
 
 ## 0.5.0 — 2026-10-19
 
