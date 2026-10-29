@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +37,25 @@ fn home() -> String {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
+pub struct LibraryPreferences {
+    pub favorites: Vec<String>,
+    pub categories: HashMap<String, String>,
+    pub sort: String,
+}
+impl Default for LibraryPreferences {
+    fn default() -> Self {
+        Self {
+            favorites: vec![],
+            categories: HashMap::new(),
+            sort: "custom".into(),
+        }
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub library: LibraryPreferences,
+    pub last_settings_tab: String,
     pub fullscreen: bool,
     pub autostart: bool,
     pub monitor: Option<String>,
@@ -59,6 +77,8 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            library: LibraryPreferences::default(),
+            last_settings_tab: "display".into(),
             fullscreen: true,
             autostart: false,
             monitor: None,
@@ -210,6 +230,32 @@ impl Config {
             return Err("Maximum 250 applications.".into());
         }
         let s = &self.settings;
+        if s.library.favorites.len() > 250
+            || s.library.categories.len() > 250
+            || s.library
+                .favorites
+                .iter()
+                .any(|id| id.is_empty() || !clean(id, 100))
+            || s.library.categories.iter().any(|(id, category)| {
+                id.is_empty()
+                    || !clean(id, 100)
+                    || !["games", "video", "music", "other"].contains(&category.as_str())
+            })
+            || !["custom", "name", "category"].contains(&s.library.sort.as_str())
+            || ![
+                "display",
+                "apps",
+                "controls",
+                "remote",
+                "system",
+                "updates",
+                "diagnostic",
+            ]
+            .contains(&s.last_settings_tab.as_str())
+        {
+            return Err("Préférences de bibliothèque invalides.".into());
+        }
+
         crate::remote_shortcut::validate_bindings(&s.remote_bindings)?;
         s.apple_remote.validate()?;
         if let Some(shortcut) = &s.remote_home {

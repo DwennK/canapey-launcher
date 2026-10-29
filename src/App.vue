@@ -2,6 +2,7 @@
 import {
   computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
 } from "vue";
+import { categories, categoryFor, homeApps, libraryApps, type AppCategory, type LibraryFilter } from "./lib/library";
 import { isSystemTool } from "./lib/discovery";
 import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
@@ -219,7 +220,7 @@ async function closeKeyboard(value?: string, cursor?: number) {
   if (cursor !== undefined) target.setSelectionRange(cursor, cursor);
 }
 function keyboardFor(selector: string) {
-  const target = panelRoot.value?.querySelector(selector);
+  const target = (panelRoot.value ?? launcherRoot.value)?.querySelector(selector);
   if (isTextControl(target ?? null)) openKeyboard(target as HTMLInputElement);
 }
 const panelHistory: { panel: Panel; focus: FocusBookmark }[] = [];
@@ -233,7 +234,7 @@ const panelRoot = ref<HTMLElement>(),
   cardsRoot = ref<HTMLElement>(),
   width = ref(window.innerWidth),
   height = ref(window.innerHeight);
-const settingsTab = ref("general"),
+const settingsTab = ref("display"),
   monitorList = ref<Monitor[]>([]),
   found = ref<AppEntry[]>([]),
   query = ref(""),
@@ -242,6 +243,37 @@ const settingsTab = ref("general"),
   scanBusy = ref(false),
   scanError = ref(""),
   chosen = ref(new Set<string>());
+const settingsSection = computed(() => ['controls', 'remote'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
+const settingsSections = {
+  display: { label: 'Affichage et ambiance', icon: 'ambiance', page: 'display' },
+  apps: { label: 'Applications', icon: 'grid', page: 'apps' },
+  devices: { label: 'Manettes et télécommandes', icon: 'controller', page: 'controls' },
+  system: { label: 'Démarrage et système', icon: 'monitor', page: 'system' },
+  help: { label: 'Aide et mises à jour', icon: 'info', page: 'updates' },
+};
+const settingsSaveStatus = ref('');
+const libraryQuery = ref('');
+const libraryFilter = ref<LibraryFilter>('all');
+const editingCategory = ref<AppCategory | 'auto'>('auto');
+const showControllerTest = ref(false);
+const controllerHelp = ref(false);
+const favorite = (id: string) => config.value.settings.library.favorites.includes(id);
+async function toggleFavorite(id: string) {
+  const list = config.value.settings.library.favorites;
+  config.value.settings.library.favorites = list.includes(id) ? list.filter(value => value !== id) : [...list, id];
+  if (await persist()) notify(favorite(id) ? 'Ajouté aux favoris de l’accueil.' : 'Retiré des favoris.');
+}
+function resetLibrary() {
+  const wasEmpty = !!document.activeElement?.closest('.library-empty');
+  libraryQuery.value = ''; libraryFilter.value = 'all';
+  if (wasEmpty) void nextTick(() => focusElement(launcherRoot.value?.querySelector<HTMLElement>('.library-tools input') ?? undefined));
+}
+function showLibrary() { resetLibrary(); view.value = 'grid'; void focusCard(); }
+async function openAdd(search = '') {
+  query.value = search;
+  await openPanel('add');
+  if (native.value && !scanned.value) void scan();
+}
 const controllerTesting = ref(false);
 const controllerSnapshot = ref<ControllerSnapshot | null>(null);
 async function toggleControllerTest() {
@@ -283,6 +315,7 @@ let toastTimer: ReturnType<typeof setTimeout>,
   updateTimer: ReturnType<typeof setTimeout>;
 let stopNative = () => {};
 let resizeObserver: ResizeObserver;
+let saveRequest = 0;
 let saveChain: Promise<boolean> = Promise.resolve(true);
 let lastSaved = defaults();
 let audioContext: AudioContext | undefined;
@@ -315,42 +348,16 @@ const examples: Tile[] = [
   { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
   { id: "suggest-silo", name: "Silo", theme: "silo", suggestion: true },
 ];
-const tiles = computed<Tile[]>(() =>
-  config.value.apps.length
-    ? [
-        ...config.value.apps.map((entry) => ({
-          id: entry.id,
-          name: entry.name,
-          theme: entry.theme,
-          entry,
-        })),
-        {
-          id: "windows",
-          name: "Retour Windows",
-          theme: "windows",
-          special: "windows",
-        },
-        { id: "add", name: "Ajouter", theme: "home", special: "add" },
-      ]
-    : [
-        {
-          id: "add",
-          name: "Ajouter des applications",
-          theme: "home",
-          special: "add",
-        },
-        ...examples,
-        {
-          id: "windows",
-          name: "Retour Windows",
-          theme: "windows",
-          special: "windows",
-        },
-      ],
-);
-const current = computed(
-  () => tiles.value[Math.min(selected.value, tiles.value.length - 1)]!,
-);
+const visibleApps = computed(() => view.value === 'carousel'
+  ? homeApps(config.value.apps, config.value.settings.library, sessions.value)
+  : libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, libraryFilter.value));
+const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(app.id) || sessions.value.some(session => session.appId === app.id)));
+const tiles = computed<Tile[]>(() => config.value.apps.length
+  ? [...visibleApps.value.map(entry => ({ id: entry.id, name: entry.name, theme: entry.theme, entry })),
+     ...(view.value === 'carousel' ? [{ id: 'library', name: 'Toutes les applications', theme: 'home' as const, special: 'library' }] : [])]
+  : [{ id: 'add', name: 'Ajouter des applications', theme: 'home', special: 'add' }, ...examples]);
+const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
+  ?? { id: 'empty', name: 'Aucun résultat', theme: 'home', special: 'empty' });
 const empty = computed(() => config.value.apps.length === 0);
 const columns = computed(() =>
   Math.max(
@@ -401,6 +408,8 @@ watch(showSystemTools, (show) => {
 const heroTitle = computed(() =>
   current.value.special === "add"
     ? "Ajouter des applications"
+    : current.value.special === "library"
+      ? "Toute votre bibliothèque"
     : current.value.special === "windows"
       ? "Retour au bureau."
       : current.value.name,
@@ -408,16 +417,17 @@ const heroTitle = computed(() =>
 const subtitle = computed(() =>
   current.value.special === "windows"
     ? "Canapey reste ouvert en arrière-plan."
-    : "",
+    : current.value.special === 'library' ? 'Retrouvez, filtrez et organisez toutes vos applications.'
+    : !config.value.apps.length ? 'Choisissez les applications à retrouver sur votre TV.'
+    : !hasHomeSelection.value ? 'Ajoutez vos applications préférées aux favoris depuis leurs actions.'
+    : selectedSession.value ? 'Votre application est toujours ouverte.' : 'Vos favoris, prêts à ouvrir.',
 );
 const heroStatus = computed(() =>
   current.value.suggestion
     ? "À AJOUTER"
-    : current.value.entry?.target.kind === "uri"
-      ? "RACCOURCI WEB"
-      : selectedSession.value
-        ? "EN COURS"
-        : "",
+    : selectedSession.value
+      ? { running: 'EN COURS', starting: 'DÉMARRAGE…', closing: 'FERMETURE…', untracked: 'SUIVI LIMITÉ' }[selectedSession.value.status]
+      : current.value.entry?.target.kind === 'uri' ? 'RACCOURCI WEB' : '',
 );
 const startupPainted = ref(false);
 const animateBackground = ref(false);
@@ -593,16 +603,20 @@ async function run(label: string, fn: () => Promise<unknown>) {
 function persist() {
   return queueSave();
 }
-function queueSave(remoteHomeUpdate = false) {
+function queueSave(remoteHomeUpdate = false, feedback = panel.value === 'settings') {
+  const request = ++saveRequest;
+  if (feedback) settingsSaveStatus.value = 'Enregistrement…';
   const snapshot = JSON.parse(JSON.stringify(config.value));
   saveChain = saveChain.then(async () => {
     try {
       await api.save(snapshot, remoteHomeUpdate);
       lastSaved = snapshot;
+      if (feedback && request === saveRequest) settingsSaveStatus.value = 'Enregistré';
       return true;
     } catch (e) {
       if (JSON.stringify(config.value) === JSON.stringify(snapshot))
         config.value = JSON.parse(JSON.stringify(lastSaved));
+      if (feedback && request === saveRequest) settingsSaveStatus.value = 'Échec de l’enregistrement';
       notify(e);
       return false;
     }
@@ -615,7 +629,7 @@ function selectionChanged() {
   // Utility cards must not erase the last application to restore on startup.
   if (!id || id === config.value.selectedId) return;
   config.value.selectedId = id;
-  void persist();
+  void queueSave(false, false);
 }
 function sound() {
   if (!config.value.settings.sound || config.value.settings.soundVolume <= 0) return;
@@ -686,7 +700,9 @@ async function openPanel(p: Panel) {
             ? (panelRoot.value.querySelector<HTMLElement>(
                 ".settings-nav button.active",
               ) ?? undefined)
-            : focusableItems(panelRoot.value)[0],
+            : p === 'add'
+              ? panelRoot.value.querySelector<HTMLElement>('input[type=search]') ?? undefined
+              : focusableItems(panelRoot.value)[0],
     );
 }
 async function closePanel() {
@@ -732,18 +748,17 @@ async function acceptConfirm() {
 }
 async function activate(tile = current.value) {
   if (tile.special === "add") {
-    query.value = "";
-    void openPanel("add");
+    void openAdd();
     return;
   }
+  if (tile.special === "library") { showLibrary(); return; }
+  if (tile.special === "empty") return;
   if (tile.special === "windows") {
     await run("Retour Windows", api.desktop);
     return;
   }
   if (tile.suggestion) {
-    query.value = tile.name;
-    void openPanel("add");
-    if (native.value && !scanned.value) void scan();
+    void openAdd(tile.name);
     return;
   }
   const session = sessions.value.find((s) => s.appId === tile.id);
@@ -888,6 +903,10 @@ function dispatch(action: Action) {
     void focusCard();
     return;
   }
+  if (action === 'accept' && (isTextControl(element) || element instanceof HTMLSelectElement)) {
+    editingControl.value = element;
+    return;
+  }
   if (action === "accept") {
     if (
       launcherRoot.value?.contains(element) &&
@@ -915,6 +934,10 @@ function dispatch(action: Action) {
   }
   if (view.value === "carousel" && action === "up") {
     if (launcherRoot.value) focusDirection(launcherRoot.value, action);
+    return;
+  }
+  if (view.value === 'grid' && action === 'up' && selected.value < columns.value) {
+    focusElement(launcherRoot.value?.querySelector<HTMLElement>('.library-tools input') ?? undefined);
     return;
   }
   const next = navigate(
@@ -1018,7 +1041,6 @@ function focusChanged() {
     editingControl.value = null;
 }
 async function openSettings() {
-  settingsTab.value = "general";
   void openPanel("settings");
   try {
     monitorList.value = await api.monitors();
@@ -1061,11 +1083,12 @@ async function addEntries(entries: AppEntry[]) {
   const keys = new Set(config.value.apps.map((a) => targetKey(a.target)));
   const fresh = entries.filter((a) => !keys.has(targetKey(a.target)));
   config.value.apps.push(...fresh);
-  if (fresh[0]) {
-    selected.value = tiles.value.findIndex((t) => t.id === fresh[0]!.id);
-    config.value.selectedId = fresh[0].id;
-  }
+  resetLibrary();
+  view.value = "grid";
+  if (fresh[0]) config.value.selectedId = fresh[0].id;
   if (!(await persist())) return;
+  await nextTick();
+  selected.value = reconcileSelection(tiles.value.map(tile => tile.id), fresh[0]?.id ?? null);
   dismissPanels();
   await focusCard();
   notify(
@@ -1079,12 +1102,14 @@ async function manual() {
     const app = await api.pickTarget();
     if (app) {
       editing.value = app;
+      editingCategory.value = "auto";
       argumentsText.value = app.target.args.join("\n");
       void openPanel("edit");
     }
   });
 }
 function edit(app: AppEntry) {
+  editingCategory.value = config.value.settings.library.categories[app.id] ?? "auto";
   editing.value = JSON.parse(JSON.stringify(app));
   argumentsText.value = app.target.args.join("\n");
   void openPanel("edit");
@@ -1098,6 +1123,8 @@ async function saveEditing() {
     return;
   }
   app.target.args = argumentsText.value ? argumentsText.value.split("\n") : [];
+  if (editingCategory.value === 'auto') delete config.value.settings.library.categories[app.id];
+  else config.value.settings.library.categories[app.id] = editingCategory.value;
   const index = config.value.apps.findIndex((a) => a.id === app.id);
   if (index >= 0) {
     config.value.apps[index] = app;
@@ -1107,14 +1134,9 @@ async function saveEditing() {
 async function moveApp(index: number, delta: number) {
   const to = index + delta;
   if (to < 0 || to >= config.value.apps.length) return;
-  const id = current.value.id;
   const focused = document.activeElement as HTMLElement;
   const [item] = config.value.apps.splice(index, 1);
   config.value.apps.splice(to, 0, item!);
-  selected.value = reconcileSelection(
-    tiles.value.map((t) => t.id),
-    id,
-  );
   void persist();
   await nextTick();
   if (focused.matches(":disabled") && panelRoot.value) {
@@ -1129,6 +1151,8 @@ async function removeApp() {
   if (!editing.value) return;
   const id = editing.value.id;
   config.value.apps = config.value.apps.filter((a) => a.id !== id);
+  config.value.settings.library.favorites = config.value.settings.library.favorites.filter(value => value !== id);
+  delete config.value.settings.library.categories[id];
   selected.value = Math.min(selected.value, tiles.value.length - 1);
   if (!(await persist()))
     throw new Error("La suppression n’a pas été enregistrée.");
@@ -1172,7 +1196,7 @@ function requestUpdateInstall() {
   );
 }
 function tileImage(t: Tile) {
-  if (t.special === "add" || t.special === "windows") return "";
+  if (t.special) return "";
   return api.imageUrl(t.entry?.card) || `/art/${t.theme}-card.webp`;
 }
 function selectGeneralAmbiance(id: typeof generalAmbiances[number]['id']) {
@@ -1214,8 +1238,8 @@ watch(
 watch(panel, async (value) => {
   document.body.classList.toggle("panel-open", !!value);
 });
-watch([panel, settingsTab], () => {
-  if (panel.value !== "settings" || settingsTab.value !== "controllerTest")
+watch([panel, settingsTab, showControllerTest], () => {
+  if (panel.value !== "settings" || settingsTab.value !== "controls" || !showControllerTest.value)
     leaveControllerTest();
 });
 watch(selectedSession, (session) => {
@@ -1242,12 +1266,22 @@ watch(
     if (!panel.value) void focusCard();
   },
 );
-watch(
-  () => tiles.value.length,
-  () => {
-    selected.value = Math.min(selected.value, tiles.value.length - 1);
-  },
-);
+watch(settingsTab, async () => {
+  const restoreSubnav = !!document.activeElement?.closest('.settings-subnav');
+  if (!loaded.value) return;
+  config.value.settings.lastSettingsTab = settingsTab.value;
+  settingsSaveStatus.value = '';
+  void queueSave(false, false);
+  if (restoreSubnav) {
+    await nextTick();
+    focusElement(panelRoot.value?.querySelector<HTMLElement>('.settings-subnav button[aria-pressed="true"]') ?? undefined);
+  }
+});
+watch(() => tiles.value.map(tile => tile.id), (ids, previous) => {
+  const id = previous?.[selected.value];
+  selected.value = reconcileSelection(ids, id ?? config.value.selectedId);
+  if (!panel.value && cardsFocused.value) void focusCard();
+}, { flush: 'pre' });
 onMounted(async () => {
   document.addEventListener("keydown", keyboard);
   document.addEventListener("keyup", keyboardUp);
@@ -1269,6 +1303,7 @@ onMounted(async () => {
     const b = await api.boot();
     startupMark("bootstrapEnd");
     config.value = b.config;
+    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
     native.value = b.native;
@@ -1400,7 +1435,7 @@ onUnmounted(() => {
       />
       <div class="backdrop-scrim" />
     </div>
-    <header class="topbar" :inert="!!panel">
+    <header class="topbar" :inert="!!panel || !!keyboardTarget">
       <div class="brand">
         <img class="brand-mark" src="/brand/canapey-mark.svg" width="31" height="31" alt="" /><span
           >canapey<span class="brand-dot">.</span></span
@@ -1418,8 +1453,7 @@ onUnmounted(() => {
         ><button
           :class="{ active: view === 'grid' }"
           @click="
-            view = 'grid';
-            focusCard();
+            showLibrary();
           "
         >
           Bibliothèque
@@ -1465,7 +1499,7 @@ onUnmounted(() => {
     </header>
     <section
       v-if="view === 'carousel'"
-      :inert="!!panel"
+      :inert="!!panel || !!keyboardTarget"
       class="hero"
       :class="{ 'hero-initial': !animateHero }"
       aria-live="polite"
@@ -1475,10 +1509,14 @@ onUnmounted(() => {
       </div>
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
+      <div class="hero-actions">
+        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.special === 'add' ? 'Ajouter mes applications' : current.special === 'library' ? 'Voir la bibliothèque' : selectedSession?.status === 'running' ? 'Reprendre' : current.suggestion ? 'Ajouter' : selectedSession ? 'Voir la session' : 'Ouvrir' }}</button>
+        <button v-if="current.entry" class="small-button" @click="openQuick(selected)">Actions</button>
+      </div>
     </section>
     <section
       class="library"
-      :inert="!!panel"
+      :inert="!!panel || !!keyboardTarget"
       :class="view"
       aria-label="Applications"
     >
@@ -1489,23 +1527,20 @@ onUnmounted(() => {
               ? "Applications suggérées"
               : view === "grid"
                 ? "Votre bibliothèque"
-                : "Vos applications"
+                : hasHomeSelection ? "En cours et favoris" : "Pour commencer"
           }}</span>
           <span v-if="!empty" class="section-count">{{
-            `${config.apps.length} application${config.apps.length > 1 ? "s" : ""}`
+            `${visibleApps.length} application${visibleApps.length > 1 ? "s" : ""}`
           }}</span>
         </div>
-        <button
-          v-if="view === 'grid'"
-          class="text-button"
-          @click="
-            view = 'carousel';
-            focusCard();
-          "
-        >
-          <Icon name="back" :size="18" />Accueil
-        </button>
+        <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />Ajouter</button>
       </div>
+      <div v-if="view === 'grid' && !empty" class="library-tools">
+        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" aria-label="Rechercher dans la bibliothèque" placeholder="Rechercher une application" /></label><button class="small-button" aria-label="Clavier pour la bibliothèque" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
+        <label class="library-sort">Trier<select v-model="config.settings.library.sort" @change="persist"><option value="custom">Mon ordre</option><option value="name">Nom A–Z</option><option value="category">Catégorie</option></select></label>
+        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in { all: 'Tout', favorites: 'Favoris', ...categories }" :key="key" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }}</button></div>
+      </div>
+      <div v-if="view === 'grid' && !empty && !visibleApps.length" class="library-empty" role="status"><h2>Aucune application trouvée</h2><p>Essayez un autre nom ou une autre catégorie.</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
       <div
         ref="cardsRoot"
         class="cards"
@@ -1528,6 +1563,7 @@ onUnmounted(() => {
           :holding="selected === i && holdingCard"
           :has-options="!!tile.entry"
           @options="openQuick(i)"
+          :favorite="favorite(tile.id)"
           :running="sessions.some((s) => s.appId === tile.id)"
           @select="select(i)"
           @activate="
@@ -1537,7 +1573,7 @@ onUnmounted(() => {
         />
       </div>
     </section>
-    <footer class="bottom-bar" :inert="!!panel">
+    <footer class="bottom-bar" :inert="!!panel || !!keyboardTarget">
       <div class="hints" :data-controller-family="inputLabels.family">
         <span class="controller-status" role="img" :aria-label="inputLabels.device" :title="controller ?? 'Navigation au clavier'">
           <Icon :name="controller ? 'controller' : 'keyboard'" :size="22" /><i v-if="controller" />
@@ -1565,7 +1601,7 @@ onUnmounted(() => {
       <span class="spinner" />{{ working }}
     </div>
     <Transition name="toast"
-      ><div v-if="toast" :inert="!!panel" class="toast-message" role="status">
+      ><div v-if="toast" :inert="!!panel || !!keyboardTarget" class="toast-message" role="status">
         <Icon name="info" :size="20" /><span>{{ toast }}</span
         ><button
           class="icon-button"
@@ -1700,6 +1736,7 @@ onUnmounted(() => {
                 Fenêtre partagée ou non identifiable : reprenez-la avec Alt +
                 Tab.
               </p>
+              <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}</span></button>
               <button :class="{ 'action-group-start': !!quickSession }" @click="edit(quickApp)">
                 <Icon name="edit" /><span>Modifier</span>
               </button>
@@ -1714,7 +1751,7 @@ onUnmounted(() => {
           <template v-else-if="panel === 'move' && quickApp">
             <p class="panel-intro">
               {{ quickApp.name }} · Position {{ quickIndex + 1 }} sur
-              {{ config.apps.length }}
+              {{ config.apps.length }} · Tri « Mon ordre »
             </p>
             <div class="quick-actions power-options">
               <button :disabled="quickIndex <= 0" @click="moveQuick(-1)">
@@ -1735,30 +1772,20 @@ onUnmounted(() => {
             <div class="settings-layout">
               <nav class="settings-nav" aria-label="Catégories des paramètres">
                 <button
-                  v-for="(category, key) in {
-                    general: { label: 'Écran & démarrage', icon: 'monitor' },
-                    apps: { label: 'Applications', icon: 'grid' },
-                    controls: { label: 'Manettes', icon: 'controller' },
-                    ambiance: { label: 'Ambiance', icon: 'ambiance' },
-                    remote: { label: 'Télécommande', icon: 'remote' },
-                    controllerTest: { label: 'Test de la manette', icon: 'controller' },
-                    updates: { label: 'Mises à jour', icon: 'update' },
-                    diagnostic: { label: 'Diagnostic', icon: 'info' },
-                  }"
+                  v-for="(category, key) in settingsSections"
                   :key="key"
                   :data-focus-key="`settings:${key}`"
-                  :class="{ active: settingsTab === key }"
-                  :aria-current="settingsTab === key ? 'page' : undefined"
-                  @click="settingsTab = key"
+                  :class="{ active: settingsSection === key }"
+                  :aria-current="settingsSection === key ? 'page' : undefined"
+                  @click="settingsTab = category.page"
                 >
                   <Icon class="settings-category-icon" :name="category.icon" :size="19" />
                   <span>{{ category.label }}</span><Icon class="settings-chevron" name="right" :size="15" /></button
-                ><button class="settings-power" @click="openPanel('power')">
-                  <Icon class="settings-category-icon" name="power" :size="19" /><span>Alimentation</span>
-                  </button
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
+                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" aria-label="Périphériques"><button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">Manette</button><button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">Télécommande</button></div>
+                <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" aria-label="Aide"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">Mises à jour</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">Diagnostic</button></div>
                 <div v-if="settingsTab === 'remote'">
                   <div v-if="remoteDevice === 'iphone'" class="remote-device-tabs" role="group" aria-label="Type de télécommande">
                     <button class="small-button" aria-pressed="false" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
@@ -1781,8 +1808,8 @@ onUnmounted(() => {
                   </template>
                 </RemoteHomeSettings>
                 </div>
-                <template v-if="settingsTab === 'general'"
-                  ><h3>Écran et démarrage</h3>
+                <template v-if="settingsTab === 'system'"
+                  ><h3>Démarrage et système</h3>
                   <label class="setting-row"
                     ><span>Plein écran au démarrage</span
                     ><input
@@ -1801,7 +1828,8 @@ onUnmounted(() => {
                       type="checkbox"
                       role="switch"
                       @change="persist" /></label
-                  ><label class="setting-row"
+                  ></template>
+                <template v-if="settingsTab === 'display'"><h3>Affichage et ambiance</h3><label class="setting-row"
                     ><span
                       >Écran préféré<small
                         >Écran principal si la TV est absente.</small
@@ -1832,19 +1860,20 @@ onUnmounted(() => {
                       step="0.1"
                       @change="persist" /></label
                 ></template>
+                <div v-if="settingsTab === 'system'" class="system-actions"><button class="small-button" @click="run('Retour Windows', api.desktop)"><Icon name="monitor" :size="20" />Retour au bureau Windows</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />Alimentation</button></div>
                 <template v-if="settingsTab === 'apps'"
                   ><div class="content-heading">
                     <h3>Vos applications</h3>
                     <button
                       class="small-button"
                       @click="
-                        query = '';
-                        openPanel('add');
+                        openAdd();
                       "
                     >
                       <Icon name="plus" :size="18" />Ajouter
                     </button>
                   </div>
+                  <p class="note">Les favoris apparaissent sur l’accueil. Les flèches changent « Mon ordre » dans la bibliothèque.</p>
                   <p v-if="!config.apps.length" class="muted">
                     Aucune application ajoutée.
                   </p>
@@ -1869,7 +1898,7 @@ onUnmounted(() => {
                             : a.source
                         }}</small></span
                       ></button
-                    ><button
+                    ><button class="icon-button" :aria-label="`${favorite(a.id) ? 'Retirer des' : 'Ajouter aux'} favoris : ${a.name}`" :aria-pressed="favorite(a.id)" @click="toggleFavorite(a.id)"><Icon name="home" :size="20" /></button><button
                       class="icon-button"
                       :disabled="i === 0"
                       :aria-label="`Avancer ${a.name}`"
@@ -1936,7 +1965,7 @@ onUnmounted(() => {
                       max="4000"
                       step="200"
                       @change="persist" /></label
-                  ><XboxHomeSettings :native="native" /><label class="setting-row"
+                  ><label class="setting-row"
                     ><span
                       >Zone neutre du stick<small
                         >{{
@@ -1951,12 +1980,15 @@ onUnmounted(() => {
                       max="0.5"
                       step="0.05"
                       @change="persist" /></label>
-                  <p class="note">
+                  <button class="small-button" :aria-expanded="showControllerTest" @click="showControllerTest = !showControllerTest">{{ showControllerTest ? 'Masquer le test de la manette' : 'Tester la manette' }}</button>
+                  <ControllerTester v-if="showControllerTest" :snapshot="controllerSnapshot" :controller-name="controller" :testing="controllerTesting" :native="native" :deadzone="config.settings.deadzone" @toggle="toggleControllerTest" @deadzone="setDeadzone" />
+                  <button class="disclosure-button" :aria-expanded="controllerHelp" @click="controllerHelp = !controllerHelp">Dépannage Xbox / Steam Input<Icon :name="controllerHelp ? 'up' : 'down'" :size="18" /></button>
+                  <div v-if="controllerHelp"><XboxHomeSettings :native="native" /><p class="note">
                     Steam Input peut intercepter ces boutons. Désactivez sa
                     configuration Bureau ou choisissez une autre combinaison.
-                  </p></template>
-                <template v-if="settingsTab === 'ambiance'">
-                  <h3>Ambiance</h3>
+                  </p></div></template>
+                <template v-if="settingsTab === 'display'">
+                  <h3 class="settings-subheading">Ambiance</h3>
                   <p class="note">Personnalisez l’image et les sons de Canapey. Les changements s’appliquent immédiatement.</p>
                   <div class="ambiance-gallery" role="group" aria-label="Ambiances générales">
                     <button v-for="ambiance in generalAmbiances" :key="ambiance.id"
@@ -2006,16 +2038,6 @@ onUnmounted(() => {
                   </label>
                   <button class="small-button ambiance-sound-test" :disabled="!config.settings.sound || config.settings.soundVolume === 0" @click="sound">Écouter un son</button>
                 </template>
-                <ControllerTester
-                  v-if="settingsTab === 'controllerTest'"
-                  :snapshot="controllerSnapshot"
-                  :controller-name="controller"
-                  :testing="controllerTesting"
-                  :native="native"
-                  :deadzone="config.settings.deadzone"
-                  @toggle="toggleControllerTest"
-                  @deadzone="setDeadzone"
-                />
                 <template v-if="settingsTab === 'updates'"
                   ><div class="version-art">
                     <img src="/brand/canapey-mark.svg" width="48" height="48" alt="" /><span>canapey.</span
@@ -2147,8 +2169,7 @@ onUnmounted(() => {
           </template>
           <template v-else-if="panel === 'add'">
             <p class="panel-intro">
-              Retrouvez les applications de votre PC et ajoutez-les à votre
-              bibliothèque.
+              Sélectionnez vos applications, puis ajoutez-les à votre bibliothèque.
             </p>
             <div class="import-toolbar">
               <label class="search-field"
@@ -2263,7 +2284,7 @@ onUnmounted(() => {
                 class="primary-button"
                 @click="addEntries(selectedImports)"
               >
-                Ajouter<Icon name="plus" :size="18" />
+                Ajouter {{ selectedImports.length }} application{{ selectedImports.length > 1 ? 's' : '' }}<Icon name="plus" :size="18" />
               </button>
             </div>
           </template>
@@ -2312,7 +2333,7 @@ onUnmounted(() => {
                   @click="keyboardFor('input[aria-label=Nom]')"
                 >
                   Clavier</button
-                ><label
+                ><label>Catégorie<select v-model="editingCategory"><option value="auto">Automatique ({{ categories[categoryFor(editing, { ...config.settings.library, categories: {} })] }})</option><option v-for="(label, key) in categories" :key="key" :value="key">{{ label }}</option></select></label><label
                   >Ambiance<select v-model="editing.theme">
                     <option
                       v-for="t in [
@@ -2376,6 +2397,7 @@ onUnmounted(() => {
           </template>
           <template v-else-if="panel === 'power'"
             ><div class="power-options">
+              <button @click="run('Retour Windows', api.desktop)"><Icon name="monitor" /><span>Retour au bureau Windows</span><Icon name="right" :size="18" /></button>
               <button
                 @click="
                   confirm(
@@ -2498,7 +2520,7 @@ onUnmounted(() => {
               ><span v-else-if="panel === 'audio'"
                 >↑ ↓ Naviguer · ← → Volume ·
                 {{ inputLabels.acceptName }} Choisir</span
-              ><span v-else>{{
+              ><span v-else-if="panel === 'settings' && settingsSaveStatus" class="save-status" role="status">{{ settingsSaveStatus }}</span><span v-else>{{
                 controller
                   ? `Croix directionnelle : naviguer · ${inputLabels.acceptName} : OK`
                   : "Flèches : naviguer · Entrée : OK / modifier"

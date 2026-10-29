@@ -72,6 +72,52 @@ mod tests {
     use super::*;
     use crate::model::{AppEntry, Target, TargetKind};
     #[test]
+    fn library_preferences_migrate_and_survive_reload() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(d.path().into());
+        let mut legacy = serde_json::to_value(Config::default()).unwrap();
+        legacy["settings"]
+            .as_object_mut()
+            .unwrap()
+            .remove("library");
+        legacy["settings"]
+            .as_object_mut()
+            .unwrap()
+            .remove("lastSettingsTab");
+        fs::write(
+            d.path().join("config.json"),
+            serde_json::to_vec(&legacy).unwrap(),
+        )
+        .unwrap();
+        let (mut config, warning) = store.load();
+        assert!(warning.is_none());
+        assert!(config.settings.library.favorites.is_empty());
+        assert_eq!(config.settings.library.sort, "custom");
+        assert_eq!(config.settings.last_settings_tab, "display");
+        config.settings.library.favorites.push("steam".into());
+        config
+            .settings
+            .library
+            .categories
+            .insert("steam".into(), "games".into());
+        config.settings.library.sort = "name".into();
+        config.settings.last_settings_tab = "remote".into();
+        store.save(&config).unwrap();
+        let (loaded, warning) = store.load();
+        assert!(warning.is_none());
+        assert_eq!(
+            serde_json::to_value(loaded).unwrap(),
+            serde_json::to_value(&config).unwrap()
+        );
+        config
+            .settings
+            .library
+            .categories
+            .insert("steam".into(), "invalid".into());
+        assert!(store.save(&config).is_err());
+        assert_eq!(store.load().0.settings.library.categories["steam"], "games");
+    }
+    #[test]
     fn ambiance_defaults_migrate_and_custom_settings_survive_reload() {
         let d = tempfile::tempdir().unwrap();
         let store = ConfigStore::new(d.path().into());

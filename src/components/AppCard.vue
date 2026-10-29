@@ -12,6 +12,7 @@ const props = defineProps<{
   special?: string;
   suggestion?: boolean;
   running?: boolean;
+  favorite?: boolean;
   web?: boolean;
   hasOptions?: boolean;
   holding?: boolean;
@@ -109,6 +110,7 @@ onUnmounted(() => {
     class="app-card"
     :class="[theme, { selected, special: !!special }]"
     :aria-label="`${name}${suggestion ? ' — à ajouter' : ''}${running ? ' — en cours' : ''}`"
+    :aria-description="favorite ? 'Favori de l’accueil' : undefined"
     :aria-pressed="selected"
     :tabindex="selected ? 0 : -1"
     :aria-haspopup="hasOptions ? 'dialog' : undefined"
@@ -138,8 +140,8 @@ onUnmounted(() => {
         class="card-hold-progress"
         aria-hidden="true"
       />
-      <span v-if="special === 'add'" class="add-symbol"
-        ><Icon name="plus" :size="38"
+      <span v-if="special === 'add' || special === 'library'" class="add-symbol"
+        ><Icon :name="special === 'library' ? 'grid' : 'plus'" :size="38"
       /></span>
       <span v-else-if="special === 'windows'" class="windows-mark"
         ><i v-for="n in 4" :key="n"
@@ -160,6 +162,7 @@ onUnmounted(() => {
       <span v-if="web" class="web-label"
         ><Icon name="globe" :size="10" />WEB</span
       >
+      <span v-if="favorite" class="favorite-label">Favori</span>
       <span v-if="running" class="running-dot" aria-label="En cours" />
       <span v-if="suggestion" class="suggestion-label">À ajouter</span>
     </span>

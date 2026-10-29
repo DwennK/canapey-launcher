@@ -25,6 +25,8 @@ export interface AppEntry {
   source: string;
 }
 export interface Settings {
+  library: import("./library").LibraryPreferences;
+  lastSettingsTab: string;
   fullscreen: boolean;
   autostart: boolean;
   monitor: string | null;
@@ -112,6 +114,8 @@ export const defaults = (): Config => ({
   apps: [],
   selectedId: null,
   settings: {
+    library: { favorites: [], categories: {}, sort: "custom" },
+    lastSettingsTab: "display",
     fullscreen: true,
     autostart: false,
     monitor: null,

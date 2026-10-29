@@ -1,6 +1,7 @@
 import { version as appVersion } from "../../package.json";
 export { appVersion };
 import { invoke, convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { normalizeLibrary } from "./library";
 import { startupMark, startupTimings } from "./startup";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -45,7 +46,7 @@ export async function boot(): Promise<Boot> {
         c.settings.scale >= 0.8 &&
         c.settings.scale <= 1.4
       )
-        config = { ...c, settings: { ...defaults().settings, ...c.settings } };
+        config = { ...c, settings: { ...defaults().settings, ...c.settings, library: normalizeLibrary(c.settings.library) } };
     }
   } catch {
     /* preview only */

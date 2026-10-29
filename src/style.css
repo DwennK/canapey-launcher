@@ -2162,3 +2162,109 @@ textarea {
 .controller-test-active .settings-layout {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Living-room UI: one readable scale for navigation, forms and feedback. */
+.launcher { --text-body: calc(18px * var(--ui-scale)); --text-help: calc(15px * var(--ui-scale)); }
+.topbar nav button { font-size: var(--text-body); min-height: 48px; }
+.top-right .icon-button { min-width: 44px; min-height: 44px; }
+.hero { padding-top: 24px; }
+.hero h1 { font-size: clamp(36px, 4.6vw, 78px); }
+.hero > p { font-size: var(--text-body); max-width: 760px; }
+.hero-actions { display: flex; gap: 14px; margin: 20px 0; }
+.hero-actions button { min-height: 48px; }
+.section-label, .card-caption, .settings-nav > button, .setting-row, .manage-name, .detected-app { font-size: var(--text-body); }
+.section-count, .bottom-bar, .hints, .panel-footer, .text-button, .note, .muted, .panel-intro, .setting-row small, .device-line small, .ambiance-choice-hint, .ambiance-choice > span, .manage-name small { font-size: var(--text-help); line-height: 1.6; color: #bbc1cb; }
+.small-button, .primary-button, .panel input:not([type="checkbox"]):not([type="range"]), .panel textarea, .panel select { font-size: calc(16px * var(--ui-scale)); min-height: 44px; }
+.panel h3 { font-size: calc(24px * var(--ui-scale)); }
+.panel h4 { font-size: calc(18px * var(--ui-scale)); }
+.panel { width: min(1280px, 94vw); }
+.panel.settings-panel { height: min(820px, calc(100svh - 56px)); }
+.settings-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 28px; }
+.settings-nav > button { min-height: 60px; padding: 14px 12px; line-height: 1.4; }
+.setting-row { padding: 20px 4px; }
+.setting-row small { margin-top: 8px; }
+.settings-content .settings-subheading { margin-top: 30px; }
+.settings-subnav, .library-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.settings-subnav button, .library-filters button { padding: 10px 18px; min-height: 44px; border-radius: 8px; font-size: calc(16px * var(--ui-scale)); color: #c0c6cf; background: #ffffff06; }
+:is(.settings-subnav, .library-filters) button[aria-pressed="true"] { color: #fff4df; background: #e9dfce18; box-shadow: inset 0 -2px var(--cream); }
+.save-status { color: #c0d9c3; font-size: 14px; display: block; min-height: 22px; }
+.save-status:empty { display: none; }
+.system-actions { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 28px; }
+.disclosure-button { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 54px; margin-top: 24px; padding: 14px 0; border-top: 1px solid var(--border); font-size: var(--text-body); text-align: left; }
+.controller-tester { margin-top: 24px; }
+.bottom-bar { min-height: 76px; }
+.bottom-bar kbd { font-size: 14px; min-width: 28px; height: 28px; }
+.quick-hint { font-size: 14px; }
+.preview-badge, .footer-date { font-size: 12px; }
+.suggestion-label, .cards.grid .suggestion-label { font-size: 12px; letter-spacing: 0; padding: 6px 9px; background: #111820e6; }
+.favorite-label { position: absolute; top: 10px; right: 10px; color: #fff0d5; background: #151b24e6; padding: 6px 10px; border-radius: 5px; font-size: 13px; }
+.library-tools { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 5% 20px; padding: 5px; flex-shrink: 0; }
+.library-search { display: flex; flex: 1; gap: 10px; min-width: 220px; }
+.library-search .search-field { flex: 1; min-width: 0; }
+.library-search .search-field input { font-size: 17px; min-height: 48px; }
+.library-sort { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.library-sort select { font-size: 16px; min-height: 48px; }
+.library-filters { width: 100%; margin: 0; }
+.library-empty { padding: 30px 10px; color: #c0c6cf; }
+.library-empty h2 { font-size: 24px; color: #f5f3ef; }
+.library.grid { margin-top: 20px; min-height: 0; }
+.library.grid .cards { min-height: 0; }
+.manage-app .icon-button[aria-pressed="true"] { color: #ffdf9b; background: #e9dfce15; }
+.panel.quick-panel .power-options button { font-size: 17px; min-height: 50px; }
+summary { cursor: pointer; padding-block: 12px; }
+summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outline: 2px solid var(--cream); outline-offset: 3px; }
+@media (max-width: 1000px) {
+  .settings-layout { grid-template-columns: 220px minmax(0, 1fr); gap: 20px; }
+  .bottom-bar { flex-wrap: wrap; }
+  .preview-badge { display: none; }
+}
+@media (max-width: 700px) {
+  .launcher { --text-body: 16px; --text-help: 14px; }
+  .topbar { height: 126px; flex-wrap: wrap; align-content: center; gap: 8px; }
+  .topbar nav { display: flex; order: 3; width: 100%; height: 44px; gap: 24px; }
+  .brand { font-size: 24px; }
+  .top-right time { display: none; }
+  .top-right .icon-button { min-width: 44px; min-height: 44px; }
+  .hero { padding-top: 18px; min-height: 0; }
+  .hero h1 { font-size: 34px; letter-spacing: -1px; margin: 12px 0; }
+  .hero > p { font-size: 15px; max-width: 100%; margin-bottom: 12px; }
+  .hero-actions { margin: 12px 0; gap: 10px; }
+  .hero-actions button { font-size: 15px; padding-inline: 12px; }
+  .library-heading > div { gap: 2px; }
+  .library.grid { margin-top: 10px; }
+  .library-tools { gap: 10px; margin-bottom: 12px; }
+  .library-search { min-width: 100%; }
+  .library-sort { width: 100%; }
+  .library-filters { flex-wrap: nowrap; overflow-x: auto; padding: 5px 2px; }
+  .library-filters button { white-space: nowrap; padding: 8px 14px; font-size: 14px; }
+  .library.grid .section-label { font-size: 22px; }
+  .cards.grid .card-caption { font-size: 14px; margin-top: 10px; }
+  .cards.grid .suggestion-label { font-size: 10px; padding: 4px 6px; }
+  .favorite-label { font-size: 11px; padding: 4px 6px; }
+  .bottom-bar { height: auto; min-height: 64px; padding-block: 12px; }
+  .hints { gap: 12px; flex-wrap: wrap; font-size: 12px; }
+  .bottom-bar kbd { font-size: 11px; min-width: 24px; height: 24px; }
+  .quick-hint { display: none; }
+  .panel { width: 100%; padding: 20px 18px 0; }
+  .panel.settings-panel { height: calc(100svh - 24px); }
+  .settings-panel .settings-layout { display: flex; flex-direction: column; gap: 0; }
+  .settings-nav { display: flex; flex-direction: row; overflow-x: auto; margin-bottom: 12px; }
+  .settings-nav > button { min-height: 48px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
+  .settings-nav > small { display: none; }
+  .panel-heading { margin-bottom: 16px; }
+  .setting-row { gap: 14px; flex-wrap: wrap; }
+  .setting-row > span { flex: 1 1 180px; }
+  .setting-row select { max-width: 100%; }
+  .setting-row input[type=range] { width: 100%; }
+  .panel-footer { font-size: 12px; }
+  .panel-footer > :last-child { max-width: 65%; text-align: right; }
+  .settings-subnav { gap: 8px; }
+  .settings-subnav button { font-size: 15px; padding: 10px 12px; }
+  .manage-app { flex-wrap: wrap; }
+  .manage-name { flex-basis: 100%; }
+  .panel.quick-panel .power-options button { font-size: 16px; }
+  .import-toolbar .small-button { white-space: normal; }
+  .import-filters { flex-wrap: wrap; gap: 14px; }
+  .import-action { flex-wrap: wrap; gap: 12px; }
+  .import-action .primary-button { white-space: normal; }
+}
