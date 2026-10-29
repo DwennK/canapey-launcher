@@ -13,6 +13,7 @@ const props = defineProps<{
   selected?: boolean;
   special?: string;
   suggestion?: boolean;
+  suggestionLabel?: string;
   running?: boolean;
   favorite?: boolean;
   web?: boolean;
@@ -118,7 +119,7 @@ onUnmounted(() => {
   <button
     class="app-card"
     :class="[theme, { selected, special: !!special }]"
-    :aria-label="`${name}${suggestion ? ' — à ajouter' : ''}${running ? ' — en cours' : ''}`"
+    :aria-label="`${name}${suggestion ? ` — ${suggestionLabel ?? 'à ajouter'}` : ''}${running ? ' — en cours' : ''}`"
     :aria-description="favorite ? 'Favori de l’accueil' : undefined"
     :aria-pressed="selected"
     :tabindex="selected ? 0 : -1"
@@ -176,7 +177,7 @@ onUnmounted(() => {
       >
       <span v-if="favorite" class="favorite-label">Favori</span>
       <span v-if="running" class="running-dot" aria-label="En cours" />
-      <span v-if="suggestion" class="suggestion-label">À ajouter</span>
+      <span v-if="suggestion" class="suggestion-label">{{ suggestionLabel ?? 'À ajouter' }}</span>
     </span>
     <span class="card-caption"
       ><span>{{ name }}</span

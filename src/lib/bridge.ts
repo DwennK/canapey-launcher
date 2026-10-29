@@ -153,3 +153,12 @@ export const changeAudio = (
   change: import("./types").AudioChange,
 ): Promise<import("./types").AudioState> =>
   native ? invoke("change_audio", { change }) : unavailable();
+
+export interface VacuumTubeRelease { version: string; size: number; url: string; sha256: string }
+export interface VacuumTubeProgress { stage: 'checking' | 'downloading' | 'installing' | 'detecting'; received: number; total: number }
+export const detectYouTube = (): Promise<AppEntry | null> => native ? invoke('detect_vacuumtube') : Promise.resolve(null);
+export const youtubeRelease = (): Promise<VacuumTubeRelease> => native ? invoke('vacuumtube_release') : unavailable();
+export const installYouTube = (): Promise<AppEntry | null> => native ? invoke('install_vacuumtube') : unavailable();
+export const cancelYouTubeInstall = (): Promise<void> => native ? invoke('cancel_vacuumtube_install') : Promise.resolve();
+export const youtubeProgress = (handler: (progress: VacuumTubeProgress) => void): Promise<() => void> =>
+  native ? listen<VacuumTubeProgress>('vacuumtube-progress', event => handler(event.payload)) : Promise.resolve(() => {});

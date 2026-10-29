@@ -15,6 +15,7 @@ pub mod remote_shortcut;
 mod runtime;
 pub mod tracking;
 pub mod update_flow;
+pub mod vacuumtube;
 #[cfg(feature = "desktop")]
 mod xbox_home;
 #[cfg(feature = "desktop")]

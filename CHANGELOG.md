@@ -1,5 +1,12 @@
 # Notes de version
 
+## Non publié — YouTube du 2026-10-29
+
+- Carte YouTube proposée même sans installation, avec le visuel intégré et les actions Installer / Ouvrir.
+- Détection et réutilisation de VacuumTube ; installation de sa dernière release stable GitHub, avec progression, annulation et vérification SHA-256 avant ouverture de l’assistant Windows.
+- Enregistrement sans doublon natif, réparation d’un chemin déplacé et conservation des préférences. Les raccourcis Web existants restent disponibles.
+- Validation et limites Windows documentées dans `docs/YOUTUBE.md`.
+
 ## Non publié — itération bibliothèque du 2026-10-29
 
 - Chargement immédiat des premières rangées de cartes ; récupération automatique par les visuels intégrés si une image personnalisée ou de thème ne peut pas être décodée. Un changement de visuel réinitialise les erreurs de la carte.

@@ -306,6 +306,15 @@ async fn scan_apps(app: tauri::AppHandle) -> Result<Vec<AppEntry>, String> {
         let mut entries = platform::scan(&dir, None)?;
         prune_icons(&dir, &protected);
         for entry in &mut entries {
+            if crate::vacuumtube::is_vacuumtube(entry) {
+                entry.name = "YouTube".into();
+                entry.theme = "youtube".into();
+                entry.icon = None;
+                entry.source = "Application Windows".into();
+                if !entry.target.args.iter().any(|arg| arg == "--fullscreen") {
+                    entry.target.args.push("--fullscreen".into());
+                }
+            }
             if entry
                 .icon
                 .as_ref()
@@ -319,6 +328,51 @@ async fn scan_apps(app: tauri::AppHandle) -> Result<Vec<AppEntry>, String> {
     .await;
     state.scan_busy.store(false, Ordering::SeqCst);
     result.map_err(|e| e.to_string())?
+}
+fn vacuumtube_paths(app: &tauri::AppHandle) -> Vec<String> {
+    app.state::<State>()
+        .config
+        .lock()
+        .unwrap()
+        .apps
+        .iter()
+        .filter(|entry| crate::vacuumtube::is_vacuumtube(entry))
+        .map(|entry| entry.target.value.clone())
+        .collect()
+}
+#[tauri::command]
+async fn detect_vacuumtube(app: tauri::AppHandle) -> Result<Option<AppEntry>, String> {
+    platform::supported()?;
+    let paths = vacuumtube_paths(&app);
+    tauri::async_runtime::spawn_blocking(move || crate::vacuumtube::detect(&paths))
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn vacuumtube_release() -> Result<crate::vacuumtube::Release, String> {
+    platform::supported()?;
+    tauri::async_runtime::spawn_blocking(crate::vacuumtube::latest_release)
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn install_vacuumtube(app: tauri::AppHandle) -> Result<Option<AppEntry>, String> {
+    platform::supported()?;
+    let paths = vacuumtube_paths(&app);
+    let handle = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        crate::vacuumtube::install(&paths, |progress| {
+            let _ = handle.emit("vacuumtube-progress", progress);
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    foreground(&app);
+    result
+}
+#[tauri::command]
+fn cancel_vacuumtube_install() {
+    crate::vacuumtube::cancel_install();
 }
 #[tauri::command]
 async fn pick_application(app: tauri::AppHandle) -> Result<Option<AppEntry>, String> {
@@ -1110,6 +1164,10 @@ pub fn run() {
             save_config,
             list_monitors,
             scan_apps,
+            detect_vacuumtube,
+            vacuumtube_release,
+            install_vacuumtube,
+            cancel_vacuumtube_install,
             pick_application,
             pick_image,
             launch_app,

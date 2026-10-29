@@ -5,6 +5,27 @@ import {
 import { categories, categoryFor, homeApps, libraryApps, type AppCategory, type LibraryFilter } from "./lib/library";
 import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/library-editing";
 import RemovalNotice from "./components/RemovalNotice.vue";
+import { isVacuumTube, registerYouTube, showYouTubeSuggestion } from './lib/youtube';
+const YouTubeSetup = defineAsyncComponent(() => import('./components/YouTubeSetup.vue'));
+const youtubeDetected = ref<AppEntry | null>(null);
+const youtubeBusy = ref(false);
+const youtubeChecking = ref(false);
+async function saveYouTube(app: AppEntry) {
+  const result = registerYouTube(config.value, app);
+  config.value = result.config;
+  if (!(await persist())) return false;
+  youtubeDetected.value = result.app;
+  return true;
+}
+async function openYouTube(app: AppEntry) {
+  if (!(await saveYouTube(app))) throw new Error('La carte YouTube n’a pas été enregistrée. Réessayez.');
+  dismissPanels(); resetLibrary(); view.value = 'grid';
+  await nextTick();
+  selected.value = reconcileSelection(tiles.value.map(tile => tile.id), config.value.selectedId);
+  await focusCard();
+  const entry = config.value.apps.find(isVacuumTube)!;
+  await activate({id:entry.id,name:entry.name,theme:entry.theme,entry}, true);
+}
 import { isSystemTool } from "./lib/discovery";
 import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
@@ -137,13 +158,15 @@ type Panel =
   | "session"
   | "confirm"
   | "quick"
-  | "move";
+  | "move"
+  | "youtube";
 interface Tile {
   id: string;
   name: string;
   theme: Theme;
   special?: string;
   suggestion?: boolean;
+  catalog?: boolean;
   entry?: AppEntry;
 }
 const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -259,7 +282,7 @@ const libraryFilter = ref<LibraryFilter>('all');
 const libraryFilters = { all: 'Tout', favorites: 'Favoris', ...categories };
 const libraryFiltered = computed(() => !!libraryQuery.value.trim() || libraryFilter.value !== 'all');
 const filterCounts = computed(() => Object.fromEntries(Object.keys(libraryFilters).map(key => [key,
-  libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, key as LibraryFilter).length,
+  libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, key as LibraryFilter).length + Number(showYouTubeSuggestion(config.value.apps, libraryQuery.value, key as LibraryFilter)),
 ])));
 const removedApp = ref<RemovedApp | null>(null);
 const restoreBusy = ref(false), restoreError = ref('');
@@ -362,14 +385,18 @@ const examples: Tile[] = [
   { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
   { id: "suggest-silo", name: "Silo", theme: "silo", suggestion: true },
 ];
-const visibleApps = computed(() => view.value === 'carousel'
-  ? homeApps(config.value.apps, config.value.settings.library, sessions.value)
-  : libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, libraryFilter.value));
+const visibleApps = computed(() => {
+  if (view.value !== 'carousel') return libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, libraryFilter.value);
+  const apps = homeApps(config.value.apps, config.value.settings.library, sessions.value);
+  const youtube = config.value.apps.find(isVacuumTube);
+  return youtube && !apps.includes(youtube) ? [...apps, youtube] : apps;
+});
 const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(app.id) || sessions.value.some(session => session.appId === app.id)));
 const tiles = computed<Tile[]>(() => config.value.apps.length
   ? [...visibleApps.value.map(entry => ({ id: entry.id, name: entry.name, theme: entry.theme, entry })),
+     ...(showYouTubeSuggestion(config.value.apps, view.value === 'carousel' ? '' : libraryQuery.value, view.value === 'carousel' ? 'all' : libraryFilter.value) ? [{id:'catalog-youtube',name:'YouTube',theme:'youtube' as const,catalog:true,suggestion:true}] : []),
      ...(view.value === 'carousel' ? [{ id: 'library', name: 'Toutes les applications', theme: 'home' as const, special: 'library' }] : [])]
-  : [{ id: 'add', name: 'Ajouter des applications', theme: 'home', special: 'add' }, ...examples]);
+  : [{ id: 'add', name: 'Ajouter des applications', theme: 'home', special: 'add' }, ...examples.map(tile => tile.id === 'suggest-youtube' ? {...tile,id:'catalog-youtube',catalog:true} : tile)]);
 const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
   ?? { id: 'empty', name: 'Aucun résultat', theme: 'home', special: 'empty' });
 const empty = computed(() => config.value.apps.length === 0);
@@ -429,7 +456,7 @@ const heroTitle = computed(() =>
       : current.value.name,
 );
 const subtitle = computed(() =>
-  current.value.special === "windows"
+  current.value.catalog ? 'YouTube sur votre TV, adapté à la manette.' : current.value.special === "windows"
     ? "Canapey reste ouvert en arrière-plan."
     : current.value.special === 'library' ? 'Retrouvez, filtrez et organisez toutes vos applications.'
     : !config.value.apps.length ? 'Choisissez les applications à retrouver sur votre TV.'
@@ -437,7 +464,7 @@ const subtitle = computed(() =>
     : selectedSession.value ? 'Votre application est toujours ouverte.' : 'Vos favoris, prêts à ouvrir.',
 );
 const heroStatus = computed(() =>
-  current.value.suggestion
+  current.value.catalog ? (youtubeDetected.value ? 'PRÊT À OUVRIR' : 'À INSTALLER') : current.value.suggestion
     ? "À AJOUTER"
     : selectedSession.value
       ? { running: 'EN COURS', starting: 'DÉMARRAGE…', closing: 'FERMETURE…', untracked: 'SUIVI LIMITÉ' }[selectedSession.value.status]
@@ -691,6 +718,7 @@ function select(index: number) {
   selectionChanged();
 }
 async function openPanel(p: Panel) {
+  if (youtubeBusy.value) return;
   cancelHold();
   if (p === panel.value) return;
   const root = panel.value ? panelRoot.value : launcherRoot.value;
@@ -720,7 +748,7 @@ async function openPanel(p: Panel) {
     );
 }
 async function closePanel() {
-  if (installingUpdate.value) return;
+  if (installingUpdate.value || youtubeBusy.value) return;
   const closingQuick = panel.value === "quick" || panel.value === "move";
   editingControl.value = null;
   const previous = panelHistory.pop();
@@ -736,6 +764,7 @@ async function closePanel() {
   else if (!panel.value) await focusCard();
 }
 function dismissPanels() {
+  if (youtubeBusy.value) return;
   keyboardTarget.value = null;
   editingControl.value = null;
   panelHistory.length = 0;
@@ -760,7 +789,25 @@ async function acceptConfirm() {
     await closePanel();
   });
 }
-async function activate(tile = current.value) {
+async function activate(tile = current.value, youtubeChecked = false) {
+  if (!youtubeChecked && (tile.catalog || (tile.entry && isVacuumTube(tile.entry)))) {
+    if (youtubeChecking.value) return;
+    youtubeChecking.value = true;
+    try {
+      // Recheck at launch so uninstalling or moving the executable never leaves a dead card.
+      if (native.value) {
+        try { youtubeDetected.value = await api.detectYouTube(); }
+        catch { youtubeDetected.value = null; /* The setup panel exposes detection errors and retry. */ }
+        if (youtubeDetected.value) {
+          try { await openYouTube(youtubeDetected.value); }
+          catch (e) { notify(e); }
+          return;
+        }
+      }
+      await openPanel('youtube');
+    } finally { youtubeChecking.value = false; }
+    return;
+  }
   if (tile.special === "add") {
     void openAdd();
     return;
@@ -817,6 +864,7 @@ function dispatch(action: Action) {
   cancelHold();
   document.documentElement.dataset.inputMode = "directional";
   if (action === "home") {
+    if (youtubeBusy.value) return;
     dismissPanels();
     view.value = "carousel";
     void focusCard();
@@ -1352,6 +1400,7 @@ onMounted(async () => {
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
     native.value = b.native;
+    if (b.native) void api.detectYouTube().then(app => { youtubeDetected.value = app; }).catch(() => {});
     controller.value = b.controller;
     sessions.value = b.sessions;
     selected.value = reconcileSelection(
@@ -1555,7 +1604,7 @@ onUnmounted(() => {
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
       <div class="hero-actions">
-        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.special === 'add' ? 'Ajouter mes applications' : current.special === 'library' ? 'Voir la bibliothèque' : selectedSession?.status === 'running' ? 'Reprendre' : current.suggestion ? 'Ajouter' : selectedSession ? 'Voir la session' : 'Ouvrir' }}</button>
+        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.catalog ? (youtubeDetected ? 'Ouvrir YouTube' : 'Installer YouTube') : current.special === 'add' ? 'Ajouter mes applications' : current.special === 'library' ? 'Voir la bibliothèque' : selectedSession?.status === 'running' ? 'Reprendre' : current.suggestion ? 'Ajouter' : selectedSession ? 'Voir la session' : 'Ouvrir' }}</button>
         <button v-if="current.entry" class="small-button" @click="openQuick(selected)">Actions</button>
       </div>
     </section>
@@ -1576,7 +1625,7 @@ onUnmounted(() => {
                 : hasHomeSelection ? "En cours et favoris" : "Pour commencer"
           }}</span>
           <span v-if="!empty" class="section-count" role="status">{{
-            `${visibleApps.length} application${visibleApps.length > 1 ? "s" : ""}${view === 'grid' && libraryFiltered ? ` sur ${config.apps.length}` : ''}`
+            `${tiles.filter(tile => !tile.special).length} application${tiles.filter(tile => !tile.special).length > 1 ? "s" : ""}${view === 'grid' && libraryFiltered ? ` sur ${config.apps.length + Number(!config.apps.some(isVacuumTube))}` : ''}`
           }}</span>
         </div>
         <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />Ajouter</button>
@@ -1584,9 +1633,9 @@ onUnmounted(() => {
       <div v-if="view === 'grid' && !empty" class="library-tools">
         <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" aria-label="Rechercher dans la bibliothèque" placeholder="Rechercher une application" /></label><button v-if="libraryQuery" class="small-button" aria-label="Effacer la recherche" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" aria-label="Clavier pour la bibliothèque" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
         <label class="library-sort">Trier<select v-model="config.settings.library.sort" @change="persist"><option value="custom">Mon ordre</option><option value="name">Nom A–Z</option><option value="category">Catégorie</option></select></label>
-        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="`${filterCounts[key]} application${filterCounts[key] === 1 ? '' : 's'}`" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && visibleApps.length" class="reset-filters" @click="resetLibrary">Effacer les filtres</button></div>
+        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="`${filterCounts[key]} application${filterCounts[key] === 1 ? '' : 's'}`" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">Effacer les filtres</button></div>
       </div>
-      <div v-if="view === 'grid' && !empty && !visibleApps.length" class="library-empty"><h2>Aucune application trouvée</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? 'Ajoutez vos favoris depuis le menu Actions d’une carte.' : libraryQuery.trim() ? `Aucun résultat pour « ${libraryQuery.trim()} »${libraryFilter === 'all' ? '' : ` dans ${libraryFilters[libraryFilter]}`}.` : `Aucune application dans ${libraryFilters[libraryFilter]}. Modifiez la catégorie d’une carte depuis ses actions.` }}</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
+      <div v-if="view === 'grid' && !empty && !tiles.length" class="library-empty"><h2>Aucune application trouvée</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? 'Ajoutez vos favoris depuis le menu Actions d’une carte.' : libraryQuery.trim() ? `Aucun résultat pour « ${libraryQuery.trim()} »${libraryFilter === 'all' ? '' : ` dans ${libraryFilters[libraryFilter]}`}.` : `Aucune application dans ${libraryFilters[libraryFilter]}. Modifiez la catégorie d’une carte depuis ses actions.` }}</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
       <div
         ref="cardsRoot"
         class="cards"
@@ -1603,6 +1652,7 @@ onUnmounted(() => {
           :special="tile.special"
           :web="tile.entry?.target.kind === 'uri'"
           :suggestion="tile.suggestion"
+          :suggestion-label="tile.catalog ? (youtubeDetected ? 'Disponible' : 'À installer') : undefined"
           :image="tileImage(tile)"
           :eager="i < (view === 'grid' ? columns * 3 : 6)"
           :icon="api.imageUrl(tile.entry?.icon)"
@@ -1685,7 +1735,7 @@ onUnmounted(() => {
           role="dialog"
           aria-modal="true"
           :aria-label="
-            panel === 'audio'
+            panel === 'youtube' ? 'YouTube' : panel === 'audio'
               ? 'Commandes rapides'
               : panel === 'quick'
                 ? `Actions pour ${quickApp?.name}`
@@ -1714,7 +1764,7 @@ onUnmounted(() => {
               <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
                 {{
-                  panel === "audio"
+                  panel === 'youtube' ? 'YouTube' : panel === "audio"
                     ? "Commandes rapides"
                     : panel === "quick"
                       ? quickApp?.name
@@ -1738,12 +1788,13 @@ onUnmounted(() => {
               </span>
               </div>
             </div>
-            <button class="icon-button" aria-label="Fermer" :disabled="installingUpdate" @click="closePanel">
+            <button class="icon-button" aria-label="Fermer" :disabled="installingUpdate || youtubeBusy" @click="closePanel">
               <Icon name="close" />
             </button>
           </div>
+          <YouTubeSetup v-if="panel === 'youtube'" :native="native" :save-app="saveYouTube" :open-app="openYouTube" @busy="youtubeBusy = $event" @detected="youtubeDetected = $event" />
           <AudioControls
-            v-if="panel === 'audio'"
+            v-else-if="panel === 'audio'"
             :state="audioState"
             :volume="audioVolume"
             :busy="audioBusy"
