@@ -1,5 +1,15 @@
 # Notes de version
 
+## Non publié — sprint UX du 2026-10-29
+
+- Accueil centré sur les applications en cours et les favoris, accès explicite à la bibliothèque et actions Ouvrir / Reprendre.
+- Bibliothèque avec recherche insensible aux accents, filtres Tout / Favoris / Jeux / Vidéo / Musique / Autres, tri et catégories modifiables.
+- Paramètres regroupés en cinq sections, dernière rubrique mémorisée, retour d’enregistrement et erreurs visibles. Test manette intégré ; dépannage Xbox / Steam Input repliable.
+- Guide des dix boutons essentiels de la télécommande, reprise des étapes incomplètes et résumé des associations. Les conflits et protections de capture existants sont conservés.
+- Détection des applications dès la première ouverture de l’ajout, recherche focalisée et bouton indiquant le nombre d’applications à ajouter.
+- Textes, contrôles et aides agrandis ; navigation mobile visible ; retour Windows déplacé dans les commandes système. Focus préservé entre sous-pages et clavier virtuel utilisable dans la bibliothèque.
+- Préférences enregistrées dans la configuration native avec migration rétrocompatible ; validation locale détaillée dans `docs/UX_SPRINT.md`. Aucune nouvelle release publiée.
+
 ## 0.5.0 — 2026-10-19
 
 - Télécommande iPhone expérimentale, native en Rust : association par PIN, navigation dans Canapey et les applications Windows, retour à l’accueil et commandes multimédias. Désactivée par défaut, limitée aux réseaux privés IPv4 ; compatibilité sur iPhone réel à confirmer.

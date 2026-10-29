@@ -98,7 +98,7 @@
 
 WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
 
-On first launch, choose **Add applications** to discover installed applications or browse for an executable or Windows shortcut. Select the applications you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Applications already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
+On first launch, choose **Add applications**: detection starts automatically. Browse for an executable or Windows shortcut if needed. Select the applications you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Applications already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
 
 ## Controls
 
@@ -111,21 +111,27 @@ On first launch, choose **Add applications** to discover installed applications 
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
-| Return globally without closing the running app | Configurable in **Settings → Télécommande** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
+| Return globally without closing the running app | Configurable in **Settings → Manettes et télécommandes → Télécommande** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
 ### iPhone / Apple TV Remote
 
-In **Settings → Télécommande → iPhone**, enable the receiver and choose **Associer un iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
+In **Settings → Manettes et télécommandes → Télécommande → iPhone**, enable the receiver and choose **Associer un iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
 
 Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active application's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
 
 This feature remains experimental: real Windows/iPhone compatibility and wake-from-sleep recovery have not yet been validated. Mouse mode, Siri, AirPlay, playback information and waking the PC are outside this version. See [implementation, upstream tracking and hardware checks](docs/APPLE_REMOTE.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
+### Home, library and settings
+
+Home shows running applications first, followed by favorites without duplicates. Before favorites are selected, it offers up to six applications. Use **Actions → Ajouter aux favoris**, or the favorite control in **Settings → Applications**. **Bibliothèque** contains all applications, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the application editor; changing artwork does not change categorization. **Retour au bureau Windows** is in the power menu and **Démarrage et système**.
+
+Settings now have five sections: **Affichage et ambiance**, **Applications**, **Manettes et télécommandes**, **Démarrage et système**, and **Aide et mises à jour**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. These changes are unreleased; the download above remains v0.5.0.
+
 ### Skip 1s / Flirc remote
 
-In **Settings → Télécommande**, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
+In **Settings → Manettes et télécommandes → Télécommande**, choose **Configurer les boutons essentiels** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
 Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Activer dans tout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. Interface actions restore Canapey before executing. The same physical keyboard keys are affected and may lose their usual behavior in other applications. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
 
@@ -137,21 +143,21 @@ On added application cards, a short Enter / A / Cross press activates on release
 
 New configurations default to **Xbox button + Start/Back fallback**. Existing saved choices are preserved. You can also choose **Start + Back**, **LB + RB + Start** (L1 + R1 + Options on PlayStation), or disable the shortcut. Hold duration applies to combinations; the Xbox button needs one press. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
 
-In **Settings → Controller & ambience**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
+In **Settings → Manettes et télécommandes → Manette → Dépannage Xbox / Steam Input**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
 
 <details>
 <summary><strong>Field editing, focus and controller compatibility</strong></summary>
 
 - Arrow keys move focus between controls. A / Cross on a text field opens the on-screen AZERTY keyboard, with accents, uppercase, numbers, symbols and caret controls. Choose **Terminé** to apply the draft or B / Circle to cancel; focus returns to the field. Search and name fields also have a **Clavier** button. Physical typing remains available. Enter starts or ends physical text editing; Enter / A / Cross starts or ends selector and slider editing.
 - While editing text, arrows move the caret and **Backspace deletes text**. Esc / B / Circle ends editing without closing the menu. Shift + Enter adds a line in the arguments field. Outside editing, Backspace returns to the previous menu.
-- From the carousel, Up reaches the main action and then the header. From the last grid row, Down reaches the power control; Up returns to the cards. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
+- From the carousel, Up reaches the main action and then the header. From the first library row, Up reaches search and filters. The power menu remains available in the header. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
 - Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Paths and arguments can also use the on-screen keyboard; choosing files still uses a Windows dialog.
 - **Steam Input** can intercept Start/Back or map a controller to keyboard/mouse input through its Desktop Layout. Disable that mapping for Canapey or choose the alternative shortcut. Canapey does not automatically disable duplicate Steam Input and native input.
 - Controllers must be exposed to Windows in a format supported by gilrs / Windows Gaming Input. Canapey does not install PlayStation drivers.
 
 </details>
 
-In **Settings → Test de la manette**, choose **Démarrer le test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Arrêter le test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
+In **Settings → Manettes et télécommandes → Manette → Tester la manette**, choose **Démarrer le test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Arrêter le test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
 
 ## Quick start
 
@@ -247,7 +253,7 @@ Windows data directory: `%APPDATA%\com.canapey.launcher\`.
 | `art/` | Imported images converted to WebP: 640 × 360 cards, 1920 × 1080 backgrounds; source limit 20 MB / 8,192 px, storage quota 128 MB |
 | `icons/` | Extracted icon cache, capped at 64 MB |
 
-Rotating logs are available under **Settings → Diagnostics → Open logs** (French UI: *Paramètres → Diagnostic → Ouvrir les logs*). They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
+Rotating logs are available under **Settings → Aide et mises à jour → Diagnostic → Ouvrir les logs**. They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
 
 Optional start at login uses Tauri's official autostart plugin. Starting a second instance brings back the first; the tray offers open and quit actions. **Return to Windows** shows the desktop while keeping Canapey available. The preferred monitor is saved, with fallback to the primary screen if the TV is disconnected. Display topology is checked periodically, including after sleep. Winlogon and Explorer are left unchanged.
 
