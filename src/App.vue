@@ -1646,6 +1646,7 @@ onUnmounted(() => {
           :image="tileImage(tile)"
           :eager="i < (view === 'grid' ? columns * 3 : 6)"
           :icon="api.imageUrl(tile.entry?.icon)"
+          :target="tile.entry?.target"
           :selected="selected === i"
           :holding="selected === i && holdingCard"
           :has-options="!!tile.entry"
@@ -2334,6 +2335,7 @@ onUnmounted(() => {
                   :name="editing.name"
                   :theme="editing.theme"
                   :icon="api.imageUrl(editing.icon)"
+                  :target="editing.target"
                   :image="
                     api.imageUrl(editing.card) ||
                     `/art/${editing.theme}-card.webp`

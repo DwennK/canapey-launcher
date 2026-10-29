@@ -3,14 +3,16 @@ import { t } from '../lib/i18n';
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { CardHold } from "../lib/hold";
 import { cardArtwork } from "../lib/ambiance";
+import { appLogoCandidates } from "../lib/app-logo";
 import Icon from "./Icon.vue";
-import type { Theme } from "../lib/types";
+import type { Target, Theme } from "../lib/types";
 const props = defineProps<{
   name: string;
   theme: Theme;
   image?: string;
   eager?: boolean;
   icon?: string;
+  target?: Target;
   selected?: boolean;
   special?: string;
   suggestion?: boolean;
@@ -29,22 +31,13 @@ function artworkFailed(event: Event) {
   const src = (event.target as HTMLImageElement).getAttribute('src');
   if (src && !failedImages.value.includes(src)) failedImages.value.push(src);
 }
-// Identity comes from the app, never from the selected background theme.
-const brandLogos = new Map([
-  ["netflix", "/brands/netflix.svg"],
-  ["youtube", "/brands/youtube.svg"],
-  ["spotify", "/brands/spotify.png"],
-  ["steam", "/brands/steam.svg"],
-  ["plezy", "/brands/plezy.svg"],
-  ["silo", "/brands/silo.svg"],
-]);
 const failedLogos = ref<string[]>([]);
 const logo = computed(() =>
-  [props.icon, brandLogos.get(props.name.trim().toLowerCase())].find(
-    (src) => src && !failedLogos.value.includes(src),
+  appLogoCandidates(props.name, props.target, props.icon).find(
+    (src) => !failedLogos.value.includes(src),
   ),
 );
-watch(() => [props.icon, props.name], () => { failedLogos.value = []; });
+watch(() => [props.icon, props.name, props.target?.kind, props.target?.value], () => { failedLogos.value = []; });
 function logoFailed() {
   if (logo.value) failedLogos.value.push(logo.value);
 }
