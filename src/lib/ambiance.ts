@@ -14,3 +14,18 @@ export function backgroundFor(theme: Theme, customImage: string, settings: Pick<
   if (customImage) return customImage;
   return `/art/${theme === 'home' || theme === 'windows' ? general : theme}.webp`;
 }
+
+// Keep imported artwork first, then recover with bundled art if the file moves
+// or cannot be decoded. Utility cards intentionally have no artwork.
+export function cardArtwork(theme: Theme, customImage = '') {
+  return [...new Set([customImage, `/art/${theme === 'windows' ? 'home' : theme}-card.webp`, '/art/home-card.webp'].filter(Boolean))];
+}
+
+export function backgroundCandidates(theme: Theme, customImage: string, settings: Pick<Settings, 'dynamicBackground' | 'generalAmbiance'>) {
+  return [...new Set([
+    backgroundFor(theme, customImage, settings),
+    backgroundFor(theme, '', settings),
+    backgroundFor('home', '', settings),
+    '/art/home.webp',
+  ])];
+}

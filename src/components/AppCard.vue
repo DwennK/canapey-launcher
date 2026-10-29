@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { CardHold } from "../lib/hold";
+import { cardArtwork } from "../lib/ambiance";
 import Icon from "./Icon.vue";
 import type { Theme } from "../lib/types";
 const props = defineProps<{
   name: string;
   theme: Theme;
   image?: string;
+  eager?: boolean;
   icon?: string;
   selected?: boolean;
   special?: string;
@@ -18,6 +20,13 @@ const props = defineProps<{
   holding?: boolean;
 }>();
 const emit = defineEmits<{ select: []; activate: []; options: [] }>();
+const failedImages = ref<string[]>([]);
+const artwork = computed(() => props.special ? undefined : cardArtwork(props.theme, props.image).find(src => !failedImages.value.includes(src)));
+watch(() => [props.image, props.theme], () => { failedImages.value = []; });
+function artworkFailed(event: Event) {
+  const src = (event.target as HTMLImageElement).getAttribute('src');
+  if (src && !failedImages.value.includes(src)) failedImages.value.push(src);
+}
 // Identity comes from the app, never from the selected background theme.
 const brandLogos = new Map([
   ["netflix", "/brands/netflix.svg"],
@@ -125,14 +134,17 @@ onUnmounted(() => {
   >
     <span class="card-visual">
       <img
-        v-if="image"
+        v-if="artwork"
+        :key="artwork"
         class="card-image"
-        :src="image"
+        :src="artwork"
         alt=""
-        :loading="selected ? 'eager' : 'lazy'"
+        width="640"
+        height="360"
+        :loading="selected || eager ? 'eager' : 'lazy'"
         :fetchpriority="selected ? 'high' : 'auto'"
         draggable="false"
-        @error="($event.target as HTMLImageElement).style.display = 'none'"
+        @error="artworkFailed"
       />
       <span class="card-shade" />
       <span

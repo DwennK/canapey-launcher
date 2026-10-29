@@ -3,13 +3,15 @@ import {
   computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
 } from "vue";
 import { categories, categoryFor, homeApps, libraryApps, type AppCategory, type LibraryFilter } from "./lib/library";
+import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/library-editing";
+import RemovalNotice from "./components/RemovalNotice.vue";
 import { isSystemTool } from "./lib/discovery";
 import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
-import { backgroundFor, generalAmbiances } from "./lib/ambiance";
+import { backgroundCandidates, generalAmbiances } from "./lib/ambiance";
 import AppCard from "./components/AppCard.vue";
 import { startupMark } from "./lib/startup";
 import { captureShortcut, runRemoteAction } from "./lib/remote-home";
@@ -254,6 +256,13 @@ const settingsSections = {
 const settingsSaveStatus = ref('');
 const libraryQuery = ref('');
 const libraryFilter = ref<LibraryFilter>('all');
+const libraryFilters = { all: 'Tout', favorites: 'Favoris', ...categories };
+const libraryFiltered = computed(() => !!libraryQuery.value.trim() || libraryFilter.value !== 'all');
+const filterCounts = computed(() => Object.fromEntries(Object.keys(libraryFilters).map(key => [key,
+  libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, key as LibraryFilter).length,
+])));
+const removedApp = ref<RemovedApp | null>(null);
+const restoreBusy = ref(false), restoreError = ref('');
 const editingCategory = ref<AppCategory | 'auto'>('auto');
 const showControllerTest = ref(false);
 const controllerHelp = ref(false);
@@ -264,9 +273,14 @@ async function toggleFavorite(id: string) {
   if (await persist()) notify(favorite(id) ? 'Ajouté aux favoris de l’accueil.' : 'Retiré des favoris.');
 }
 function resetLibrary() {
-  const wasEmpty = !!document.activeElement?.closest('.library-empty');
+  const wasEmpty = !!document.activeElement?.closest('.library-empty, .reset-filters');
   libraryQuery.value = ''; libraryFilter.value = 'all';
   if (wasEmpty) void nextTick(() => focusElement(launcherRoot.value?.querySelector<HTMLElement>('.library-tools input') ?? undefined));
+}
+async function clearLibraryQuery() {
+  libraryQuery.value = '';
+  await nextTick();
+  focusElement(launcherRoot.value?.querySelector<HTMLElement>('.library-tools input') ?? undefined);
 }
 function showLibrary() { resetLibrary(); view.value = 'grid'; void focusCard(); }
 async function openAdd(search = '') {
@@ -1133,11 +1147,14 @@ async function saveEditing() {
 }
 async function moveApp(index: number, delta: number) {
   const to = index + delta;
-  if (to < 0 || to >= config.value.apps.length) return;
+  if (index < 0 || to < 0 || to >= config.value.apps.length) return;
   const focused = document.activeElement as HTMLElement;
+  const changingSort = config.value.settings.library.sort !== 'custom';
   const [item] = config.value.apps.splice(index, 1);
   config.value.apps.splice(to, 0, item!);
-  void persist();
+  config.value.settings.library.sort = 'custom';
+  if (!(await persist())) return;
+  if (changingSort) notify('Ordre personnalisé activé.');
   await nextTick();
   if (focused.matches(":disabled") && panelRoot.value) {
     focusElement(
@@ -1149,15 +1166,44 @@ async function moveApp(index: number, delta: number) {
 }
 async function removeApp() {
   if (!editing.value) return;
-  const id = editing.value.id;
-  config.value.apps = config.value.apps.filter((a) => a.id !== id);
-  config.value.settings.library.favorites = config.value.settings.library.favorites.filter(value => value !== id);
-  delete config.value.settings.library.categories[id];
-  selected.value = Math.min(selected.value, tiles.value.length - 1);
+  const result = removeLibraryApp(config.value, editing.value.id);
+  if (!result) return;
+  config.value = result.config;
   if (!(await persist()))
     throw new Error("La suppression n’a pas été enregistrée.");
+  removedApp.value = result.removed;
+  restoreError.value = '';
   // Skip the removed editor when returning from its confirmation.
   panelHistory.pop();
+}
+async function focusAfterRemovalNotice() {
+  await nextTick();
+  if (panel.value === 'settings') {
+    focusElement(panelRoot.value?.querySelector<HTMLElement>('.manage-name, .content-heading button') ?? undefined);
+  } else await focusCard();
+}
+async function dismissRemoval() {
+  removedApp.value = null;
+  restoreError.value = '';
+  await focusAfterRemovalNotice();
+}
+async function restoreRemovedApp() {
+  if (!removedApp.value || restoreBusy.value) return;
+  restoreBusy.value = true;
+  restoreError.value = '';
+  try {
+    const id = removedApp.value.app.id;
+    config.value = restoreLibraryApp(config.value, removedApp.value);
+    if (!(await persist())) throw new Error('Restauration non enregistrée. Réessayez.');
+    removedApp.value = null;
+    if (!panel.value) { resetLibrary(); view.value = 'grid'; }
+    await nextTick();
+    selected.value = reconcileSelection(tiles.value.map(tile => tile.id), id);
+    await focusAfterRemovalNotice();
+    notify('Carte restaurée avec ses favoris et sa catégorie.');
+  } catch (error) {
+    restoreError.value = error instanceof Error ? error.message : String(error);
+  } finally { restoreBusy.value = false; }
 }
 async function imagePick(kind: "card" | "background") {
   await run("Choix du visuel", async () => {
@@ -1205,24 +1251,23 @@ function selectGeneralAmbiance(id: typeof generalAmbiances[number]['id']) {
   void persist();
 }
 watch(
-  () => backgroundFor(current.value.theme, api.imageUrl(current.value.entry?.background), config.value.settings),
-  async (target) => {
+  () => backgroundCandidates(current.value.theme, api.imageUrl(current.value.entry?.background), config.value.settings),
+  async (targets) => {
     const ticket = ++imageTicket;
     const animate = startupPainted.value;
-    if (target === heroBg.value) return;
-    const image = new Image();
-    image.src = target;
-    try {
-      await image.decode();
-    } catch {
+    for (const target of targets) {
+      if (ticket !== imageTicket || target === heroBg.value) return;
+      const image = new Image();
+      image.src = target;
+      try { await image.decode(); } catch { continue; }
+      if (ticket !== imageTicket) return;
+      animateBackground.value = animate;
+      oldBg.value = animate ? heroBg.value : "";
+      heroBg.value = target;
+      clearTimeout(bgTimer);
+      bgTimer = setTimeout(() => (oldBg.value = ""), 650);
       return;
     }
-    if (ticket !== imageTicket) return;
-    animateBackground.value = animate;
-    oldBg.value = animate ? heroBg.value : "";
-    heroBg.value = target;
-    clearTimeout(bgTimer);
-    bgTimer = setTimeout(() => (oldBg.value = ""), 650);
   },
 );
 watch(
@@ -1520,6 +1565,7 @@ onUnmounted(() => {
       :class="view"
       aria-label="Applications"
     >
+      <RemovalNotice v-if="removedApp" class="library-removal" :name="removedApp.app.name" :busy="restoreBusy" :error="restoreError" @restore="restoreRemovedApp" @dismiss="dismissRemoval" />
       <div class="library-heading">
         <div>
           <span class="section-label">{{
@@ -1529,18 +1575,18 @@ onUnmounted(() => {
                 ? "Votre bibliothèque"
                 : hasHomeSelection ? "En cours et favoris" : "Pour commencer"
           }}</span>
-          <span v-if="!empty" class="section-count">{{
-            `${visibleApps.length} application${visibleApps.length > 1 ? "s" : ""}`
+          <span v-if="!empty" class="section-count" role="status">{{
+            `${visibleApps.length} application${visibleApps.length > 1 ? "s" : ""}${view === 'grid' && libraryFiltered ? ` sur ${config.apps.length}` : ''}`
           }}</span>
         </div>
         <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />Ajouter</button>
       </div>
       <div v-if="view === 'grid' && !empty" class="library-tools">
-        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" aria-label="Rechercher dans la bibliothèque" placeholder="Rechercher une application" /></label><button class="small-button" aria-label="Clavier pour la bibliothèque" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
+        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" aria-label="Rechercher dans la bibliothèque" placeholder="Rechercher une application" /></label><button v-if="libraryQuery" class="small-button" aria-label="Effacer la recherche" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" aria-label="Clavier pour la bibliothèque" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
         <label class="library-sort">Trier<select v-model="config.settings.library.sort" @change="persist"><option value="custom">Mon ordre</option><option value="name">Nom A–Z</option><option value="category">Catégorie</option></select></label>
-        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in { all: 'Tout', favorites: 'Favoris', ...categories }" :key="key" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }}</button></div>
+        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="`${filterCounts[key]} application${filterCounts[key] === 1 ? '' : 's'}`" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && visibleApps.length" class="reset-filters" @click="resetLibrary">Effacer les filtres</button></div>
       </div>
-      <div v-if="view === 'grid' && !empty && !visibleApps.length" class="library-empty" role="status"><h2>Aucune application trouvée</h2><p>Essayez un autre nom ou une autre catégorie.</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
+      <div v-if="view === 'grid' && !empty && !visibleApps.length" class="library-empty"><h2>Aucune application trouvée</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? 'Ajoutez vos favoris depuis le menu Actions d’une carte.' : libraryQuery.trim() ? `Aucun résultat pour « ${libraryQuery.trim()} »${libraryFilter === 'all' ? '' : ` dans ${libraryFilters[libraryFilter]}`}.` : `Aucune application dans ${libraryFilters[libraryFilter]}. Modifiez la catégorie d’une carte depuis ses actions.` }}</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
       <div
         ref="cardsRoot"
         class="cards"
@@ -1558,6 +1604,7 @@ onUnmounted(() => {
           :web="tile.entry?.target.kind === 'uri'"
           :suggestion="tile.suggestion"
           :image="tileImage(tile)"
+          :eager="i < (view === 'grid' ? columns * 3 : 6)"
           :icon="api.imageUrl(tile.entry?.icon)"
           :selected="selected === i"
           :holding="selected === i && holdingCard"
@@ -1751,8 +1798,9 @@ onUnmounted(() => {
           <template v-else-if="panel === 'move' && quickApp">
             <p class="panel-intro">
               {{ quickApp.name }} · Position {{ quickIndex + 1 }} sur
-              {{ config.apps.length }} · Tri « Mon ordre »
+              {{ config.apps.length }}
             </p>
+            <p class="note">Déplacer une carte active le tri « Mon ordre ».</p>
             <div class="quick-actions power-options">
               <button :disabled="quickIndex <= 0" @click="moveQuick(-1)">
                 <Icon name="back" /><span>Déplacer avant</span>
@@ -1873,7 +1921,8 @@ onUnmounted(() => {
                       <Icon name="plus" :size="18" />Ajouter
                     </button>
                   </div>
-                  <p class="note">Les favoris apparaissent sur l’accueil. Les flèches changent « Mon ordre » dans la bibliothèque.</p>
+                  <RemovalNotice v-if="removedApp" :name="removedApp.app.name" :busy="restoreBusy" :error="restoreError" @restore="restoreRemovedApp" @dismiss="dismissRemoval" />
+                  <p class="note">Les favoris apparaissent sur l’accueil. Les flèches activent le tri « Mon ordre » dans la bibliothèque.</p>
                   <p v-if="!config.apps.length" class="muted">
                     Aucune application ajoutée.
                   </p>

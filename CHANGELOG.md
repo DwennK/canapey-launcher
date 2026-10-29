@@ -1,5 +1,13 @@
 # Notes de version
 
+## Non publié — itération bibliothèque du 2026-10-29
+
+- Chargement immédiat des premières rangées de cartes ; récupération automatique par les visuels intégrés si une image personnalisée ou de thème ne peut pas être décodée. Un changement de visuel réinitialise les erreurs de la carte.
+- Restauration de la dernière carte retirée, avec sa position, son favori et sa catégorie, depuis la bibliothèque ou les paramètres. Disponible pendant la session jusqu’à fermeture du message ou au retrait suivant.
+- Compteurs par filtre, nombre de résultats sur le total, effacement de la recherche sans perdre la catégorie et aide adaptée aux favoris vides.
+- Déplacer une carte active le tri « Mon ordre » pour rendre le changement visible.
+- Oracle de test Companion : dépendance SRP compatible figée pour rétablir l’interopérabilité pyatv en CI.
+
 ## Non publié — sprint UX du 2026-10-29
 
 - Accueil centré sur les applications en cours et les favoris, accès explicite à la bibliothèque et actions Ouvrir / Reprendre.
