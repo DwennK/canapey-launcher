@@ -30,7 +30,7 @@
 
 <p align="center">
   <img src="docs/images/home.png" alt="Canapey development home screen with Netflix selected, favorite cards and the YouTube installation card" width="100%">
-  <br><sub><strong>Make yourself at home.</strong> Your favourites, clear Open and Actions controls, and cinematic backdrops.</sub>
+  <br><sub><strong>Make yourself at home.</strong> Your favourites and cinematic backdrops. Press Enter to open or resume; hold for card actions.</sub>
 </p>
 
 <p align="center">

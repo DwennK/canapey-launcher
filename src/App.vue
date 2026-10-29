@@ -1597,10 +1597,6 @@ onUnmounted(() => {
       </div>
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
-      <div class="hero-actions">
-        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.catalog ? (youtubeDetected ? t('Open YouTube') : t('Install YouTube')) : current.special === 'add' ? t('Add my apps') : current.special === 'library' ? t('View library') : selectedSession?.status === 'running' ? t('Resume') : current.suggestion ? t('Add') : selectedSession ? t('View session') : t('Open') }}</button>
-        <button v-if="current.entry" class="small-button" @click="openQuick(selected)">{{ t('Actions') }}</button>
-      </div>
     </section>
     <section
       class="library"

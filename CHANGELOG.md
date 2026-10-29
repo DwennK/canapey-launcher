@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove duplicate Open / Resume and Actions buttons below the Home title; keep card activation and long-press actions.
+
 - Simplify Controls into direct Controllers, Remote and iPhone tabs, with the iPhone page remembered after restart.
 
 - Switch the interface, on-screen keyboard and native messages to English.

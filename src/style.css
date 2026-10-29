@@ -2170,8 +2170,6 @@ textarea {
 .hero { padding-top: 24px; }
 .hero h1 { font-size: clamp(36px, 4.6vw, 78px); }
 .hero > p { font-size: var(--text-body); max-width: 760px; }
-.hero-actions { display: flex; gap: 14px; margin: 20px 0; }
-.hero-actions button { min-height: 48px; }
 .section-label, .card-caption, .settings-nav > button, .setting-row, .manage-name, .detected-app { font-size: var(--text-body); }
 .section-count, .bottom-bar, .hints, .panel-footer, .text-button, .note, .muted, .panel-intro, .setting-row small, .device-line small, .ambiance-choice-hint, .ambiance-choice > span, .manage-name small { font-size: var(--text-help); line-height: 1.6; color: #bbc1cb; }
 .small-button, .primary-button, .panel input:not([type="checkbox"]):not([type="range"]), .panel textarea, .panel select { font-size: calc(16px * var(--ui-scale)); min-height: 44px; }
@@ -2232,8 +2230,6 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
   .hero { padding-top: 18px; min-height: 0; }
   .hero h1 { font-size: 34px; letter-spacing: -1px; margin: 12px 0; }
   .hero > p { font-size: 15px; max-width: 100%; margin-bottom: 12px; }
-  .hero-actions { margin: 12px 0; gap: 10px; }
-  .hero-actions button { font-size: 15px; padding-inline: 12px; }
   .library-heading > div { gap: 2px; }
   .library.grid { margin-top: 10px; }
   .library-tools { gap: 10px; margin-bottom: 12px; }
