@@ -8,7 +8,7 @@ pour les fichiers distribués et les résultats de livraison.
 
 ## Utilisation
 
-Dans **Paramètres → Télécommande → iPhone**, activer le service puis choisir
+Dans **Paramètres → Manettes et télécommandes → Télécommande → iPhone**, activer le service puis choisir
 **Associer un iPhone**. Ouvrir Apple TV Remote dans le centre de contrôle de l’iPhone,
 sélectionner le PC et saisir le code affiché par Canapey. Les deux appareils doivent
 être sur le même réseau local privé. Aucun Python, programme auxiliaire ou logiciel

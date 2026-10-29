@@ -2,7 +2,9 @@
 
 ## Utilisation
 
-1. Dans **Paramètres → Télécommande**, cliquez sur un bouton de la photo de la Skip 1s. Une liste « Bouton » permet aussi de le sélectionner.
+Le bouton **Configurer les boutons essentiels** propose un parcours accueil, directions, OK, retour et volume. Chaque association est enregistrée avant de passer à la suivante. « Passer ce bouton » ne crée aucune association ; reprendre le guide retrouve le premier bouton non configuré. Les associations personnalisées restent accessibles dans le formulaire et le récapitulatif.
+
+1. Dans **Paramètres → Manettes et télécommandes → Télécommande**, cliquez sur un bouton de la photo de la Skip 1s. Une liste « Bouton » permet aussi de le sélectionner.
 2. Appuyez sur le bouton réel : Canapey apprend la touche clavier déjà envoyée par Flirc. Choisissez ensuite une action et cliquez sur **Enregistrer**.
 3. Associez indépendamment navigation, Home, paramètres, bibliothèque, actions de carte, commandes rapides, menu d’alimentation, bureau, volume, lecture ou ouverture/reprise d’une application de la bibliothèque.
 4. **Réapprendre la touche** modifie une association ; **Retirer l’association** la désactive sans toucher aux autres. Les associations sont conservées au redémarrage.

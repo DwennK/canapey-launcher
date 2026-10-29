@@ -6,6 +6,10 @@ import { actionLabel, remoteActions, remoteButtons, sameShortcut, type RemoteBut
 
 const props = defineProps<{ native: boolean; bindings: RemoteBinding[]; apps: AppEntry[]; saveBindings: (bindings: RemoteBinding[]) => Promise<boolean> }>();
 const emit = defineEmits<{ capturing: [value: boolean] }>();
+const essentials = ['home', 'up', 'down', 'left', 'right', 'ok', 'back', 'volumeUp', 'volumeDown', 'mute'];
+const guided = ref(false), guideIndex = ref(0), guideFinished = ref(false);
+const configuredEssentials = computed(() => essentials.filter(id => props.bindings.some(binding => binding.button === id)).length);
+const guideAction = computed(() => actionLabel(button.value.action));
 const selected = ref('home'), colors = ref(false), photoExpanded = ref(false);
 const button = computed(() => remoteButtons.find(b => b.id === selected.value)!);
 const saved = computed(() => props.bindings.find(b => b.button === selected.value));
@@ -28,6 +32,32 @@ function loadDraft() {
 }
 function position(b: RemoteButton) {
   return { left: `${(b.x-380)/240*100}%`, top: `${(b.y-40)/920*100}%`, width: `${b.w/240*100}%`, height: `${b.h/920*100}%` };
+}
+async function startGuide() {
+  guideFinished.value = false;
+  guided.value = true;
+  const next = essentials.findIndex(id => !props.bindings.some(binding => binding.button === id));
+  guideIndex.value = Math.max(0, next);
+  await guideStep(guideIndex.value);
+}
+async function guideStep(index: number) {
+  if (busy.value) return;
+  if (index >= essentials.length) {
+    await leaveGuide(); guideFinished.value = true; return;
+  }
+  guideIndex.value = Math.max(0, index);
+  await choose(essentials[guideIndex.value]!, false);
+  action.value = button.value.action;
+  appId.value = null;
+  await nextTick();
+  inspector.value?.querySelector<HTMLButtonElement>('[data-learn]')?.focus({ preventScroll: true });
+  const scroller = inspector.value?.closest('.settings-content');
+  if (scroller) scroller.scrollTop = 0;
+}
+async function leaveGuide() {
+  await stopCapture(); guided.value = false; loadDraft();
+  await nextTick();
+  inspector.value?.closest('.remote-config')?.querySelector<HTMLButtonElement>('[data-start-guide]')?.focus();
 }
 async function refresh() { if (props.native) status.value = await remoteHomeStatus(); }
 async function stopCapture() {
@@ -97,6 +127,7 @@ async function save(remove = false) {
     if (!(await props.saveBindings(bindings))) { error.value = 'Enregistrement impossible. Les associations précédentes sont conservées. Vérifiez le message affiché.'; return; }
     await refresh(); loadDraft();
     message.value = remove ? 'Association retirée.' : 'Association enregistrée.';
+    if (guided.value && !remove) { busy.value = false; await guideStep(guideIndex.value + 1); }
   } catch (e) { error.value = String(e); }
   finally { busy.value = false; }
 }
@@ -116,13 +147,26 @@ onUnmounted(() => {
 
 <template>
   <section class="remote-config" aria-labelledby="remote-title">
-    <header class="remote-heading">
+    <header v-if="!guided" class="remote-heading">
       <div><slot name="title"><h3 id="remote-title">Télécommande</h3></slot><p>Un bouton, une action. Même en dehors de Canapey.</p></div>
       <span class="remote-count">{{ bindings.length }} associé{{ bindings.length > 1 ? 's' : '' }}</span>
     </header>
-    <button class="remote-photo-toggle small-button" :aria-expanded="photoExpanded" aria-controls="remote-device" @click="photoExpanded = !photoExpanded">{{ photoExpanded ? 'Masquer la télécommande' : 'Choisir sur la télécommande' }}</button>
-    <div class="remote-workspace">
-      <div id="remote-device" class="remote-photo-column" :class="{expanded: photoExpanded}">
+    <div class="remote-guide" :class="{ guided }">
+      <template v-if="guided">
+        <p class="guide-progress" role="status">Bouton {{ guideIndex + 1 }} sur {{ essentials.length }} · {{ configuredEssentials }} associés</p>
+        <h4>{{ label(essentials[guideIndex]!) }}</h4><p>Apprenez la touche, puis enregistrez pour continuer.</p>
+
+      </template>
+      <template v-else>
+        <h4>{{ guideFinished ? 'Parcours terminé' : 'Les boutons essentiels' }}</h4><p>{{ configuredEssentials }} sur {{ essentials.length }} boutons associés · accueil, navigation et volume.</p>
+        <p v-if="guideFinished" role="status">{{ configuredEssentials === essentials.length ? 'Tous les boutons essentiels sont configurés.' : 'Les boutons passés restent à configurer. Vos associations enregistrées sont conservées.' }}</p>
+        <button data-start-guide class="small-button" :disabled="busy" @click="startGuide">{{ configuredEssentials ? 'Reprendre la configuration guidée' : 'Configurer les boutons essentiels' }}</button>
+      </template>
+    </div>
+    <div v-if="!guided && bindings.length" class="remote-summary" aria-label="Boutons associés"><button v-for="binding in bindings" :key="binding.button" class="small-button" :disabled="busy" @click="choose(binding.button, false)">{{ label(binding.button) }} · {{ actionLabel(binding.action) }}</button></div>
+    <button v-if="!guided" class="remote-photo-toggle small-button" :aria-expanded="photoExpanded" aria-controls="remote-device" @click="photoExpanded = !photoExpanded">{{ photoExpanded ? 'Masquer la télécommande' : 'Choisir sur la télécommande' }}</button>
+    <div class="remote-workspace" :class="{ guided }">
+      <div v-if="!guided" id="remote-device" class="remote-photo-column" :class="{expanded: photoExpanded}">
         <span class="remote-device-name">SKIP 1S</span>
         <div class="remote-mode" aria-label="Mode de la couronne">
           <button :class="{active: !colors}" :aria-pressed="!colors" @click="colors = false">Navigation</button>
@@ -135,8 +179,8 @@ onUnmounted(() => {
         <span class="remote-photo-caption">Choisissez un bouton sur la photo.</span>
       </div>
       <div ref="inspector" class="remote-inspector">
-        <div class="remote-step-heading"><span aria-hidden="true">1</span><h4>Choisir et apprendre le bouton</h4></div>
-        <label class="remote-field remote-button-picker"><span>Bouton</span><select :value="selected" :disabled="busy" @change="choose(($event.target as HTMLSelectElement).value)"><option v-for="b in remoteButtons" :key="b.id" :value="b.id">{{ b.label }}{{ bindings.some(m => m.button === b.id) ? ' · associé' : '' }}</option></select></label>
+        <div v-if="!guided" class="remote-step-heading"><span aria-hidden="true">1</span><h4>Choisir et apprendre le bouton</h4></div>
+        <label v-if="!guided" class="remote-field remote-button-picker"><span>Bouton</span><select :value="selected" :disabled="busy" @change="choose(($event.target as HTMLSelectElement).value)"><option v-for="b in remoteButtons" :key="b.id" :value="b.id">{{ b.label }}{{ bindings.some(m => m.button === b.id) ? ' · associé' : '' }}</option></select></label>
         <template v-if="button.hardware">
           <p class="remote-explanation">{{ button.hardware }}</p>
           <button v-if="selected === 'colors'" class="small-button" @click="choose('red')">Associer les touches de couleur</button>
@@ -144,21 +188,22 @@ onUnmounted(() => {
         <template v-else>
           <div class="remote-signal" :class="{listening}">
             <div class="remote-signal-value"><span class="remote-label">{{ listening ? 'À l’écoute…' : 'Touche reçue' }}</span><kbd>{{ listening ? 'Appuyez sur ce bouton' : key ? shortcutLabel(key) : 'À apprendre' }}</kbd></div>
-            <button v-if="listening" class="small-button" @click="cancelCapture()">Annuler l’écoute</button><button v-else class="small-button" :disabled="busy || (native && !status?.available)" @click="beginCapture">{{ key ? 'Réapprendre la touche' : 'Apprendre la touche' }}</button>
+            <button v-if="listening" class="small-button" @click="cancelCapture()">Annuler l’écoute</button><button v-else data-learn class="small-button" :disabled="busy || (native && !status?.available)" @click="beginCapture">{{ key ? 'Réapprendre la touche' : 'Apprendre la touche' }}</button>
           </div>
           <p v-if="listening" class="remote-listening-help" role="status">Appuyez sur votre télécommande dans les 15 secondes.</p>
-          <div class="remote-step-heading remote-action-heading"><span aria-hidden="true">2</span><h4>Choisir l’action</h4></div>
-          <label class="remote-field remote-action-picker"><span>Action</span><select v-model="action" :disabled="busy || listening" @change="changeAction"><optgroup v-for="group in groups" :key="group" :label="group"><option v-for="a in remoteActions.filter(a => a.group === group)" :key="a.id" :value="a.id">{{ a.label }}</option></optgroup></select></label>
+          <p v-if="guided" class="guide-action">Action : <strong>{{ guideAction }}</strong></p><div v-if="!guided" class="remote-step-heading remote-action-heading"><span aria-hidden="true">2</span><h4>Choisir l’action</h4></div>
+          <label v-if="!guided" class="remote-field remote-action-picker"><span>Action</span><select v-model="action" :disabled="busy || listening" @change="changeAction"><optgroup v-for="group in groups" :key="group" :label="group"><option v-for="a in remoteActions.filter(a => a.group === group)" :key="a.id" :value="a.id">{{ a.label }}</option></optgroup></select></label>
           <label v-if="action === 'launch'" class="remote-field remote-app-picker"><span>Application</span><select v-model="appId" :disabled="busy || listening"><option :value="null">Choisir une application</option><option v-if="appId && !apps.some(a => a.id === appId)" :value="appId">Application retirée — choisissez-en une autre</option><option v-for="app in apps" :key="app.id" :value="app.id">{{ app.name }}</option></select><small v-if="!apps.length">Ajoutez d’abord des applications à votre bibliothèque.</small></label>
           <label v-if="globalAllowed" class="remote-scope"><span>Activer dans tout Windows<small>{{ global ? 'Fonctionne aussi lorsque Canapey est en arrière-plan.' : 'Fonctionne uniquement dans Canapey.' }}</small></span><input v-model="global" type="checkbox" role="switch" :disabled="busy || listening" /></label>
           <p v-if="global" class="remote-scope-note">La même touche de votre clavier déclenchera aussi cette action.</p>
           <p v-if="conflict" class="remote-error" role="alert">Touche déjà associée au bouton « {{ label(conflict.button) }} ».</p>
-          <div class="remote-save-actions"><button class="primary" :disabled="busy || listening || !key || !!conflict" @click="save()">Enregistrer</button><button v-if="saved" class="small-button remote-remove" :disabled="busy || listening" @click="save(true)">Retirer l’association</button></div>
+          <div class="remote-save-actions"><button class="primary" :disabled="busy || listening || !key || !!conflict" @click="save()">{{ guided ? 'Enregistrer et continuer' : 'Enregistrer' }}</button><button v-if="saved && !guided" class="small-button remote-remove" :disabled="busy || listening" @click="save(true)">Retirer l’association</button></div>
           <p v-if="saved" class="remote-saved">{{ actionLabel(saved.action) }} · {{ saved.global ? (!native ? 'Aperçu global' : status?.active.some(b => b.button === saved?.button) ? 'Global actif' : 'Global inactif') : 'Dans Canapey' }}</p>
         </template>
+        <div v-if="guided" class="guide-actions"><button class="small-button" :disabled="busy || guideIndex === 0" @click="guideStep(guideIndex - 1)">Précédent</button><button class="small-button" :disabled="busy" @click="guideStep(guideIndex + 1)">Passer ce bouton</button><button class="text-button" :disabled="busy" @click="leaveGuide">Quitter le guide</button></div>
         <p v-if="error || status?.error" class="remote-error" role="alert">{{ error || status?.error }}</p>
         <p v-if="message" class="remote-message" role="status">{{ message }}</p>
-        <details class="remote-help"><summary>Comment fonctionne l’association ?</summary><p>Appuyez sur la télécommande ou un clavier : Canapey apprend la touche reçue et lui affecte votre action, sans dépendre du récepteur utilisé. Flèches, lettres, chiffres et touches multimédias sont acceptés lorsque Windows peut les réserver.</p><p>Canapey signale les raccourcis déjà occupés. Un bouton qui n’envoie aucune touche doit d’abord être configuré dans le logiciel de votre récepteur.</p><p>Les mêmes touches du clavier physique déclenchent aussi ces actions. La sélection A/B/C et le passage en mode couleurs restent gérés par la Skip 1s.</p></details>
+        <details v-if="!guided" class="remote-help"><summary>Comment fonctionne l’association ?</summary><p>Appuyez sur la télécommande ou un clavier : Canapey apprend la touche reçue et lui affecte votre action, sans dépendre du récepteur utilisé. Flèches, lettres, chiffres et touches multimédias sont acceptés lorsque Windows peut les réserver.</p><p>Canapey signale les raccourcis déjà occupés. Un bouton qui n’envoie aucune touche doit d’abord être configuré dans le logiciel de votre récepteur.</p><p>Les mêmes touches du clavier physique déclenchent aussi ces actions. La sélection A/B/C et le passage en mode couleurs restent gérés par la Skip 1s.</p></details>
         <p v-if="!native" class="remote-preview">Aperçu interactif. Les actions Windows nécessitent l’application installée.</p>
       </div>
     </div>
@@ -166,6 +211,19 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.remote-guide.guided { padding: 0 0 12px; margin-bottom: 16px; }
+.guide-actions { margin-top: 20px; }
+
+.remote-guide { padding: 20px 0 24px; margin-bottom: 24px; border-bottom: 1px solid #ffffff20; }
+.remote-guide h4 { font-size: 22px; margin: 0 0 10px; }
+.remote-guide p { color: #c2c7cf; font-size: 16px; line-height: 1.6; margin: 8px 0 16px; }
+.remote-guide .guide-progress { color: #e9dfce; font-size: 14px; }
+.guide-actions, .remote-summary { display: flex; flex-wrap: wrap; gap: 12px; }
+.remote-summary { margin-bottom: 24px; }
+.remote-summary button { text-align: left; white-space: normal; }
+.remote-workspace.guided { display: block; }
+.guide-action { font-size: 18px; line-height: 1.6; }
+
 .remote-config { min-width: 0; }
 .remote-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .remote-heading h3 { margin: 0; font-size: 23px; font-weight: 500; letter-spacing: -.5px; }
@@ -233,4 +291,13 @@ onUnmounted(() => {
   .remote-step-heading h4 { font-size: 12px; }
   .remote-signal { flex-wrap: wrap; }.remote-signal .small-button { flex-shrink: 1; }
 }
+.remote-heading p, .remote-field small, .remote-scope small, .remote-scope-note, .remote-help, .remote-preview, .remote-saved, .remote-message, .remote-error, .remote-listening-help { font-size: 14px; }
+.remote-heading h3, .remote-step-heading h4 { font-size: 18px; }
+.remote-field select, .remote-scope, .remote-signal kbd, .remote-save-actions button, .remote-signal .small-button { font-size: 16px; }
+.remote-label, .remote-count, .remote-photo-caption { font-size: 13px; }
+.remote-signal { min-height: 92px; }
+.remote-photo { height: 440px; }
+.remote-workspace { grid-template-columns: 150px minmax(0, 1fr); gap: 24px; }
+.remote-config button:not(.remote-hotspot) { min-height: 44px; }
+@media (max-width: 700px) { .remote-workspace { grid-template-columns: minmax(0, 1fr); }.remote-save-actions .primary { width: 100%; } }
 </style>
