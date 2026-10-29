@@ -29,8 +29,8 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/home.png" alt="Canapey home screen with an alpine backdrop, a welcome message and a horizontal carousel of app suggestions" width="100%">
-  <br><sub><strong>Make yourself at home.</strong> A full-screen carousel, cinematic backdrops and your favourite apps within reach.</sub>
+  <img src="docs/images/home.png" alt="Canapey 0.6.0 home screen with Netflix selected, favorite cards and the YouTube installation card" width="100%">
+  <br><sub><strong>Make yourself at home.</strong> Your favourites, clear Open and Actions controls, and cinematic backdrops.</sub>
 </p>
 
 <p align="center">
@@ -48,17 +48,27 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/library.png" alt="Canapey library showing a grid of app suggestions, including Netflix, YouTube, Spotify, Internet and Steam" width="100%">
-      <p><strong>Your space, at a glance.</strong><br><sub>Move from the home carousel to the library grid without losing your selection.</sub></p>
+      <img src="docs/images/library.png" alt="Canapey library with search, category counts, sorting, favorite web shortcuts and the YouTube installation card" width="100%">
+      <p><strong>Your space, at a glance.</strong><br><sub>Find your apps with search, favourites, categories and sorting.</sub></p>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/images/ambience.png" alt="The Spotify suggestion selected in Canapey, with a green-lit turntable backdrop" width="100%">
+      <img src="docs/images/ambience.png" alt="A Spotify web shortcut selected in Canapey, with a green-lit turntable backdrop" width="100%">
       <p><strong>A different mood for every app.</strong><br><sub>Bundled artwork sets the scene. Custom cards and backgrounds make it yours.</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/settings.png" alt="Canapey settings with five sections, interface scaling and four ambience choices" width="100%">
+      <p><strong>Settle into your own setup.</strong><br><sub>Five settings sections bring display, apps, devices, system and help together.</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/remote-setup.png" alt="The first step of Canapey’s ten-button remote setup guide, assigning Home to return to Canapey" width="100%">
+      <p><strong>One button at a time.</strong><br><sub>The guided remote setup walks through Home, navigation, OK, Back and volume.</sub></p>
     </td>
   </tr>
 </table>
 
-<sub>Actual browser UI previews at 1440 × 900. The interface is currently in French; native Windows actions are unavailable in this preview. Cards marked “À ajouter” are suggestions to add, not detected installations. Screenshots show the development interface and may differ from a released installer.</sub>
+<sub>Actual 0.6.0 browser UI captures at 1440 × 1000, taken on 29 October 2026. The French interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “À installer” opens the installation flow. Native Windows actions are unavailable in browser preview. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
 
 ## Why Canapey
 
@@ -133,7 +143,7 @@ Settings now have five sections: **Affichage et ambiance**, **Applications**, **
 
 In **Settings → Manettes et télécommandes → Télécommande**, choose **Configurer les boutons essentiels** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
-Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Activer dans tout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. Interface actions restore Canapey before executing. The same physical keyboard keys are affected and may lose their usual behavior in other applications. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
+Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Activer dans tout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. OK, arrows and Back target the active application; only Home returns to Canapey. Launcher-only panels stay inactive while another application has focus. The same physical keyboard keys are affected and may lose their usual behavior in other applications. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
 
 A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Annuler l’écoute**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
 
