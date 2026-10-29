@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { targetKey, type AppEntry, type Config } from './types';
 import type { AppCategory } from './library';
 
@@ -28,8 +29,8 @@ export function removeLibraryApp(config: Config, id: string) {
 
 export function restoreLibraryApp(config: Config, removed: RemovedApp): Config {
   if (config.apps.some(app => app.id === removed.app.id || targetKey(app.target) === targetKey(removed.app.target)))
-    throw new Error('Cette application est déjà dans la bibliothèque.');
-  if (config.apps.length >= 250) throw new Error('La bibliothèque est pleine. Retirez une carte avant de restaurer celle-ci.');
+    throw new Error(t('This app is already in your library.'));
+  if (config.apps.length >= 250) throw new Error(t('The library is full. Remove a card before restoring this one.'));
   const apps = [...config.apps];
   apps.splice(Math.min(removed.index, apps.length), 0, removed.app);
   const library = config.settings.library;

@@ -20,7 +20,7 @@ use windows::{
 
 type Result<T> = std::result::Result<T, String>;
 fn error(e: windows::core::Error) -> String {
-    format!("Windows ne peut pas accéder à l’audio : {e}")
+    format!("Windows cannot access audio: {e}")
 }
 struct Com;
 impl Com {
@@ -40,7 +40,8 @@ impl Drop for Com {
     }
 }
 unsafe fn take_string(value: PWSTR) -> Result<String> {
-    let text = unsafe { value.to_string() }.map_err(|_| "Nom audio illisible.".to_string());
+    let text =
+        unsafe { value.to_string() }.map_err(|_| "Unreadable audio output name.".to_string());
     unsafe { CoTaskMemFree(Some(value.0.cast())) };
     text
 }
@@ -66,7 +67,7 @@ fn read(enumerator: &IMMDeviceEnumerator) -> Result<AudioState> {
                 let _ = PropVariantClear(&mut value);
                 take_string(text?)
             })()
-            .unwrap_or_else(|_| format!("Sortie audio {}", i + 1));
+            .unwrap_or_else(|_| format!("Audio output {}", i + 1));
             outputs.push(AudioOutput { id, name });
         }
         outputs.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
@@ -137,7 +138,7 @@ pub fn change_audio(change: AudioChange) -> Result<AudioState> {
     let enumerator = enumerator()?;
     let before = read(&enumerator)?;
     if !before.outputs.iter().any(|o| o.id == change.id()) {
-        return Err("Cette sortie audio n’est plus connectée. Choisissez une autre sortie.".into());
+        return Err("This audio output is no longer connected. Choose another output.".into());
     }
     if matches!(change, AudioChange::Output { .. }) {
         let policy: PolicyConfig = unsafe {
@@ -172,7 +173,7 @@ pub fn change_audio(change: AudioChange) -> Result<AudioState> {
     } else {
         // A stale slider must never alter a newly connected/default device.
         if before.default_id.as_deref() != Some(change.id()) {
-            return Err("La sortie audio a changé. Réessayez sur la sortie actuelle.".into());
+            return Err("The audio output changed. Try again with the current output.".into());
         }
         let wide: Vec<u16> = change.id().encode_utf16().chain(Some(0)).collect();
         unsafe {

@@ -1,10 +1,11 @@
+import { t } from './i18n';
 import type { Settings, Theme } from './types';
 
 export const generalAmbiances = [
-  { id: 'home', name: 'Salon', description: 'Chaleur ambrée' },
-  { id: 'spotify', name: 'Émeraude', description: 'Lumière verte, esprit Spotify' },
-  { id: 'night', name: 'Nuit', description: 'Bleu profond, pluie en ville' },
-  { id: 'dusk', name: 'Crépuscule', description: 'Cuivre et lumière douce' },
+  { id: 'home', get name() { return t('Living room'); }, get description() { return t('Amber warmth'); } },
+  { id: 'spotify', get name() { return t('Emerald'); }, get description() { return t('Green light, Spotify atmosphere'); } },
+  { id: 'night', get name() { return t('Night'); }, get description() { return t('Deep blue, city rain'); } },
+  { id: 'dusk', get name() { return t('Dusk'); }, get description() { return t('Copper and soft light'); } },
 ] as const;
 
 export function backgroundFor(theme: Theme, customImage: string, settings: Pick<Settings, 'dynamicBackground' | 'generalAmbiance'>) {

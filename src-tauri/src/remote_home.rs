@@ -40,7 +40,7 @@ pub fn set_remote_capture(app: tauri::AppHandle, enabled: bool) -> Result<(), St
             .get_webview_window("main")
             .is_some_and(|w| w.is_focused().unwrap_or(false))
     {
-        return Err("Revenez dans Canapey pour associer un bouton.".into());
+        return Err("Return to Canapey to map a button.".into());
     }
     app.state::<RemoteHomeState>()
         .0
@@ -55,7 +55,7 @@ fn register(app: &tauri::AppHandle, key: &RemoteShortcut) -> Result<(), String> 
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
     key.validate()?;
     app.global_shortcut().register(key.accelerator().as_str())
-        .map_err(|_| "Ce raccourci est déjà utilisé ou réservé par Windows. Choisissez une autre touche ; votre ancien réglage est conservé.".into())
+        .map_err(|_| "This shortcut is already in use or reserved by Windows. Choose another key; your previous setting is preserved.".into())
 }
 #[cfg(windows)]
 fn unregister(app: &tauri::AppHandle, key: &RemoteShortcut) {

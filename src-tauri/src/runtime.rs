@@ -65,7 +65,7 @@ fn foreground(app: &tauri::AppHandle) {
             if !platform::focus(h.0 as isize) {
                 let _ = app.emit(
                     "native-error",
-                    "Sélectionnez Canapey dans la barre des tâches (Windows a conservé le focus). ",
+                    "Select Canapey in the taskbar (Windows kept focus). ",
                 );
             }
         }
@@ -162,13 +162,13 @@ fn validate_images(config: &Config, dir: &std::path::Path) -> Result<(), String>
     for a in &config.apps {
         for path in [&a.card, &a.background, &a.icon].into_iter().flatten() {
             let p = std::fs::canonicalize(path)
-                .map_err(|_| "Image locale introuvable. Choisissez-la de nouveau.")?;
+                .map_err(|_| "Local image not found. Choose it again.")?;
             let allowed = [dir.join("art"), dir.join("icons")]
                 .iter()
                 .filter_map(|p| p.canonicalize().ok())
                 .any(|root| p.starts_with(root));
             if !allowed {
-                return Err("Image hors du dossier de Canapey.".into());
+                return Err("Image is outside the Canapey data folder.".into());
             }
         }
     }
@@ -195,7 +195,7 @@ async fn save_config(
         } else {
             manager.disable()
         };
-        result.map_err(|e| format!("Démarrage Windows : {e}"))?;
+        result.map_err(|e| format!("Windows startup: {e}"))?;
     }
     let save_result = if remote_home_update == Some(true)
         || config.settings.remote_bindings != current.settings.remote_bindings
@@ -226,7 +226,10 @@ async fn save_config(
     if display_changed {
         if let Err(error) = apply_display(&app, &config) {
             log::warn!("Display settings: {error}");
-            let _=app.emit("native-error","Réglages enregistrés. Windows n’a pas pu changer l’affichage ; réessayez depuis les paramètres.");
+            let _ = app.emit(
+                "native-error",
+                "Settings saved. Windows could not change the display; try again from Settings.",
+            );
         }
     }
     Ok(config)
@@ -239,7 +242,7 @@ struct Monitor {
 }
 #[tauri::command]
 fn list_monitors(app: tauri::AppHandle) -> Result<Vec<Monitor>, String> {
-    let w = app.get_webview_window("main").ok_or("Fenêtre absente")?;
+    let w = app.get_webview_window("main").ok_or("Window unavailable")?;
     let primary = w
         .primary_monitor()
         .map_err(|e| e.to_string())?
@@ -251,7 +254,7 @@ fn list_monitors(app: tauri::AppHandle) -> Result<Vec<Monitor>, String> {
             id: m.name().cloned().unwrap_or_default(),
             name: format!(
                 "{} · {} × {}",
-                m.name().cloned().unwrap_or_else(|| "Écran".into()),
+                m.name().cloned().unwrap_or_else(|| "Display".into()),
                 m.size().width,
                 m.size().height
             ),
@@ -260,7 +263,7 @@ fn list_monitors(app: tauri::AppHandle) -> Result<Vec<Monitor>, String> {
         .collect())
 }
 fn apply_display(app: &tauri::AppHandle, config: &Config) -> Result<(), String> {
-    let w = app.get_webview_window("main").ok_or("Fenêtre absente")?;
+    let w = app.get_webview_window("main").ok_or("Window unavailable")?;
     let monitors = w.available_monitors().map_err(|e| e.to_string())?;
     let monitor = monitors
         .iter()
@@ -291,7 +294,7 @@ fn apply_display(app: &tauri::AppHandle, config: &Config) -> Result<(), String> 
 async fn scan_apps(app: tauri::AppHandle) -> Result<Vec<AppEntry>, String> {
     let state = app.state::<State>();
     if state.scan_busy.swap(true, Ordering::SeqCst) {
-        return Err("Détection déjà en cours.".into());
+        return Err("Discovery is already running.".into());
     }
     let dir = state.store.dir.join("icons");
     let protected: HashSet<PathBuf> = state
@@ -310,7 +313,7 @@ async fn scan_apps(app: tauri::AppHandle) -> Result<Vec<AppEntry>, String> {
                 entry.name = "YouTube".into();
                 entry.theme = "youtube".into();
                 entry.icon = None;
-                entry.source = "Application Windows".into();
+                entry.source = "Windows app".into();
                 if !entry.target.args.iter().any(|arg| arg == "--fullscreen") {
                     entry.target.args.push("--fullscreen".into());
                 }
@@ -377,10 +380,10 @@ fn cancel_vacuumtube_install() {
 #[tauri::command]
 async fn pick_application(app: tauri::AppHandle) -> Result<Option<AppEntry>, String> {
     platform::supported()?;
-    let window = app.get_webview_window("main").ok_or("Fenêtre absente")?;
+    let window = app.get_webview_window("main").ok_or("Window unavailable")?;
     let Some(file) = rfd::AsyncFileDialog::new()
         .set_parent(&window)
-        .add_filter("Applications Windows", &["exe", "lnk"])
+        .add_filter("Windows apps", &["exe", "lnk"])
         .pick_file()
         .await
     else {
@@ -422,9 +425,9 @@ async fn pick_application(app: tauri::AppHandle) -> Result<Option<AppEntry>, Str
 #[tauri::command]
 async fn pick_image(app: tauri::AppHandle, kind: String) -> Result<Option<String>, String> {
     if !["card", "background"].contains(&kind.as_str()) {
-        return Err("Type d’image inconnu.".into());
+        return Err("Unknown image type.".into());
     }
-    let window = app.get_webview_window("main").ok_or("Fenêtre absente")?;
+    let window = app.get_webview_window("main").ok_or("Window unavailable")?;
     let Some(file) = rfd::AsyncFileDialog::new()
         .set_parent(&window)
         .add_filter("Images", &["png", "jpg", "jpeg", "webp"])
@@ -438,11 +441,11 @@ async fn pick_image(app: tauri::AppHandle, kind: String) -> Result<Option<String
     tauri::async_runtime::spawn_blocking(move||{
         std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?;
         let used:u64=std::fs::read_dir(&dir).map_err(|e|e.to_string())?.filter_map(Result::ok).filter_map(|e|e.metadata().ok()).map(|m|m.len()).sum();
-        if used>128*1024*1024{return Err("Limite des visuels atteinte (128 Mo). Nettoyez les images inutilisées depuis le dossier de données.".into())}
-        if std::fs::metadata(&path).map_err(|e|e.to_string())?.len()>20*1024*1024{return Err("Image trop volumineuse (20 Mo maximum).".into())}
+        if used>128*1024*1024{return Err("Artwork storage limit reached (128 MB). Remove unused images from the data folder.".into())}
+        if std::fs::metadata(&path).map_err(|e|e.to_string())?.len()>20*1024*1024{return Err("Image is too large (20 MB maximum).".into())}
         let mut reader=image::ImageReader::open(path).map_err(|e|e.to_string())?.with_guessed_format().map_err(|e|e.to_string())?;
         let mut limits=image::Limits::default();limits.max_image_width=Some(8192);limits.max_image_height=Some(8192);limits.max_alloc=Some(128*1024*1024);reader.limits(limits);
-        let img=reader.decode().map_err(|_|"Image illisible ou trop grande.")?;
+        let img=reader.decode().map_err(|_|"Image is unreadable or too large.")?;
         let (w,h)=if kind=="card"{(640,360)}else{(1920,1080)};
         let output=dir.join(format!("{}.webp",uuid::Uuid::new_v4()));
         img.resize_to_fill(w,h,image::imageops::FilterType::Lanczos3).save(&output).map_err(|e|e.to_string())?;Ok(Some(output.to_string_lossy().into_owned()))
@@ -472,16 +475,16 @@ async fn launch_app(app: tauri::AppHandle, id: String) -> Result<SessionView, St
             .lock()
             .unwrap()
             .get(&id)
-            .ok_or("Cette application vient de se fermer.")?
+            .ok_or("This app has just closed.")?
             .view(now(&state)));
     }
     {
         let mut launching = state.launching.lock().unwrap();
         if state.updating.load(Ordering::SeqCst) {
-            return Err("Installation d’une mise à jour en cours.".into());
+            return Err("An update is being installed.".into());
         }
         if !launching.insert(id.clone()) {
-            return Err("Lancement en cours.".into());
+            return Err("An app is starting.".into());
         }
     }
     let item = state
@@ -499,7 +502,7 @@ async fn launch_app(app: tauri::AppHandle, id: String) -> Result<SessionView, St
             .map_err(|e| e.to_string())
             .and_then(|r| r)
     } else {
-        Err("Application introuvable.".into())
+        Err("App not found.".into())
     };
     state.launching.lock().unwrap().remove(&id);
     if result.is_ok() {
@@ -575,11 +578,9 @@ fn browser_target_value(value: &str) -> bool {
 fn resume_app(app: tauri::AppHandle, id: String) -> Result<(), String> {
     let state = app.state::<State>();
     let sessions = state.sessions.lock().unwrap();
-    let session = sessions.get(&id).ok_or("Application non suivie.")?;
+    let session = sessions.get(&id).ok_or("App is not tracked.")?;
     if session.untracked {
-        return Err(
-            "Fenêtre partagée ou non identifiable : utilisez Alt+Tab pour la reprendre.".into(),
-        );
+        return Err("Shared or unidentified window: use Alt+Tab to return to it.".into());
     }
     let (_, windows) = platform::snapshot();
     let valid = session
@@ -590,15 +591,13 @@ fn resume_app(app: tauri::AppHandle, id: String) -> Result<(), String> {
                 .iter()
                 .any(|live| live.handle == w.handle && live.process == w.process)
         })
-        .ok_or("La fenêtre n’est pas encore disponible.")?;
+        .ok_or("The window is not available yet.")?;
     // Check all associated windows: the first in Z-order may be a dialog.
     for window in &session.windows {
         platform::maximize(window);
     }
     if !platform::focus_app(valid) {
-        return Err(
-            "Windows a gardé le focus. Sélectionnez l’application dans la barre des tâches.".into(),
-        );
+        return Err("Windows kept focus. Select the app in the taskbar.".into());
     }
     *state.active.lock().unwrap() = Some(id);
     Ok(())
@@ -607,10 +606,10 @@ fn resume_app(app: tauri::AppHandle, id: String) -> Result<(), String> {
 fn close_app(app: tauri::AppHandle, id: String, force: bool) -> Result<(), String> {
     let state = app.state::<State>();
     let mut sessions = state.sessions.lock().unwrap();
-    let session = sessions.get_mut(&id).ok_or("Application non suivie.")?;
+    let session = sessions.get_mut(&id).ok_or("App is not tracked.")?;
     if session.untracked {
         if force {
-            return Err("Fermeture forcée interdite pour une fenêtre partagée.".into());
+            return Err("Cannot force-close a shared window.".into());
         }
         sessions.remove(&id);
         drop(sessions);
@@ -619,14 +618,14 @@ fn close_app(app: tauri::AppHandle, id: String, force: bool) -> Result<(), Strin
     }
     if force {
         if !session.view(now(&state)).can_force {
-            return Err("Demandez d’abord une fermeture normale et attendez 5 secondes.".into());
+            return Err("Request a normal close first and wait 5 seconds.".into());
         }
         for key in &session.owned {
             platform::terminate(*key)?;
         }
     } else {
         if session.windows.is_empty() {
-            return Err("Aucune fenêtre à fermer. Attendez la fin du lancement.".into());
+            return Err("No window to close. Wait for the launch to finish.".into());
         }
         for window in &session.windows {
             platform::close(window)?;
@@ -673,7 +672,7 @@ async fn run_remote_action(app: tauri::AppHandle, button: String) -> Result<(), 
         .iter()
         .find(|b| b.button == button)
         .cloned()
-        .ok_or("Bouton non associé.")?;
+        .ok_or("Button is not mapped.")?;
     execute_remote(app, binding).await
 }
 async fn execute_remote(
@@ -685,7 +684,7 @@ async fn execute_remote(
             show_home(&app);
             Ok(())
         }
-        "launch" => launch_app(app, binding.app_id.ok_or("Application non choisie.")?)
+        "launch" => launch_app(app, binding.app_id.ok_or("No app selected.")?)
             .await
             .map(|_| ()),
         "desktop" => show_desktop(app),
@@ -708,7 +707,7 @@ async fn execute_remote(
         }
         "volumeUp" | "volumeDown" | "mute" | "playPause" | "previousTrack" | "nextTrack"
         | "stop" => platform::media_command(&binding.action),
-        _ => Err("Cette action se déclenche depuis l’interface Canapey.".into()),
+        _ => Err("This action is triggered from the Canapey interface.".into()),
     }
 }
 #[cfg(windows)]
@@ -832,7 +831,7 @@ async fn check_update(app: tauri::AppHandle) -> Result<UpdateInfo, String> {
         .await
         .map_err(|e| {
             log::warn!("Updater check: {e}");
-            "Mises à jour indisponibles. Vérifiez votre connexion et réessayez.".to_owned()
+            "Updates unavailable. Check your connection and try again.".to_owned()
         })?;
     let info = if let Some(u) = &update {
         UpdateInfo {
@@ -858,14 +857,14 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
         .lock()
         .unwrap()
         .clone()
-        .ok_or("Recherchez d’abord une mise à jour.")?;
+        .ok_or("Check for an update first.")?;
     {
         let launching = state.launching.lock().unwrap();
         if !launching.is_empty() {
-            return Err("Une application démarre. Réessayez dans un instant.".into());
+            return Err("An app is starting. Try again in a moment.".into());
         }
         if state.updating.swap(true, Ordering::SeqCst) {
-            return Err("Installation déjà en cours.".into());
+            return Err("Installation is already running.".into());
         }
     }
     let result = async {
@@ -881,22 +880,22 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
                 )?;
                 if pending.is_empty() { return Ok::<(), String>(()); }
                 if pending != previous {
-                    let _ = handle.emit("update-status", format!("Fermeture de {}… Confirmez toute demande d’enregistrement dans l’application.", pending.join(", ")));
+                    let _ = handle.emit("update-status", format!("Closing {}… Confirm any save prompts in the app.", pending.join(", ")));
                     emit_sessions(&handle);
                     previous = pending.clone();
                 }
                 if Instant::now() >= deadline {
-                    return Err(format!("{} attend encore une fermeture. Enregistrez votre travail ou fermez sa fenêtre, puis réessayez. La mise à jour n’a pas été installée.", pending.join(", ")));
+                    return Err(format!("{} is still waiting to close. Save your work or close its window, then try again. The update has not been installed.", pending.join(", ")));
                 }
                 std::thread::sleep(Duration::from_millis(200));
             }
         }).await.map_err(|e| e.to_string())??;
-        let _ = app.emit("update-status", "Téléchargement de la mise à jour…");
+        let _ = app.emit("update-status", "Downloading the update…");
         update.download_and_install(|_, _| {}, || {
-            let _ = app.emit("update-status", "Installation de la mise à jour…");
+            let _ = app.emit("update-status", "Installing the update…");
         }).await.map_err(|e| {
             log::error!("Updater install: {e}");
-            "Installation impossible. Vos réglages sont conservés.".to_owned()
+            "Installation failed. Your settings are preserved.".to_owned()
         })
     }.await;
     state.updating.store(false, Ordering::SeqCst);
@@ -1005,8 +1004,8 @@ fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         menu::{Menu, MenuItem},
         tray::TrayIconBuilder,
     };
-    let open = MenuItem::with_id(app, "open", "Ouvrir Canapey", true, None::<&str>)?;
-    let exit = MenuItem::with_id(app, "exit", "Quitter", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open Canapey", true, None::<&str>)?;
+    let exit = MenuItem::with_id(app, "exit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &exit])?;
     let mut tray = TrayIconBuilder::new()
         .tooltip("Canapey Launcher")
@@ -1191,7 +1190,7 @@ pub fn run() {
             install_update
         ])
         .build(tauri::generate_context!())
-        .expect("Impossible de démarrer Canapey Launcher")
+        .expect("Could not start Canapey Launcher")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 crate::apple_remote_desktop::shutdown(app);

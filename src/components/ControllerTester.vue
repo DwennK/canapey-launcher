@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import { controllerLabels } from "../lib/controller-labels";
 import { computed } from "vue";
 import type { ControllerSnapshot } from "../lib/types";
@@ -17,7 +18,7 @@ const buttons = computed(() => [
   ['guide', 'Guide'], ['up', '↑'], ['down', '↓'], ['left', '←'], ['right', '→'],
 ]);
 const axes = computed(() => props.snapshot?.axes ?? [0, 0, 0, 0]);
-const directions = { left: "Gauche", right: "Droite", up: "Haut", down: "Bas" };
+const directions = computed(() => ({ left: t('Left'), right: t('Right'), up: t('Up'), down: t('Down') }));
 function adjust(delta: number) {
   emit(
     "deadzone",
@@ -30,14 +31,9 @@ function adjust(delta: number) {
 </script>
 <template>
   <div class="controller-tester" :class="{ testing }">
-    <h3>Tester la manette</h3>
-    <p class="note" v-if="!native">
-      Le test nécessite Canapey sous Windows. Aucune donnée manette n’est
-      simulée dans cet aperçu.
-    </p>
-    <p class="note" v-else-if="!testing">
-      Activez le test puis essayez chaque bouton et les sticks. Maintenez {{ labels.backName }} 1,2 s, ou appuyez sur Échap, pour arrêter le test.
-    </p>
+    <h3>{{ t('Test controller') }}</h3>
+    <p class="note" v-if="!native"> {{ t('The test requires Canapey on Windows. No controller data is simulated in this preview.') }} </p>
+    <p class="note" v-else-if="!testing"> {{ t('Start the test, then try each button and stick. Hold') }} {{ labels.backName }} {{ t('for 1.2 s, or press Escape, to stop the test.') }} </p>
     <div class="test-toolbar">
       <button
         class="small-button"
@@ -45,15 +41,15 @@ function adjust(delta: number) {
         data-controller-test-toggle
         @click="emit('toggle')"
       >
-        {{ testing ? "Arrêter le test" : "Démarrer le test" }}
+        {{ testing ? t('Stop test') : t('Start test') }}
       </button>
       <span role="status">{{
         testing
-          ? (snapshot?.name ?? "En attente d’une manette…")
-          : "Test arrêté"
+          ? (snapshot?.name ?? t('Waiting for a controller…'))
+          : t('Test stopped')
       }}</span>
     </div>
-    <div class="test-buttons" aria-label="Boutons reçus">
+    <div class="test-buttons" :aria-label="t('Received buttons')">
       <span
         v-for="[id, label] in buttons"
         :key="id"
@@ -64,7 +60,7 @@ function adjust(delta: number) {
     </div>
     <div class="test-sticks">
       <div
-        v-for="(label, index) in ['Stick gauche', 'Stick droit']"
+        v-for="(label, index) in [t('Left stick'), t('Right stick')]"
         :key="label"
         class="test-stick"
       >
@@ -105,7 +101,7 @@ function adjust(delta: number) {
     </div>
     <div class="test-triggers">
       <label
-        v-for="(label, index) in ['Gâchette gauche', 'Gâchette droite']"
+        v-for="(label, index) in [t('Left trigger'), t('Right trigger')]"
         :key="label"
         >{{ label
         }}<meter min="0" max="1" :value="snapshot?.triggers[index] ?? 0" />{{
@@ -114,19 +110,17 @@ function adjust(delta: number) {
         %</label
       >
     </div>
-    <p class="test-direction">
-      Direction du stick gauche :
-      <strong>{{
-        snapshot?.direction ? directions[snapshot.direction] : "Neutre"
+    <p class="test-direction"> {{ t('Left stick direction:') }} <strong>{{
+        snapshot?.direction ? directions[snapshot.direction] : t('Neutral')
       }}</strong>
     </p>
     <div v-if="!testing" class="test-deadzone">
       <span
-        >Zone neutre : <strong>{{ Math.round(deadzone * 100) }} %</strong></span
+        >{{ t('Deadzone:') }} <strong>{{ Math.round(deadzone * 100) }} %</strong></span
       >
       <button
         class="small-button"
-        aria-label="Réduire la zone neutre"
+        :aria-label="t('Decrease deadzone')"
         :disabled="testing || deadzone <= 0.1"
         @click="adjust(-0.05)"
       >
@@ -134,24 +128,15 @@ function adjust(delta: number) {
       </button>
       <button
         class="small-button"
-        aria-label="Augmenter la zone neutre"
+        :aria-label="t('Increase deadzone')"
         :disabled="testing || deadzone >= 0.5"
         @click="adjust(0.05)"
       >
         +
       </button>
     </div>
-    <p class="note" v-if="!testing">
-      Arrêtez le test pour ajuster la zone neutre. Laissez ensuite le stick au
-      repos pour observer une éventuelle dérive. Le carré plein indique le seuil
-      de relâchement ; le pointillé, le seuil de déclenchement (+20 points). Le
-      stick droit est affiché à titre de diagnostic.
-    </p>
-    <p class="note" v-if="!testing">
-      Valeurs reçues du pilote, avant le filtre de navigation Canapey. Steam
-      Input peut modifier les signaux ; certains boutons système sont réservés
-      par Windows.
-    </p>
+    <p class="note" v-if="!testing"> {{ t('Stop the test to adjust the deadzone. Then leave the stick at rest to check for drift. The solid square shows the release threshold; the dashed square shows the trigger threshold (+20 points). The right stick is shown for diagnostics.') }} </p>
+    <p class="note" v-if="!testing"> {{ t('Values received from the driver, before Canapey’s navigation filter. Steam Input may alter signals; some system buttons are reserved by Windows.') }} </p>
   </div>
 </template>
 <style scoped>

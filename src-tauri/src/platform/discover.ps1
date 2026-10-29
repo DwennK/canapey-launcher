@@ -33,13 +33,13 @@ foreach ($file in $links) {
     $link = $shell.CreateShortcut($file.FullName)
     $target = [Environment]::ExpandEnvironmentVariables($link.TargetPath)
     if ($target -and $target.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase)) {
-      Add-App $file.BaseName 'executable' $target $link.Arguments $link.WorkingDirectory 'Raccourci Windows'
-    } else { Add-App $file.BaseName 'shortcut' $file.FullName '' '' 'Raccourci Windows' }
+      Add-App $file.BaseName 'executable' $target $link.Arguments $link.WorkingDirectory 'Windows shortcut'
+    } else { Add-App $file.BaseName 'shortcut' $file.FullName '' '' 'Windows shortcut' }
   } catch {}
 }
 if (!$env:CANAPEY_SINGLE_LINK) {
   foreach ($reg in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths','HKLM:\Software\Microsoft\Windows\CurrentVersion\App Paths')) {
-    if (Test-Path $reg) { foreach ($key in Get-ChildItem $reg -ErrorAction SilentlyContinue) { try { $p=$key.GetValue(''); if ($p) { $p=$p.Trim('"'); Add-App ([IO.Path]::GetFileNameWithoutExtension($key.PSChildName)) 'executable' $p '' '' 'Application enregistrée' } } catch {} } }
+    if (Test-Path $reg) { foreach ($key in Get-ChildItem $reg -ErrorAction SilentlyContinue) { try { $p=$key.GetValue(''); if ($p) { $p=$p.Trim('"'); Add-App ([IO.Path]::GetFileNameWithoutExtension($key.PSChildName)) 'executable' $p '' '' 'Registered app' } } catch {} } }
   }
   $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue)
   foreach ($app in Get-StartApps -ErrorAction SilentlyContinue) {

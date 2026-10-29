@@ -65,7 +65,7 @@ fn process_key(pid: u32) -> Option<ProcessKey> {
 }
 pub fn supported() -> Result<(), String> {
     #[cfg(not(target_arch = "x86_64"))]
-    return Err("Windows x64 requis.".into());
+    return Err("Windows x64 required.".into());
     #[repr(C)]
     struct Version {
         size: u32,
@@ -82,7 +82,7 @@ pub fn supported() -> Result<(), String> {
     let mut v: Version = unsafe { std::mem::zeroed() };
     v.size = std::mem::size_of::<Version>() as u32;
     if unsafe { RtlGetVersion(&mut v) } != 0 || v.build < 22000 {
-        return Err("Windows 11 x64 (build 22000 ou ultérieur) requis.".into());
+        return Err("Windows 11 x64 (build 22000 or later) required.".into());
     }
     let mut system: SYSTEM_INFO = unsafe { std::mem::zeroed() };
     unsafe {
@@ -90,7 +90,7 @@ pub fn supported() -> Result<(), String> {
     }
     if unsafe { system.Anonymous.Anonymous.wProcessorArchitecture } != PROCESSOR_ARCHITECTURE_AMD64
     {
-        return Err("Un processeur Windows x64 natif est requis.".into());
+        return Err("A native Windows x64 processor is required.".into());
     }
     Ok(())
 }
@@ -279,7 +279,7 @@ pub fn launch(app: &AppEntry) -> Result<Option<ProcessKey>, String> {
     match t.kind {
         TargetKind::Executable => {
             if !Path::new(&t.value).is_file() {
-                return Err("Exécutable introuvable. Modifiez cette application.".into());
+                return Err("Executable not found. Edit this app.".into());
             }
             let mut cmd = Command::new(&t.value);
             cmd.args(&t.args);
@@ -288,9 +288,7 @@ pub fn launch(app: &AppEntry) -> Result<Option<ProcessKey>, String> {
                     cmd.current_dir(dir);
                 }
             }
-            let child = cmd
-                .spawn()
-                .map_err(|e| format!("Lancement impossible : {e}"))?;
+            let child = cmd.spawn().map_err(|e| format!("Could not launch: {e}"))?;
             Ok(key_from_handle(child.as_raw_handle() as HANDLE, child.id()))
         }
         TargetKind::Packaged => unsafe {
@@ -318,7 +316,7 @@ pub fn launch(app: &AppEntry) -> Result<Option<ProcessKey>, String> {
             }
             result
                 .map(process_key)
-                .map_err(|e| format!("Activation impossible : {e}"))
+                .map_err(|e| format!("Could not activate: {e}"))
         },
         TargetKind::Shortcut | TargetKind::Uri => unsafe {
             let file = wide(&t.value);
@@ -449,13 +447,13 @@ pub fn scan(cache: &Path, single: Option<&Path>) -> Result<Vec<AppEntry>, String
         if start.elapsed() > Duration::from_secs(60) {
             let _ = child.kill();
             let _ = child.wait();
-            return Err("Détection trop longue. Essayez l’ajout manuel.".into());
+            return Err("Discovery took too long. Try adding the app manually.".into());
         }
         std::thread::sleep(Duration::from_millis(100));
     };
     let bytes = output
         .join()
-        .map_err(|_| "Détection interrompue")?
+        .map_err(|_| "Discovery interrupted")?
         .map_err(|e| e.to_string())?;
     let detail = errors
         .join()
@@ -463,10 +461,10 @@ pub fn scan(cache: &Path, single: Option<&Path>) -> Result<Vec<AppEntry>, String
         .unwrap_or_default();
     if !status.success() {
         log::warn!("Discovery: {detail}");
-        return Err("Détection Windows indisponible. L’ajout manuel reste disponible.".into());
+        return Err("Windows discovery unavailable. You can still add apps manually.".into());
     }
     let rows: Vec<Found> =
-        serde_json::from_slice(&bytes).map_err(|e| format!("Résultat Windows illisible : {e}"))?;
+        serde_json::from_slice(&bytes).map_err(|e| format!("Unreadable Windows result: {e}"))?;
     Ok(deduplicate(
         rows.into_iter()
             .map(|f| {
@@ -533,7 +531,7 @@ fn suspend() -> Result<(), String> {
         ) == 0
             || GetLastError() == ERROR_NOT_ALL_ASSIGNED
         {
-            return Err("Windows n’autorise pas la mise en veille pour cette session.".into());
+            return Err("Windows does not allow sleep in this session.".into());
         }
         let result = if SetSuspendState(false, false, false) {
             Ok(())
@@ -567,10 +565,10 @@ pub fn power(action: &str) -> Result<(), String> {
             if result.success() {
                 Ok(())
             } else {
-                Err("Windows a refusé cette action.".into())
+                Err("Windows rejected this action.".into())
             }
         }
-        _ => Err("Action inconnue.".into()),
+        _ => Err("Unknown action.".into()),
     }
 }
 
@@ -587,7 +585,7 @@ pub fn open_game_bar_settings() -> Result<(), String> {
             SW_SHOWNORMAL,
         );
         if result as isize <= 32 {
-            Err("Impossible d’ouvrir les paramètres Game Bar de Windows.".into())
+            Err("Could not open Windows Game Bar settings.".into())
         } else {
             Ok(())
         }
@@ -603,7 +601,7 @@ pub fn start_controller(app: tauri::AppHandle) {
                 log::warn!("Controller init: {e}");
                 let _ = app.emit(
                     "native-error",
-                    "Manette indisponible. Le clavier reste utilisable.",
+                    "Controller unavailable. You can still use the keyboard.",
                 );
                 return;
             }
@@ -888,13 +886,13 @@ pub fn desktop() -> Result<(), String> {
         use windows::Win32::System::Com::*;
         CoInitializeEx(None, COINIT_APARTMENTTHREADED)
             .ok()
-            .map_err(|e| format!("Initialisation du bureau impossible : {e}"))?;
+            .map_err(|e| format!("Could not initialize the desktop: {e}"))?;
         let result = (|| {
             let shell = desktop_shell()?;
             shell.ToggleDesktop()
         })();
         CoUninitialize();
-        result.map_err(|e| format!("Bureau indisponible : {e}"))
+        result.map_err(|e| format!("Desktop unavailable: {e}"))
     }
 }
 
@@ -912,7 +910,7 @@ pub fn task_view() -> Result<(), String> {
         .any(|key| unsafe { GetAsyncKeyState(*key as i32) < 0 })
     {
         if Instant::now() >= deadline {
-            return Err("Relâchez les touches puis réessayez d’ouvrir la vue des tâches.".into());
+            return Err("Release the keys and try opening Task View again.".into());
         }
         std::thread::sleep(Duration::from_millis(10));
     }
@@ -940,7 +938,7 @@ pub fn task_view() -> Result<(), String> {
             let release = [sequence[2], sequence[3]];
             unsafe { SendInput(release.len() as u32, release.as_ptr(), size) };
         }
-        return Err("Windows n’a pas accepté l’ouverture de la vue des tâches.".into());
+        return Err("Windows did not accept the Task View request.".into());
     }
     Ok(())
 }
@@ -996,7 +994,7 @@ fn navigation_press(action: &str, wait_for_modifiers: bool) -> Result<RemoteKeyP
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::*;
     static ACTIVE: std::sync::Mutex<()> = std::sync::Mutex::new(());
     let Ok(_guard) = ACTIVE.try_lock() else {
-        return Err("Une commande de navigation est déjà en cours.".into());
+        return Err("A navigation command is already running.".into());
     };
     let foreground = unsafe { GetForegroundWindow() };
     let deadline = Instant::now() + Duration::from_secs(2);
@@ -1005,18 +1003,18 @@ fn navigation_press(action: &str, wait_for_modifiers: bool) -> Result<RemoteKeyP
         .any(|key| unsafe { GetAsyncKeyState(*key as i32) < 0 })
     {
         if !wait_for_modifiers || Instant::now() >= deadline {
-            return Err("Relâchez les touches puis réessayez d’envoyer la commande.".into());
+            return Err("Release the keys and try sending the command again.".into());
         }
         std::thread::sleep(Duration::from_millis(10));
     }
     unsafe {
         if GetForegroundWindow() != foreground {
-            return Err("La fenêtre active a changé. Réessayez d’envoyer la commande.".into());
+            return Err("The active window changed. Try sending the command again.".into());
         }
         let mut info: GUITHREADINFO = std::mem::zeroed();
         info.cbSize = std::mem::size_of::<GUITHREADINFO>() as u32;
         if GetGUIThreadInfo(0, &mut info) == 0 {
-            return Err("Impossible d’identifier la fenêtre active pour la navigation.".into());
+            return Err("Could not identify the active window for navigation.".into());
         }
         let target = if info.hwndFocus.is_null() {
             info.hwndActive
@@ -1036,11 +1034,11 @@ fn post_remote_press(target: HWND, action: &str) -> Result<RemoteKeyPress, Strin
         "right" => VK_RIGHT,
         "accept" => VK_RETURN,
         "back" => VK_ESCAPE,
-        _ => return Err("Commande de navigation invalide.".into()),
+        _ => return Err("Invalid navigation command.".into()),
     };
     unsafe {
         if target.is_null() || IsWindow(target) == 0 {
-            return Err("Aucune fenêtre active pour recevoir la commande.".into());
+            return Err("No active window to receive the command.".into());
         }
         // Target the focused control's queue directly: SendInput would be caught
         // again if Escape is reserved by any of our global remote bindings.
@@ -1054,7 +1052,7 @@ fn post_remote_press(target: HWND, action: &str) -> Result<RemoteKeyPress, Strin
             };
         let thread = GetWindowThreadProcessId(target, std::ptr::null_mut());
         if PostMessageW(target, WM_KEYDOWN, key as usize, flags) == 0 {
-            return Err("Windows n’a pas accepté la commande.".into());
+            return Err("Windows did not accept the command.".into());
         }
         Ok(RemoteKeyPress {
             target,
@@ -1082,13 +1080,13 @@ fn request_window_close(target: HWND) -> Result<(), String> {
             ]
             .contains(&String::from_utf16_lossy(&class[..len as usize]).as_ref())
         {
-            return Err("Aucune fenêtre d’application active à fermer.".into());
+            return Err("No active app window to close.".into());
         }
         // A normal close request preserves the application's save/confirmation dialog.
         // Post it so a hung foreground app cannot block the remote listener.
         if PostMessageW(target, WM_CLOSE, 0, 0) == 0 {
             return Err(format!(
-                "Windows n’a pas accepté la fermeture : {}",
+                "Windows did not accept the close request: {}",
                 std::io::Error::last_os_error()
             ));
         }
@@ -1108,7 +1106,7 @@ pub fn media_command(action: &str) -> Result<(), String> {
         "previousTrack" => APPCOMMAND_MEDIA_PREVIOUSTRACK,
         "nextTrack" => APPCOMMAND_MEDIA_NEXTTRACK,
         "stop" => APPCOMMAND_MEDIA_STOP,
-        _ => return Err("Commande multimédia inconnue.".into()),
+        _ => return Err("Unknown media command.".into()),
     };
     unsafe {
         let mut target = GetForegroundWindow();
@@ -1126,7 +1124,7 @@ pub fn media_command(action: &str) -> Result<(), String> {
                 std::ptr::null_mut(),
             ) == 0
         {
-            return Err("Windows n’a pas accepté la commande multimédia.".into());
+            return Err("Windows did not accept the media command.".into());
         }
     }
     Ok(())

@@ -16,7 +16,7 @@ pub fn close_for_update(
             continue;
         }
         for window in &session.windows {
-            close(window).map_err(|e| format!("Fermeture de {} impossible : {e}", session.name))?;
+            close(window).map_err(|e| format!("Could not close {}: {e}", session.name))?;
         }
         session.closing_at = Some(now);
         requested.insert(session.app_id.clone());
@@ -107,7 +107,7 @@ mod tests {
         let mut sessions = HashMap::from([("app".into(), session(false, true))]);
         assert!(
             close_for_update(&mut sessions, 10, &mut HashSet::new(), |_| Err(
-                "refusée".into()
+                "rejected".into()
             ))
             .unwrap_err()
             .contains("Editor")

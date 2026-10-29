@@ -1,6 +1,7 @@
+import { t, locale } from './i18n';
 import type { AppEntry, Session } from './types';
 
-export const categories = { games: 'Jeux', video: 'Vidéo', music: 'Musique', other: 'Autres' } as const;
+export const categories = { get games() { return t('Games'); }, get video() { return t('Video'); }, get music() { return t('Music'); }, get other() { return t('Other'); } } as const;
 export type AppCategory = keyof typeof categories;
 export type LibraryFilter = 'all' | 'favorites' | AppCategory;
 export type LibrarySort = 'custom' | 'name' | 'category';
@@ -37,8 +38,8 @@ export function libraryApps(apps: AppEntry[], preferences: LibraryPreferences, q
   const text = normalize(query.trim());
   const result = apps.filter(app => normalize(app.name).includes(text) &&
     (filter === 'all' || (filter === 'favorites' ? preferences.favorites.includes(app.id) : categoryFor(app, preferences) === filter)));
-  if (preferences.sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
-  if (preferences.sort === 'category') result.sort((a, b) => categories[categoryFor(a, preferences)].localeCompare(categories[categoryFor(b, preferences)], 'fr') || a.name.localeCompare(b.name, 'fr'));
+  if (preferences.sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name, locale.value, { numeric: true, sensitivity: 'base' }));
+  if (preferences.sort === 'category') result.sort((a, b) => categories[categoryFor(a, preferences)].localeCompare(categories[categoryFor(b, preferences)], locale.value) || a.name.localeCompare(b.name, locale.value));
   return result;
 }
 

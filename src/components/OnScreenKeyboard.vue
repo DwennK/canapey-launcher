@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import { computed, nextTick, onMounted, ref } from "vue";
 import {
   focusDirection,
@@ -29,7 +30,7 @@ const upper = ref(false),
 const rows = computed(() =>
   symbols.value
     ? ["1234567890", "@._-/:\\?!&", "()[]+*=,#%", "'\";<>|$€{}"]
-    : ["azertyuiop", "qsdfghjklm", "wxcvbnèéàç"],
+    : ["qwertyuiop", "asdfghjkl", "zxcvbnm"],
 );
 function remember() {
   if (!field.value) return;
@@ -139,13 +140,13 @@ defineExpose({ handle });
       class="panel keyboard-panel"
       role="dialog"
       aria-modal="true"
-      :aria-label="`Clavier — ${label}`"
+      :aria-label="t('Keyboard — {0}', [label])"
       @keydown.stop="keydown"
       @keyup.stop
     >
       <div class="panel-heading">
         <div>
-          <span class="eyebrow">CLAVIER À L’ÉCRAN</span>
+          <span class="eyebrow">{{ t('ON-SCREEN KEYBOARD') }}</span>
           <h2>{{ label }}</h2>
         </div>
       </div>
@@ -165,7 +166,7 @@ defineExpose({ handle });
           <button
             v-for="key in row"
             :key="key"
-            :aria-label="`Saisir ${upper ? key.toUpperCase() : key}`"
+            :aria-label="t('Type {0}', [upper ? key.toUpperCase() : key])"
             @click="change(upper ? key.toUpperCase() : key)"
           >
             {{ upper ? key.toUpperCase() : key }}
@@ -173,26 +174,22 @@ defineExpose({ handle });
         </div>
       </div>
       <div class="keyboard-tools">
-        <button :aria-pressed="upper" @click="upper = !upper">Maj.</button>
+        <button :aria-pressed="upper" @click="upper = !upper">{{ t('Shift') }}</button>
         <button :aria-pressed="symbols" @click="symbols = !symbols">
           {{ symbols ? "ABC" : "123 / @" }}
         </button>
-        <button @click="change(null)">Effacer</button>
-        <button aria-label="Effacer tout le texte" @click="clear">Vider</button>
-        <button aria-label="Curseur à gauche" @click="caret(-1)">←</button>
-        <button aria-label="Curseur à droite" @click="caret(1)">→</button>
+        <button @click="change(null)">{{ t('Delete') }}</button>
+        <button :aria-label="t('Clear all text')" @click="clear">{{ t('Clear') }}</button>
+        <button :aria-label="t('Cursor left')" @click="caret(-1)">←</button>
+        <button :aria-label="t('Cursor right')" @click="caret(1)">→</button>
       </div>
       <div class="keyboard-bottom">
-        <button @click="emit('cancel')">Annuler</button>
-        <button class="keyboard-space" @click="change(' ')">Espace</button>
-        <button v-if="multiline" @click="change('\n')">↵ Ligne</button>
-        <button class="primary-button" @click="emit('done', draft, start)">
-          Terminé
-        </button>
+        <button @click="emit('cancel')">{{ t('Cancel') }}</button>
+        <button class="keyboard-space" @click="change(' ')">{{ t('Space') }}</button>
+        <button v-if="multiline" @click="change('\n')">{{ t('↵ New line') }}</button>
+        <button class="primary-button" @click="emit('done', draft, start)"> {{ t('Done') }} </button>
       </div>
-      <p class="note">
-        Flèches / stick : déplacer · A / Croix : saisir · B / Rond : annuler
-      </p>
+      <p class="note"> {{ t('Arrows / stick: move · A / Cross: type · B / Circle: cancel') }} </p>
     </section>
   </div>
 </template>

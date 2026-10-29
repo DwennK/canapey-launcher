@@ -26,11 +26,11 @@ impl std::fmt::Display for Error {
             f,
             "{}",
             match self {
-                Self::Protocol => "Message Companion invalide",
-                Self::Auth => "Association ou authentification refusée",
-                Self::Limit => "Limite de connexion atteinte",
-                Self::Io => "Connexion interrompue",
-                Self::Storage => "Impossible de sauvegarder les appareils associés",
+                Self::Protocol => "Invalid Companion message",
+                Self::Auth => "Pairing or authentication rejected",
+                Self::Limit => "Connection limit reached",
+                Self::Io => "Connection interrupted",
+                Self::Storage => "Could not save paired devices",
             }
         )
     }
@@ -103,10 +103,10 @@ impl Settings {
             || self.name.len() > 63
             || self.name.chars().any(char::is_control)
         {
-            return Err("Choisissez un nom de 1 à 63 octets, sans caractères de contrôle.".into());
+            return Err("Choose a name between 1 and 63 bytes with no control characters.".into());
         }
         if self.interface.as_ref().is_some_and(|s| s.len() > 128) {
-            return Err("Interface réseau invalide.".into());
+            return Err("Invalid network interface.".into());
         }
         Ok(())
     }

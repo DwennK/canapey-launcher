@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import * as api from '../lib/bridge';
 import type { AppEntry } from '../lib/types';
@@ -8,7 +9,7 @@ const installed = ref<AppEntry | null>(null), release = ref<api.VacuumTubeReleas
 const loading = ref(false), installing = ref(false), opening = ref(false), error = ref(''), message = ref('');
 const progress = ref<api.VacuumTubeProgress>({stage:'checking',received:0,total:0});
 const percent = computed(() => progress.value.total ? Math.min(100, Math.floor(progress.value.received * 100 / progress.value.total)) : 0);
-const stageLabel = computed(() => ({checking:'Recherche de la dernière version stable…',downloading:'Téléchargement…',installing:'Terminez l’installation dans Windows',detecting:'Vérification de l’installation…'})[progress.value.stage]);
+const stageLabel = computed(() => ({checking:t('Finding the latest stable version…'),downloading:t('Downloading…'),installing:t('Finish installation in Windows'),detecting:t('Checking installation…')})[progress.value.stage]);
 const root = ref<HTMLElement | null>(null);
 let stop = () => {}, alive = true;
 async function focusAction() {
@@ -36,9 +37,9 @@ async function install() {
     stop = await api.youtubeProgress(value => { progress.value = value; });
     const app = await api.installYouTube();
     installed.value = app; emit('detected', app);
-    if (!app) { message.value = 'Installation non détectée. Si vous avez fermé l’assistant, vous pouvez réessayer.'; return; }
-    if (!(await props.saveApp(app))) throw new Error('YouTube est installé, mais sa carte n’a pas été enregistrée. Cliquez sur Ouvrir pour réessayer.');
-    message.value = 'YouTube est prêt.';
+    if (!app) { message.value = t('Installation not detected. If you closed the installer, you can try again.'); return; }
+    if (!(await props.saveApp(app))) throw new Error(t('YouTube is installed, but its card was not saved. Click Open to try again.'));
+    message.value = t('YouTube is ready.');
   } catch (e) { error.value = String(e instanceof Error ? e.message : e); }
   finally { stop(); stop = () => {}; installing.value = false; emit('busy', false); await focusAction(); }
 }
@@ -48,7 +49,7 @@ async function open() {
   try { await props.openApp(installed.value); } catch(e) { error.value = String(e instanceof Error ? e.message : e); }
   finally { opening.value = false; }
 }
-async function cancel() { try { await api.cancelYouTubeInstall(); message.value = 'Annulation du téléchargement…'; } catch(e) { error.value = String(e); } }
+async function cancel() { try { await api.cancelYouTubeInstall(); message.value = t('Cancelling download…'); } catch(e) { error.value = String(e); } }
 onMounted(() => void refresh());
 onUnmounted(() => { alive = false; stop(); });
 </script>
@@ -56,22 +57,22 @@ onUnmounted(() => { alive = false; stop(); });
   <div ref="root" class="youtube-setup">
     <div class="youtube-preview"><img src="/art/youtube-card.webp" alt="" /><img class="youtube-logo" src="/brands/youtube.svg" alt="YouTube" /></div>
     <div class="youtube-details">
-      <p class="youtube-intro">YouTube sur votre TV, adapté à la manette.</p>
-      <p v-if="loading" role="status">Recherche de YouTube sur ce PC…</p>
+      <p class="youtube-intro">{{ t('YouTube on your TV, built for a controller.') }}</p>
+      <p v-if="loading" role="status">{{ t('Looking for YouTube on this PC…') }}</p>
       <template v-else-if="installing">
         <p role="status">{{ stageLabel }}</p>
-        <template v-if="progress.stage === 'downloading'"><progress :value="percent" max="100" aria-label="Téléchargement de YouTube" /><p class="note">{{ percent }} % · {{ Math.round(progress.received / 1048576) }} / {{ Math.round(progress.total / 1048576) }} Mo</p></template>
-        <p v-if="progress.stage === 'installing'" class="note">L’assistant Windows est ouvert. Vous pouvez y terminer ou annuler l’installation.</p>
-        <button v-if="['checking','downloading'].includes(progress.stage)" class="small-button" @click="cancel">Annuler le téléchargement</button>
+        <template v-if="progress.stage === 'downloading'"><progress :value="percent" max="100" :aria-label="t('YouTube download')" /><p class="note">{{ percent }} % · {{ Math.round(progress.received / 1048576) }} / {{ Math.round(progress.total / 1048576) }} {{ t('MB') }}</p></template>
+        <p v-if="progress.stage === 'installing'" class="note">{{ t('The Windows installer is open. Complete or cancel installation there.') }}</p>
+        <button v-if="['checking','downloading'].includes(progress.stage)" class="small-button" @click="cancel">{{ t('Cancel download') }}</button>
       </template>
       <template v-else>
-        <p v-if="installed" class="note">Déjà installé sur ce PC. Votre compte et vos réglages sont conservés.</p>
-        <p v-else-if="release" class="note">Version stable {{ release.version }} · {{ Math.ceil(release.size / 1048576) }} Mo<br />L’assistant Windows s’ouvrira après le téléchargement.</p>
-        <p v-else-if="!native" class="note">L’installation est disponible dans Canapey sous Windows.</p>
+        <p v-if="installed" class="note">{{ t('Already installed on this PC. Your account and settings are preserved.') }}</p>
+        <p v-else-if="release" class="note">{{ t('Stable version') }} {{ release.version }} · {{ Math.ceil(release.size / 1048576) }} {{ t('MB') }}<br />{{ t('The Windows installer will open after the download.') }}</p>
+        <p v-else-if="!native" class="note">{{ t('Installation is available in Canapey on Windows.') }}</p>
         <div class="youtube-actions">
-          <button v-if="installed" class="primary-button" :disabled="opening" @click="open">{{ opening ? 'Ouverture…' : 'Ouvrir YouTube' }}</button>
-          <button v-else class="primary-button" :disabled="!native || !release" @click="install">Installer YouTube</button>
-          <button v-if="native" class="small-button" :disabled="opening" @click="refresh">Vérifier à nouveau</button>
+          <button v-if="installed" class="primary-button" :disabled="opening" @click="open">{{ opening ? t('Opening…') : t('Open YouTube') }}</button>
+          <button v-else class="primary-button" :disabled="!native || !release" @click="install">{{ t('Install YouTube') }}</button>
+          <button v-if="native" class="small-button" :disabled="opening" @click="refresh">{{ t('Check again') }}</button>
         </div>
       </template>
       <p v-if="error" class="inline-error" role="alert">{{ error }}</p>

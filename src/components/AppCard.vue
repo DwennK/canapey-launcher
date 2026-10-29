@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { CardHold } from "../lib/hold";
 import { cardArtwork } from "../lib/ambiance";
@@ -119,8 +120,8 @@ onUnmounted(() => {
   <button
     class="app-card"
     :class="[theme, { selected, special: !!special }]"
-    :aria-label="`${name}${suggestion ? ` — ${suggestionLabel ?? 'à ajouter'}` : ''}${running ? ' — en cours' : ''}`"
-    :aria-description="favorite ? 'Favori de l’accueil' : undefined"
+    :aria-label="`${name}${suggestion ? ` — ${suggestionLabel ?? t('add')}` : ''}${running ? t('— running') : ''}`"
+    :aria-description="favorite ? t('Home favorite') : undefined"
     :aria-pressed="selected"
     :tabindex="selected ? 0 : -1"
     :aria-haspopup="hasOptions ? 'dialog' : undefined"
@@ -175,9 +176,9 @@ onUnmounted(() => {
       <span v-if="web" class="web-label"
         ><Icon name="globe" :size="10" />WEB</span
       >
-      <span v-if="favorite" class="favorite-label">Favori</span>
-      <span v-if="running" class="running-dot" aria-label="En cours" />
-      <span v-if="suggestion" class="suggestion-label">{{ suggestionLabel ?? 'À ajouter' }}</span>
+      <span v-if="favorite" class="favorite-label">{{ t('Favorite') }}</span>
+      <span v-if="running" class="running-dot" :aria-label="t('Running')" />
+      <span v-if="suggestion" class="suggestion-label">{{ suggestionLabel ?? t('Add') }}</span>
     </span>
     <span class="card-caption"
       ><span>{{ name }}</span

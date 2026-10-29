@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { targetKey, type AppEntry, type Config } from './types';
 import type { LibraryFilter } from './library';
 
@@ -7,15 +8,15 @@ export function showYouTubeSuggestion(apps: AppEntry[], query: string, filter: L
     ['youtube', 'vacuumtube'].some(name => name.includes(query.trim().toLocaleLowerCase()));
 }
 export function registerYouTube(config: Config, detected: AppEntry): { config: Config; app: AppEntry } {
-  if (!isVacuumTube(detected)) throw new Error('Application détectée inattendue.');
+  if (!isVacuumTube(detected)) throw new Error(t('Unexpected detected app.'));
   const existing = config.apps.find(isVacuumTube) ?? config.apps.find(app => targetKey(app.target) === targetKey(detected.target));
-  if (!existing && config.apps.length >= 250) throw new Error('La bibliothèque est pleine. Retirez une carte puis réessayez.');
+  if (!existing && config.apps.length >= 250) throw new Error(t('The library is full. Remove a card and try again.'));
   const app: AppEntry = {
     ...detected, ...existing, name: existing?.name === 'VacuumTube' ? 'YouTube' : existing?.name ?? 'YouTube',
     id: existing?.id ?? (config.apps.some(app => app.id === detected.id) ? crypto.randomUUID() : detected.id),
     target: { ...detected.target, args: [...new Set([...(existing?.target.args ?? detected.target.args), '--fullscreen'])] },
     theme: existing?.theme === 'home' ? 'youtube' : existing?.theme ?? 'youtube',
-    icon: null, source: 'Application Windows',
+    icon: null, source: t('Windows app'),
   };
   const apps = existing ? config.apps.map(value => value.id === existing.id ? app : value) : [...config.apps, app];
   return {config: {...config, apps, selectedId: app.id}, app};

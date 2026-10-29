@@ -101,18 +101,18 @@ pub fn apple_remote_pair(app: tauri::AppHandle) -> Result<(), String> {
         .get_webview_window("main")
         .is_some_and(|w| w.is_focused().unwrap_or(false))
     {
-        return Err("Revenez dans Canapey pour associer un iPhone.".into());
+        return Err("Return to Canapey to pair an iPhone.".into());
     }
     let state = app.state::<AppleRemoteState>();
     if !state.status.lock().unwrap().running {
-        return Err("Activez la télécommande sur un réseau privé disponible.".into());
+        return Err("Enable the remote on an available private network.".into());
     }
     state
         .hub
         .lock()
         .unwrap()
         .as_ref()
-        .ok_or("Service indisponible.")?
+        .ok_or("Service unavailable.")?
         .begin_pairing()
         .map_err(|e| e.to_string())?;
     let _ = app.emit("apple-remote-status", state.snapshot());
@@ -133,7 +133,7 @@ pub fn apple_remote_forget(app: tauri::AppHandle, id: String) -> Result<(), Stri
         .lock()
         .unwrap()
         .as_ref()
-        .ok_or("Service indisponible.")?
+        .ok_or("Service unavailable.")?
         .revoke(&id)
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -158,7 +158,7 @@ async fn supervise(app: tauri::AppHandle) {
         if settings.enabled {
             let found = tauri::async_runtime::spawn_blocking(windows::networks)
                 .await
-                .unwrap_or_else(|_| Err("Réseaux Windows indisponibles.".into()));
+                .unwrap_or_else(|_| Err("Windows networks unavailable.".into()));
             let (networks, error) = match found {
                 Ok(n) => (n, None),
                 Err(e) => (vec![], Some(e)),
@@ -181,7 +181,7 @@ async fn supervise(app: tauri::AppHandle) {
                 status.networks = networks.clone();
                 status.error = error.or_else(|| {
                     target.is_none().then(|| String::from(
-                        "Aucun réseau privé IPv4 disponible. Vérifiez le profil réseau Windows et votre connexion Wi-Fi/Ethernet."
+                        "No private IPv4 network available. Check your Windows network profile and Wi-Fi/Ethernet connection."
                     ))
                 });
             }
@@ -209,7 +209,7 @@ async fn supervise(app: tauri::AppHandle) {
                                 }
                             }
                             None => state.status.lock().unwrap().error = Some(String::from(
-                                "Impossible de lire ou protéger les associations Windows. Elles n’ont pas été remplacées. Consultez le diagnostic."
+                                "Could not read or protect Windows pairings. They have not been replaced. Check Diagnostics."
                             )),
                         }
                     }

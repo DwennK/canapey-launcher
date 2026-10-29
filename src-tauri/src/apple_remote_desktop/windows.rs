@@ -13,7 +13,7 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
     unsafe {
         CoInitializeEx(None, COINIT_MULTITHREADED)
             .ok()
-            .map_err(|_| "Réseaux Windows indisponibles.".to_string())?;
+            .map_err(|_| "Windows networks unavailable.".to_string())?;
         struct Com;
         impl Drop for Com {
             fn drop(&mut self) {
@@ -24,16 +24,16 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
         }
         let _com = Com;
         let manager: INetworkListManager = CoCreateInstance(&NetworkListManager, None, CLSCTX_ALL)
-            .map_err(|_| "Profils réseau indisponibles.".to_string())?;
+            .map_err(|_| "Network profiles unavailable.".to_string())?;
         let list = manager
             .GetNetworks(NLM_ENUM_NETWORK_CONNECTED)
-            .map_err(|_| "Impossible de lire les réseaux.".to_string())?;
+            .map_err(|_| "Could not read networks.".to_string())?;
         let mut private = std::collections::BTreeSet::new();
         loop {
             let mut item = [None];
             let mut count = 0;
             list.Next(&mut item, Some(&mut count))
-                .map_err(|_| "Énumération réseau impossible.".to_string())?;
+                .map_err(|_| "Could not enumerate networks.".to_string())?;
             if count == 0 {
                 break;
             }
@@ -43,13 +43,13 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
             }
             let connections = network
                 .GetNetworkConnections()
-                .map_err(|_| "Connexions réseau indisponibles.".to_string())?;
+                .map_err(|_| "Network connections unavailable.".to_string())?;
             loop {
                 let mut items = [None];
                 let mut n = 0;
                 connections
                     .Next(&mut items, Some(&mut n))
-                    .map_err(|_| "Connexion réseau invalide.".to_string())?;
+                    .map_err(|_| "Invalid network connection.".to_string())?;
                 if n == 0 {
                     break;
                 }
@@ -80,7 +80,7 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
             );
         }
         if code != 0 {
-            return Err("Impossible de lire les adresses réseau.".into());
+            return Err("Could not read network addresses.".into());
         }
         let mut adapter = buffer.as_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
         let mut result = vec![];
@@ -93,7 +93,7 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
                     .to_lowercase();
                 if private.contains(&id) {
                     let label = if a.FriendlyName.is_null() {
-                        "Réseau privé".into()
+                        "Private network".into()
                     } else {
                         let mut len = 0;
                         while *a.FriendlyName.add(len) != 0 && len < 256 {

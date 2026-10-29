@@ -32,10 +32,10 @@ impl AudioChange {
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.id().is_empty() || self.id().len() > 4096 || self.id().contains('\0') {
-            return Err("Sortie audio invalide.".into());
+            return Err("Invalid audio output.".into());
         }
         if matches!(self, Self::Volume { value, .. } if *value > 100) {
-            return Err("Le volume doit être compris entre 0 et 100 %.".into());
+            return Err("Volume must be between 0 and 100%.".into());
         }
         Ok(())
     }

@@ -56,7 +56,7 @@ pub struct Progress {
 
 pub fn parse_release(bytes: &[u8]) -> Result<Release, String> {
     let release: GithubRelease =
-        serde_json::from_slice(bytes).map_err(|_| "Réponse GitHub illisible.")?;
+        serde_json::from_slice(bytes).map_err(|_| "Unreadable GitHub response.")?;
     let tag = release.tag_name;
     if release.draft
         || release.prerelease
@@ -66,7 +66,7 @@ pub fn parse_release(bytes: &[u8]) -> Result<Release, String> {
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
     {
-        return Err("Aucune version stable installable.".into());
+        return Err("No installable stable release available.".into());
     }
     let mut matches = release
         .assets
@@ -74,20 +74,20 @@ pub fn parse_release(bytes: &[u8]) -> Result<Release, String> {
         .filter(|a| a.name == "VacuumTube-Setup.exe");
     let asset = matches
         .next()
-        .ok_or("L’installeur Windows est absent de cette release.")?;
+        .ok_or("This release has no Windows installer.")?;
     if matches.next().is_some()
         || asset.size < 1024
         || asset.size > MAX_INSTALLER
         || asset.browser_download_url != format!("{PREFIX}{tag}/VacuumTube-Setup.exe")
     {
-        return Err("Installeur Windows inattendu.".into());
+        return Err("Unexpected Windows installer.".into());
     }
     let hash = asset
         .digest
         .as_deref()
         .and_then(|s| s.strip_prefix("sha256:"))
         .filter(|s| s.len() == 64 && s.bytes().all(|b| b.is_ascii_hexdigit()))
-        .ok_or("L’empreinte de vérification de l’installeur est absente.")?;
+        .ok_or("The installer verification checksum is missing.")?;
     Ok(Release {
         version: tag,
         size: asset.size,
@@ -116,13 +116,13 @@ fn client(timeout: Duration) -> Result<reqwest::Client, String> {
                     )
                 )
             {
-                attempt.error("Redirection de téléchargement refusée")
+                attempt.error("Download redirect rejected")
             } else {
                 attempt.follow()
             }
         }))
         .build()
-        .map_err(|e| format!("Connexion indisponible : {e}"))
+        .map_err(|e| format!("Connection unavailable: {e}"))
 }
 fn runtime() -> Result<tokio::runtime::Runtime, String> {
     tokio::runtime::Builder::new_current_thread()
@@ -140,17 +140,15 @@ async fn fetch_release() -> Result<Release, String> {
         .send()
         .await
         .and_then(|r| r.error_for_status())
-        .map_err(|_| {
-            "Impossible de consulter GitHub. Vérifiez la connexion ou réessayez plus tard."
-        })?;
+        .map_err(|_| "Could not reach GitHub. Check your connection or try again later.")?;
     let mut bytes = Vec::new();
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|_| "Réponse GitHub interrompue.")?
+        .map_err(|_| "GitHub response interrupted.")?
     {
         if bytes.len() + chunk.len() > 2_000_000 {
-            return Err("Réponse GitHub trop volumineuse.".into());
+            return Err("GitHub response too large.".into());
         }
         bytes.extend_from_slice(&chunk);
     }
@@ -166,7 +164,7 @@ async fn cancellable<T>(
     let mut tick = tokio::time::interval(Duration::from_millis(100));
     loop {
         if cancelled() {
-            return Err("Téléchargement annulé. Aucune installation lancée.".into());
+            return Err("Download cancelled. No installation started.".into());
         }
         tokio::select! {
             result = &mut work => return result,
@@ -192,21 +190,19 @@ impl<'a, W: Write> VerifiedWriter<'a, W> {
     fn push(&mut self, bytes: &[u8]) -> Result<u64, String> {
         self.received += bytes.len() as u64;
         if self.received > self.release.size || self.received > MAX_INSTALLER {
-            return Err("Taille du téléchargement inattendue.".into());
+            return Err("Unexpected download size.".into());
         }
         self.hash.update(bytes);
         self.writer
             .write_all(bytes)
-            .map_err(|_| "Impossible d’écrire l’installeur. Vérifiez l’espace disque.")?;
+            .map_err(|_| "Could not write the installer. Check available disk space.")?;
         Ok(self.received)
     }
     fn finish(self) -> Result<(), String> {
         if self.received != self.release.size
             || format!("{:x}", self.hash.finalize()) != self.release.sha256
         {
-            return Err(
-                "Vérification du téléchargement échouée. Aucun fichier n’a été exécuté.".into(),
-            );
+            return Err("Download verification failed. No file was executed.".into());
         }
         Ok(())
     }
@@ -221,12 +217,12 @@ async fn download(
         .send()
         .await
         .and_then(|r| r.error_for_status())
-        .map_err(|_| "Téléchargement indisponible. Réessayez plus tard.")?;
+        .map_err(|_| "Download unavailable. Try again later.")?;
     let mut writer = VerifiedWriter::new(file, release);
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|_| "Téléchargement interrompu. Vous pouvez réessayer.")?
+        .map_err(|_| "Download interrupted. You can try again.")?
     {
         progress(writer.push(&chunk)?);
     }
@@ -248,10 +244,10 @@ pub fn install(
     progress: impl Fn(Progress),
 ) -> Result<Option<crate::model::AppEntry>, String> {
     if !cfg!(windows) {
-        return Err("Installation disponible uniquement sous Windows.".into());
+        return Err("Installation is available only on Windows.".into());
     }
     if INSTALLING.swap(true, Ordering::SeqCst) {
-        return Err("Une installation est déjà en cours.".into());
+        return Err("An installation is already running.".into());
     }
     let _guard = InstallGuard;
     CANCEL.store(false, Ordering::SeqCst);
@@ -296,7 +292,7 @@ pub fn install(
     file.sync_all().map_err(|e| e.to_string())?;
     drop(file);
     if CANCEL.load(Ordering::SeqCst) {
-        return Err("Téléchargement annulé. Aucune installation lancée.".into());
+        return Err("Download cancelled. No installation started.".into());
     }
     progress(Progress {
         stage: "installing",
@@ -306,9 +302,9 @@ pub fn install(
     // Keep the standard interactive installer: no silent elevation or shell input.
     let status = std::process::Command::new(&path)
         .spawn()
-        .map_err(|e| format!("Impossible d’ouvrir l’installeur Windows : {e}"))?
+        .map_err(|e| format!("Could not open the Windows installer: {e}"))?
         .wait()
-        .map_err(|e| format!("Suivi de l’installation interrompu : {e}"))?;
+        .map_err(|e| format!("Installer monitoring interrupted: {e}"))?;
     progress(Progress {
         stage: "detecting",
         received: release.size,
@@ -316,16 +312,14 @@ pub fn install(
     });
     let installed = detect(known_paths)?;
     if installed.is_none() && !status.success() {
-        return Err(
-            "Installation annulée ou interrompue dans Windows. Vous pouvez réessayer.".into(),
-        );
+        return Err("Installation cancelled or interrupted in Windows. You can try again.".into());
     }
     Ok(installed)
 }
 
 #[cfg(not(windows))]
 pub fn detect(_: &[String]) -> Result<Option<crate::model::AppEntry>, String> {
-    Err("La détection de YouTube nécessite Windows.".into())
+    Err("YouTube discovery requires Windows.".into())
 }
 #[cfg(windows)]
 pub fn detect(known_paths: &[String]) -> Result<Option<crate::model::AppEntry>, String> {
@@ -354,7 +348,7 @@ pub fn detect(known_paths: &[String]) -> Result<Option<crate::model::AppEntry>, 
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| e.to_string())?;
-    let stdout = child.stdout.take().ok_or("Détection indisponible.")?;
+    let stdout = child.stdout.take().ok_or("Discovery unavailable.")?;
     let output = std::thread::spawn(move || {
         let mut bytes = Vec::new();
         stdout.take(32768).read_to_end(&mut bytes).map(|_| bytes)
@@ -368,19 +362,19 @@ pub fn detect(known_paths: &[String]) -> Result<Option<crate::model::AppEntry>, 
             let _ = child.kill();
             let _ = child.wait();
             let _ = output.join();
-            return Err("La détection de YouTube a pris trop de temps. Réessayez.".into());
+            return Err("YouTube discovery took too long. Try again.".into());
         }
         std::thread::sleep(Duration::from_millis(100));
     };
     let bytes = output
         .join()
-        .map_err(|_| "Détection interrompue.")?
+        .map_err(|_| "Discovery interrupted.")?
         .map_err(|e| e.to_string())?;
     if !status.success() {
-        return Err("Impossible de vérifier l’installation de YouTube.".into());
+        return Err("Could not verify the YouTube installation.".into());
     }
     let path: Option<String> =
-        serde_json::from_slice(&bytes).map_err(|_| "Résultat de détection illisible.")?;
+        serde_json::from_slice(&bytes).map_err(|_| "Unreadable discovery result.")?;
     Ok(path
         .filter(|p| std::path::Path::new(p).is_file())
         .map(|path| crate::model::AppEntry {
@@ -398,7 +392,7 @@ pub fn detect(known_paths: &[String]) -> Result<Option<crate::model::AppEntry>, 
             card: None,
             background: None,
             icon: None,
-            source: "Application Windows".into(),
+            source: "Windows app".into(),
         }))
 }
 
@@ -471,7 +465,7 @@ mod tests {
         })
         .await
         .unwrap();
-        assert!(result.unwrap_err().contains("annulé"));
+        assert!(result.unwrap_err().contains("cancelled"));
     }
     #[test]
     #[ignore = "Read-only live GitHub smoke check; requires network"]

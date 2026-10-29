@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { cancelXboxTest, openGameBarSettings, testXboxButton, xboxHomeStatus, type XboxHomeStatus } from "../lib/xbox-home";
 
@@ -11,20 +12,20 @@ let disposed = false;
 let ownTest = false;
 const listening = computed(() => status.value?.test === "listening");
 const message = computed(() => {
-  if (!props.native) return "Le test de détection nécessite Canapey sous Windows.";
+  if (!props.native) return t('The detection test requires Canapey on Windows.');
   if (error.value) return error.value;
-  if (!status.value) return "Vérification de la détection Xbox…";
-  if (status.value.test === "detected") return "Touche Xbox détectée. Si Game Bar s’est aussi ouverte, désactivez son raccourci ci-dessous, puis refaites le test.";
-  if (listening.value) return "Relâchez la touche Xbox, puis appuyez dessus. Écoute pendant 15 secondes, sans retour à l’accueil.";
-  if (!status.value.available) return "Détection Xbox indisponible sur ce PC. Choisissez une combinaison de boutons dans le réglage ci-dessus.";
-  if (!status.value.connected) return "Connectez une manette compatible Xbox pour effectuer le test.";
-  if (status.value.test === "timeout") return "Aucun appui Xbox reçu. Vérifiez Game Bar et Steam Input, puis réessayez ou choisissez une combinaison de boutons.";
-  return "Testez la touche Xbox avant de l’utiliser pour revenir à l’accueil.";
+  if (!status.value) return t('Checking Xbox detection…');
+  if (status.value.test === "detected") return t('Xbox button detected. If Game Bar also opened, disable its shortcut below and repeat the test.');
+  if (listening.value) return t('Release the Xbox button, then press it. Listening for 15 seconds without returning Home.');
+  if (!status.value.available) return t('Xbox detection is unavailable on this PC. Choose a button combination above.');
+  if (!status.value.connected) return t('Connect an Xbox-compatible controller to run the test.');
+  if (status.value.test === "timeout") return t('No Xbox press received. Check Game Bar and Steam Input, then try again or choose a button combination.');
+  return t('Test the Xbox button before using it to return Home.');
 });
 
 async function refresh() {
   try { status.value = await xboxHomeStatus(); }
-  catch { error.value = "Impossible de lire la détection Xbox. Réouvrez les paramètres pour réessayer."; }
+  catch { error.value = t('Could not read Xbox detection. Reopen Settings to try again.'); }
   if (!disposed) timer = setTimeout(refresh, 350);
 }
 async function toggleTest() {
@@ -59,15 +60,15 @@ onUnmounted(() => {
 
 <template>
   <section class="xbox-home-test" aria-labelledby="xbox-home-title">
-    <h4 id="xbox-home-title">Touche Xbox</h4>
+    <h4 id="xbox-home-title">{{ t('Xbox button') }}</h4>
     <p class="note" role="status" aria-live="polite">{{ message }}</p>
     <button class="small-button" :disabled="!native || busy || (!listening && (!status?.available || !status?.connected))" @click="toggleTest">
-      {{ listening ? "Annuler le test Xbox" : "Tester la touche Xbox" }}
+      {{ listening ? t('Cancel Xbox test') : t('Test Xbox button') }}
     </button>
     <div class="xbox-windows-help">
-      <h4>Éviter l’ouverture de Game Bar</h4>
-      <p class="note">Dans les paramètres Windows, désactivez l’option qui autorise la manette à ouvrir Game Bar. Canapey ouvre ce réglage ; vous choisissez de le désactiver. Game Bar reste accessible avec Windows + G.</p>
-      <button class="small-button" :disabled="!native || listening" @click="openSettings">Ouvrir les paramètres Game Bar</button>
+      <h4>{{ t('Prevent Game Bar from opening') }}</h4>
+      <p class="note">{{ t('In Windows settings, turn off the option that lets a controller open Game Bar. Canapey opens that setting; you choose whether to disable it. Game Bar remains accessible with Windows + G.') }}</p>
+      <button class="small-button" :disabled="!native || listening" @click="openSettings">{{ t('Open Game Bar settings') }}</button>
     </div>
   </section>
 </template>

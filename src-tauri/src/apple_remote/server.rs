@@ -94,14 +94,12 @@ impl Server {
     }
     pub fn health_error(&self) -> Option<String> {
         if self.task.as_ref().is_some_and(|task| task.is_finished()) {
-            return Some(
-                "Le service de télécommande s’est arrêté. Nouvelle tentative en cours.".into(),
-            );
+            return Some("The remote service stopped. Retrying.".into());
         }
         if let Some(monitor) = &self.monitor {
             while let Ok(event) = monitor.try_recv() {
                 if let mdns_sd::DaemonEvent::Error(error) = event {
-                    return Some(format!("Découverte mDNS indisponible : {error}"));
+                    return Some(format!("mDNS discovery unavailable: {error}"));
                 }
             }
         }

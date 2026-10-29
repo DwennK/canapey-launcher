@@ -85,9 +85,7 @@ impl RemoteShortcut {
             || (self.ctrl && self.shift && ["KeyQ", "Escape"].contains(&self.code.as_str()))
             || (self.ctrl && self.alt && ["Delete", "Escape"].contains(&self.code.as_str()))
         {
-            return Err(
-                "Touche invalide ou réservée par Windows. Choisissez une autre touche.".into(),
-            );
+            return Err("Invalid key or key reserved by Windows. Choose another key.".into());
         }
         Ok(())
     }
@@ -130,7 +128,7 @@ pub fn interface_action(action: &str) -> bool {
 pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
     use std::collections::HashSet;
     if bindings.len() > 40 {
-        return Err("Trop de boutons associés.".into());
+        return Err("Too many mapped buttons.".into());
     }
     let mut buttons = HashSet::new();
     let mut keys = HashSet::new();
@@ -167,10 +165,13 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
         ]
         .contains(&binding.button.as_str());
         if !(digit || known) || !buttons.insert(&binding.button) {
-            return Err("Bouton inconnu ou associé plusieurs fois.".into());
+            return Err("Unknown button or button mapped more than once.".into());
         }
         if !keys.insert(binding.key.accelerator()) {
-            return Err("Cette touche est déjà associée à un autre bouton. Utilisez une touche distincte dans Flirc.".into());
+            return Err(
+                "This key is already mapped to another button. Use a different key in Flirc."
+                    .into(),
+            );
         }
         binding.key.validate_local()?;
         if ![
@@ -201,13 +202,13 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
         ]
         .contains(&binding.action.as_str())
         {
-            return Err("Action de télécommande inconnue.".into());
+            return Err("Unknown remote action.".into());
         }
         if !binding.global
             && (binding.key.code.starts_with("AudioVolume")
                 || binding.key.code.starts_with("Media"))
         {
-            return Err("Activez le mode global pour réaffecter une touche multimédia.".into());
+            return Err("Enable global mode to remap a media key.".into());
         }
         if binding.global {
             binding.key.validate()?;
@@ -218,7 +219,7 @@ pub fn validate_bindings(bindings: &[RemoteBinding]) -> Result<(), String> {
                 .as_ref()
                 .is_some_and(|id| !id.is_empty() && id.len() <= 100 && !id.contains('\0'))
         {
-            return Err("Choisissez une application pour ce bouton.".into());
+            return Err("Choose an app for this button.".into());
         }
     }
     Ok(())

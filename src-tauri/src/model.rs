@@ -54,6 +54,7 @@ impl Default for LibraryPreferences {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub locale: Option<String>,
     pub library: LibraryPreferences,
     pub last_settings_tab: String,
     pub fullscreen: bool,
@@ -77,6 +78,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            locale: None,
             library: LibraryPreferences::default(),
             last_settings_tab: "display".into(),
             fullscreen: true,
@@ -140,21 +142,21 @@ fn clean(s: &str, max: usize) -> bool {
 impl Target {
     pub fn validate(&self) -> Result<(), String> {
         if self.value.trim().is_empty() || !clean(&self.value, 32768) {
-            return Err("Cible invalide.".into());
+            return Err("Invalid target.".into());
         }
         if self.args.len() > 128
             || self.args.iter().any(|s| !clean(s, 8192))
             || self.working_dir.as_ref().is_some_and(|s| !clean(s, 32768))
         {
-            return Err("Arguments invalides.".into());
+            return Err("Invalid arguments.".into());
         }
         match self.kind {
             TargetKind::Uri => {
-                let u = url::Url::parse(&self.value).map_err(|_| "URI invalide.")?;
+                let u = url::Url::parse(&self.value).map_err(|_| "Invalid URI.")?;
                 // No arbitrary script, file or shell protocols. New protocols require an explicit code review.
                 if !["https", "http", "steam", "spotify", "ms-xbox"].contains(&u.scheme()) {
                     return Err(
-                        "Protocole non autorisé (http, https, steam, spotify, ms-xbox).".into(),
+                        "Protocol not allowed (http, https, steam, spotify, ms-xbox).".into(),
                     );
                 }
                 if ["http", "https"].contains(&u.scheme())
@@ -162,10 +164,10 @@ impl Target {
                         || !u.username().is_empty()
                         || u.password().is_some())
                 {
-                    return Err("Adresse web invalide.".into());
+                    return Err("Invalid web address.".into());
                 }
                 if !self.args.is_empty() {
-                    return Err("Une URI ne prend pas d’arguments séparés.".into());
+                    return Err("A URI cannot take separate arguments.".into());
                 }
             }
             TargetKind::Packaged => {
@@ -176,7 +178,7 @@ impl Target {
                         .any(|c| !c.is_ascii_alphanumeric() && !"._!-".contains(c))
                     || !self.args.is_empty()
                 {
-                    return Err("Identité de lancement invalide.".into());
+                    return Err("Invalid launch identity.".into());
                 }
             }
             TargetKind::Executable | TargetKind::Shortcut => {
@@ -190,14 +192,14 @@ impl Target {
                         p.ends_with(".lnk")
                     })
                 {
-                    return Err("Choisissez un chemin Windows absolu vers un .exe ou .lnk.".into());
+                    return Err("Choose an absolute Windows path to an .exe or .lnk file.".into());
                 }
                 if let Some(dir) = &self.working_dir {
                     if !(dir.is_empty()
                         || (dir.as_bytes().get(1) == Some(&b':')
                             && matches!(dir.as_bytes().get(2), Some(b'\\') | Some(b'/'))))
                     {
-                        return Err("Dossier de travail invalide.".into());
+                        return Err("Invalid working directory.".into());
                     }
                 }
             }
@@ -224,12 +226,15 @@ impl Target {
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
         if self.version != 1 {
-            return Err("Version de configuration non prise en charge.".into());
+            return Err("Unsupported configuration version.".into());
         }
         if self.apps.len() > 250 {
-            return Err("Maximum 250 applications.".into());
+            return Err("Maximum of 250 apps.".into());
         }
         let s = &self.settings;
+        if s.locale.as_deref().is_some_and(|value| value != "en") {
+            return Err("Unsupported language.".into());
+        }
         if s.library.favorites.len() > 250
             || s.library.categories.len() > 250
             || s.library
@@ -253,7 +258,7 @@ impl Config {
             ]
             .contains(&s.last_settings_tab.as_str())
         {
-            return Err("Préférences de bibliothèque invalides.".into());
+            return Err("Invalid library preferences.".into());
         }
 
         crate::remote_shortcut::validate_bindings(&s.remote_bindings)?;
@@ -273,7 +278,7 @@ impl Config {
             || !["xbox", "startBack", "shouldersStart", "disabled"]
                 .contains(&s.return_shortcut.as_str())
         {
-            return Err("Réglage hors limites.".into());
+            return Err("Setting out of range.".into());
         }
         let mut ids = HashSet::new();
         for a in &self.apps {
@@ -283,7 +288,7 @@ impl Config {
                 || a.name.trim().is_empty()
                 || !clean(&a.name, 100)
             {
-                return Err("Nom ou identifiant d’application invalide.".into());
+                return Err("Invalid app name or identifier.".into());
             }
             if ![
                 "home", "youtube", "netflix", "spotify", "internet", "plezy", "steam", "silo",
@@ -291,7 +296,7 @@ impl Config {
             ]
             .contains(&a.theme.as_str())
             {
-                return Err("Thème inconnu.".into());
+                return Err("Unknown theme.".into());
             }
             a.target.validate()?;
         }

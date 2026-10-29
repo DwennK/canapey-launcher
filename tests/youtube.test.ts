@@ -39,8 +39,8 @@ describe('YouTube catalog and installation registration',()=>{
  });
  it('refuses an unexpected executable or a full library without losing data',()=>{
   const initial=defaults();initial.apps=Array.from({length:250},(_,i)=>({...detected,id:String(i),target:{...detected.target,value:`C:/${i}.exe`}}));
-  expect(()=>registerYouTube(initial,detected)).toThrow('pleine');
-  expect(()=>registerYouTube(defaults(),{...detected,target:{...detected.target,value:'C:/other.exe'}})).toThrow('inattendue');
+  expect(()=>registerYouTube(initial,detected)).toThrow('full');
+  expect(()=>registerYouTube(defaults(),{...detected,target:{...detected.target,value:'C:/other.exe'}})).toThrow('Unexpected');
   expect(initial.apps).toHaveLength(250);
  });
 });

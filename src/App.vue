@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, locale, languageOptions, setLocale, type Locale } from './lib/i18n';
 import {
   computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
 } from "vue";
@@ -18,7 +19,7 @@ async function saveYouTube(app: AppEntry) {
   return true;
 }
 async function openYouTube(app: AppEntry) {
-  if (!(await saveYouTube(app))) throw new Error('La carte YouTube n’a pas été enregistrée. Réessayez.');
+  if (!(await saveYouTube(app))) throw new Error(t('The YouTube card was not saved. Try again.'));
   dismissPanels(); resetLibrary(); view.value = 'grid';
   await nextTick();
   selected.value = reconcileSelection(tiles.value.map(tile => tile.id), config.value.selectedId);
@@ -111,7 +112,7 @@ function executeRemote(binding: RemoteBinding) {
   else if (action === 'power') void openPanel('power');
   else if (action === 'home' && !native.value) dispatch('home');
   else if (native.value) void runRemoteAction(binding.button).catch(notify);
-  else notify('Cette action nécessite Canapey sous Windows.');
+  else notify(t('This action requires Canapey on Windows.'));
 }
 // Native hotkeys arrive independently of DOM focus, including while minimized.
 let remoteEventChain = Promise.resolve();
@@ -187,8 +188,8 @@ const {
 const headerVolume = computed(() => audioState.value?.volume != null
   ? Math.round(audioVolume.value) : null);
 const volumeDescription = computed(() => headerVolume.value === null
-  ? 'Volume indisponible'
-  : `${audioState.value?.muted ? 'Son coupé · ' : ''}Volume ${headerVolume.value} %`);
+  ? t('Volume unavailable')
+  : t(audioState.value?.muted ? 'Muted · Volume {0}%' : 'Volume {0}%', [headerVolume.value]));
 let audioTimer: ReturnType<typeof setInterval>;
 async function openAudio() {
   void openPanel("audio");
@@ -204,7 +205,7 @@ const keyboardTarget = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 const screenKeyboard = ref<InstanceType<typeof OnScreenKeyboard>>();
 const keyboardEntry = ref({
   value: "",
-  label: "Saisie",
+  get label() { return t('Text entry'); },
   start: 0,
   end: 0,
   maxLength: -1,
@@ -219,7 +220,7 @@ function openKeyboard(target: HTMLInputElement | HTMLTextAreaElement) {
     label:
       target.getAttribute("aria-label") ??
       target.labels?.[0]?.textContent?.trim() ??
-      "Saisie",
+      t('Text entry'),
     start: target.selectionStart ?? target.value.length,
     end: target.selectionEnd ?? target.value.length,
     maxLength: target.maxLength,
@@ -251,7 +252,7 @@ const clock = ref(new Date()),
   sessions = ref<Session[]>([]),
   toast = ref(""),
   working = ref("");
-const checkingUpdates = computed(() => working.value === "Recherche de mises à jour");
+const checkingUpdates = computed(() => working.value === t('Checking for updates'));
 const panelRoot = ref<HTMLElement>(),
   cardsRoot = ref<HTMLElement>(),
   width = ref(window.innerWidth),
@@ -267,18 +268,18 @@ const settingsTab = ref("display"),
   chosen = ref(new Set<string>());
 const settingsSection = computed(() => ['controls', 'remote'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
 const settingsSections = {
-  display: { label: 'Affichage et ambiance', icon: 'ambiance', page: 'display' },
-  apps: { label: 'Applications', icon: 'grid', page: 'apps' },
-  devices: { label: 'Manettes et télécommandes', icon: 'controller', page: 'controls' },
-  system: { label: 'Démarrage et système', icon: 'monitor', page: 'system' },
-  help: { label: 'Aide et mises à jour', icon: 'info', page: 'updates' },
+  display: { get label() { return t('Display and ambience'); }, icon: 'ambiance', page: 'display' },
+  apps: { get label() { return t('Apps'); }, icon: 'grid', page: 'apps' },
+  devices: { get label() { return t('Controllers and remotes'); }, icon: 'controller', page: 'controls' },
+  system: { get label() { return t('Startup and system'); }, icon: 'monitor', page: 'system' },
+  help: { get label() { return t('Help and updates'); }, icon: 'info', page: 'updates' },
 };
 const settingsSaveStatus = ref('');
 const libraryQuery = ref('');
 const libraryFilter = ref<LibraryFilter>('all');
-const libraryFilters = { all: 'Tout', favorites: 'Favoris', ...categories };
+const libraryFilters = computed(() => ({ all: t('All'), favorites: t('Favorites'), ...categories }));
 const libraryFiltered = computed(() => !!libraryQuery.value.trim() || libraryFilter.value !== 'all');
-const filterCounts = computed(() => Object.fromEntries(Object.keys(libraryFilters).map(key => [key,
+const filterCounts = computed(() => Object.fromEntries(Object.keys(libraryFilters.value).map(key => [key,
   libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, key as LibraryFilter).length + Number(showYouTubeSuggestion(config.value.apps, libraryQuery.value, key as LibraryFilter)),
 ])));
 const removedApp = ref<RemovedApp | null>(null);
@@ -290,7 +291,7 @@ const favorite = (id: string) => config.value.settings.library.favorites.include
 async function toggleFavorite(id: string) {
   const list = config.value.settings.library.favorites;
   config.value.settings.library.favorites = list.includes(id) ? list.filter(value => value !== id) : [...list, id];
-  if (await persist()) notify(favorite(id) ? 'Ajouté aux favoris de l’accueil.' : 'Retiré des favoris.');
+  if (await persist()) notify(favorite(id) ? t('Added to Home favorites.') : t('Removed from favorites.'));
 }
 function resetLibrary() {
   const wasEmpty = !!document.activeElement?.closest('.library-empty, .reset-filters');
@@ -311,7 +312,7 @@ async function openAdd(search = '') {
 const controllerTesting = ref(false);
 const controllerSnapshot = ref<ControllerSnapshot | null>(null);
 async function toggleControllerTest() {
-  await run("Test manette", async () => {
+  await run(t('Controller test'), async () => {
     const enabled = !controllerTesting.value;
     controllerTesting.value = enabled;
     controllerSnapshot.value = null;
@@ -342,7 +343,7 @@ const editing = ref<AppEntry | null>(null),
   updateError = ref("");
 const confirmTitle = ref(""),
   confirmText = ref(""),
-  confirmLabel = ref("Confirmer");
+  confirmLabel = ref(t('Confirm'));
 let confirmAction: () => Promise<unknown> = async () => {};
 let toastTimer: ReturnType<typeof setTimeout>,
   clockTimer: ReturnType<typeof setInterval>,
@@ -392,10 +393,10 @@ const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(a
 const tiles = computed<Tile[]>(() => config.value.apps.length
   ? [...visibleApps.value.map(entry => ({ id: entry.id, name: entry.name, theme: entry.theme, entry })),
      ...(showYouTubeSuggestion(config.value.apps, view.value === 'carousel' ? '' : libraryQuery.value, view.value === 'carousel' ? 'all' : libraryFilter.value) ? [{id:'catalog-youtube',name:'YouTube',theme:'youtube' as const,catalog:true,suggestion:true}] : []),
-     ...(view.value === 'carousel' ? [{ id: 'library', name: 'Toutes les applications', theme: 'home' as const, special: 'library' }] : [])]
-  : [{ id: 'add', name: 'Ajouter des applications', theme: 'home', special: 'add' }, ...examples.map(tile => tile.id === 'suggest-youtube' ? {...tile,id:'catalog-youtube',catalog:true} : tile)]);
+     ...(view.value === 'carousel' ? [{ id: 'library', get name() { return t('All apps'); }, theme: 'home' as const, special: 'library' }] : [])]
+  : [{ id: 'add', get name() { return t('Add apps'); }, theme: 'home', special: 'add' }, ...examples.map(tile => tile.id === 'suggest-youtube' ? {...tile,id:'catalog-youtube',catalog:true} : tile)]);
 const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
-  ?? { id: 'empty', name: 'Aucun résultat', theme: 'home', special: 'empty' });
+  ?? { id: 'empty', get name() { return t('No results'); }, theme: 'home', special: 'empty' });
 const empty = computed(() => config.value.apps.length === 0);
 const columns = computed(() =>
   Math.max(
@@ -408,13 +409,13 @@ const selectedSession = computed(() =>
 );
 const inputLabels = computed(() => controllerLabels(controller.value));
 const time = computed(() =>
-  clock.value.toLocaleTimeString("fr-CH", {
+  clock.value.toLocaleTimeString(locale.value, {
     hour: "2-digit",
     minute: "2-digit",
   }),
 );
 const date = computed(() =>
-  clock.value.toLocaleDateString("fr-CH", {
+  clock.value.toLocaleDateString(locale.value, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -445,27 +446,27 @@ watch(showSystemTools, (show) => {
 });
 const heroTitle = computed(() =>
   current.value.special === "add"
-    ? "Ajouter des applications"
+    ? t('Add apps')
     : current.value.special === "library"
-      ? "Toute votre bibliothèque"
+      ? t('Your entire library')
     : current.value.special === "windows"
-      ? "Retour au bureau."
+      ? t('Return to the desktop.')
       : current.value.name,
 );
 const subtitle = computed(() =>
-  current.value.catalog ? 'YouTube sur votre TV, adapté à la manette.' : current.value.special === "windows"
-    ? "Canapey reste ouvert en arrière-plan."
-    : current.value.special === 'library' ? 'Retrouvez, filtrez et organisez toutes vos applications.'
-    : !config.value.apps.length ? 'Choisissez les applications à retrouver sur votre TV.'
-    : !hasHomeSelection.value ? 'Ajoutez vos applications préférées aux favoris depuis leurs actions.'
-    : selectedSession.value ? 'Votre application est toujours ouverte.' : 'Vos favoris, prêts à ouvrir.',
+  current.value.catalog ? t('YouTube on your TV, built for a controller.') : current.value.special === "windows"
+    ? t('Canapey stays open in the background.')
+    : current.value.special === 'library' ? t('Find, filter and organize all your apps.')
+    : !config.value.apps.length ? t('Choose the apps you want on your TV.')
+    : !hasHomeSelection.value ? t('Add your favorite apps using their card actions.')
+    : selectedSession.value ? t('Your app is still open.') : t('Your favorites, ready to open.'),
 );
 const heroStatus = computed(() =>
-  current.value.catalog ? (youtubeDetected.value ? 'PRÊT À OUVRIR' : 'À INSTALLER') : current.value.suggestion
-    ? "À AJOUTER"
+  current.value.catalog ? (youtubeDetected.value ? t('READY TO OPEN') : t('INSTALL')) : current.value.suggestion
+    ? t('ADD')
     : selectedSession.value
-      ? { running: 'EN COURS', starting: 'DÉMARRAGE…', closing: 'FERMETURE…', untracked: 'SUIVI LIMITÉ' }[selectedSession.value.status]
-      : current.value.entry?.target.kind === 'uri' ? 'RACCOURCI WEB' : '',
+      ? { running: t('RUNNING'), starting: t('STARTING…'), closing: t('CLOSING…'), untracked: t('LIMITED TRACKING') }[selectedSession.value.status]
+      : current.value.entry?.target.kind === 'uri' ? t('WEB SHORTCUT') : '',
 );
 const startupPainted = ref(false);
 const animateBackground = ref(false);
@@ -564,9 +565,9 @@ function removeQuick() {
   if (!quickApp.value) return;
   editing.value = JSON.parse(JSON.stringify(quickApp.value));
   confirm(
-    "Retirer cette carte ?",
-    "L’application restera installée sur votre PC.",
-    "Retirer",
+    t('Remove this card?'),
+    t('The app will remain installed on your PC.'),
+    t('Remove'),
     removeApp,
   );
 }
@@ -594,10 +595,10 @@ const sleepPc = () => api.power("sleep"),
   shutdownPc = () => api.power("shutdown");
 const resumeCurrent = () => api.resume(current.value.id),
   forceCurrent = () => api.closeApp(current.value.id, true);
-const resumeSession = (id: string) => run("Reprise", () => api.resume(id));
+const resumeSession = (id: string) => run(t('Resuming'), () => api.resume(id));
 function closeSession(id: string, dismissMenu = false) {
   const origin = panel.value;
-  return run("Fermeture", async () => {
+  return run(t('Closing'), async () => {
     await api.closeApp(id);
     if (dismissMenu && panel.value === origin &&
         ((origin === "quick" && quickId.value === id) ||
@@ -606,9 +607,9 @@ function closeSession(id: string, dismissMenu = false) {
 }
 const forceSession = (id: string) =>
   confirm(
-    "Forcer la fermeture ?",
-    "Les données non enregistrées de cette application peuvent être perdues.",
-    "Forcer",
+    t('Force close?'),
+    t('Unsaved data in this app may be lost.'),
+    t('Force close'),
     () => api.closeApp(id, true),
   );
 function notify(message: unknown) {
@@ -643,18 +644,18 @@ function persist() {
 }
 function queueSave(remoteHomeUpdate = false, feedback = panel.value === 'settings') {
   const request = ++saveRequest;
-  if (feedback) settingsSaveStatus.value = 'Enregistrement…';
+  if (feedback) settingsSaveStatus.value = t('Saving…');
   const snapshot = JSON.parse(JSON.stringify(config.value));
   saveChain = saveChain.then(async () => {
     try {
       await api.save(snapshot, remoteHomeUpdate);
       lastSaved = snapshot;
-      if (feedback && request === saveRequest) settingsSaveStatus.value = 'Enregistré';
+      if (feedback && request === saveRequest) settingsSaveStatus.value = t('Saved');
       return true;
     } catch (e) {
       if (JSON.stringify(config.value) === JSON.stringify(snapshot))
         config.value = JSON.parse(JSON.stringify(lastSaved));
-      if (feedback && request === saveRequest) settingsSaveStatus.value = 'Échec de l’enregistrement';
+      if (feedback && request === saveRequest) settingsSaveStatus.value = t('Save failed');
       notify(e);
       return false;
     }
@@ -812,7 +813,7 @@ async function activate(tile = current.value, youtubeChecked = false) {
   if (tile.special === "library") { showLibrary(); return; }
   if (tile.special === "empty") return;
   if (tile.special === "windows") {
-    await run("Retour Windows", api.desktop);
+    await run(t('Return to Windows'), api.desktop);
     return;
   }
   if (tile.suggestion) {
@@ -825,7 +826,7 @@ async function activate(tile = current.value, youtubeChecked = false) {
     else void openPanel("session");
     return;
   }
-  await run("Lancement", async () => {
+  await run(t('Launching'), async () => {
     config.value.selectedId = tile.id;
     if (!(await persist())) return;
     const session = await api.launch(tile.id);
@@ -1042,9 +1043,9 @@ function keyboard(e: KeyboardEvent) {
     e.preventDefault();
     if (working.value || panel.value === "confirm" || e.repeat) return;
     confirm(
-      "Quitter Canapey ?",
-      "Vos applications resteront ouvertes.",
-      "Quitter",
+      t('Quit Canapey?'),
+      t('Your apps will stay open.'),
+      t('Quit'),
       api.quit,
     );
     return;
@@ -1152,12 +1153,12 @@ async function addEntries(entries: AppEntry[]) {
   await focusCard();
   notify(
     fresh.length
-      ? `${fresh.length} application${fresh.length > 1 ? "s ajoutées" : " ajoutée"}.`
-      : "Déjà dans votre bibliothèque.",
+      ? (fresh.length === 1 ? t('1 app added.') : t('{0} apps added.', [fresh.length]))
+      : t('Already in your library.'),
   );
 }
 async function manual() {
-  await run("Choix de l’application", async () => {
+  await run(t('Choosing an app'), async () => {
     const app = await api.pickTarget();
     if (app) {
       editing.value = app;
@@ -1178,7 +1179,7 @@ async function saveEditing() {
   if (!app) return;
   app.name = app.name.trim();
   if (!app.name) {
-    notify("Indiquez un nom.");
+    notify(t('Enter a name.'));
     return;
   }
   app.target.args = argumentsText.value ? argumentsText.value.split("\n") : [];
@@ -1199,7 +1200,7 @@ async function moveApp(index: number, delta: number) {
   config.value.apps.splice(to, 0, item!);
   config.value.settings.library.sort = 'custom';
   if (!(await persist())) return;
-  if (changingSort) notify('Ordre personnalisé activé.');
+  if (changingSort) notify(t('Custom order enabled.'));
   await nextTick();
   if (focused.matches(":disabled") && panelRoot.value) {
     focusElement(
@@ -1215,7 +1216,7 @@ async function removeApp() {
   if (!result) return;
   config.value = result.config;
   if (!(await persist()))
-    throw new Error("La suppression n’a pas été enregistrée.");
+    throw new Error(t('The removal was not saved.'));
   removedApp.value = result.removed;
   restoreError.value = '';
   // Skip the removed editor when returning from its confirmation.
@@ -1239,19 +1240,19 @@ async function restoreRemovedApp() {
   try {
     const id = removedApp.value.app.id;
     config.value = restoreLibraryApp(config.value, removedApp.value);
-    if (!(await persist())) throw new Error('Restauration non enregistrée. Réessayez.');
+    if (!(await persist())) throw new Error(t('Restore was not saved. Try again.'));
     removedApp.value = null;
     if (!panel.value) { resetLibrary(); view.value = 'grid'; }
     await nextTick();
     selected.value = reconcileSelection(tiles.value.map(tile => tile.id), id);
     await focusAfterRemovalNotice();
-    notify('Carte restaurée avec ses favoris et sa catégorie.');
+    notify(t('Card restored with its favorites and category.'));
   } catch (error) {
     restoreError.value = error instanceof Error ? error.message : String(error);
   } finally { restoreBusy.value = false; }
 }
 async function imagePick(kind: "card" | "background") {
-  await run("Choix du visuel", async () => {
+  await run(t('Choosing artwork'), async () => {
     const path = await api.pickImage(kind);
     if (path && editing.value) editing.value[kind] = path;
   });
@@ -1260,7 +1261,7 @@ async function checkUpdates() {
   if (working.value) return;
   update.value = null;
   updateError.value = "";
-  await run("Recherche de mises à jour", async () => {
+  await run(t('Checking for updates'), async () => {
     try {
       update.value = await api.checkUpdate();
     } catch (e) {
@@ -1271,15 +1272,15 @@ async function checkUpdates() {
 function requestUpdateInstall() {
   const names = appsToClose.value.map(session => session.name);
   confirm(
-    'Installer la mise à jour ?',
+    t('Install the update?'),
     names.length
-      ? `Canapey demandera la fermeture normale de ${names.join(', ')}, puis installera la mise à jour et redémarrera. Confirmez toute demande d’enregistrement dans ces applications.`
-      : 'Canapey va installer la mise à jour et redémarrer. Vos paramètres et vos visuels seront conservés.',
-    names.length ? 'Fermer les applications et installer' : 'Télécharger et installer',
+      ? t('Canapey will request a normal close for {0}, then install the update and restart. Confirm any save prompts in those apps.', [names.join(', ')])
+      : t('Canapey will install the update and restart. Your settings and artwork will be preserved.'),
+    names.length ? t('Close apps and install') : t('Download and install'),
     async () => {
       installingUpdate.value = true;
       updateError.value = '';
-      updateStatus.value = names.length ? 'Fermeture des applications…' : 'Préparation de la mise à jour…';
+      updateStatus.value = names.length ? t('Closing apps…') : t('Preparing the update…');
       try { await api.installUpdate(); }
       catch (error) { updateError.value = error instanceof Error ? error.message : String(error); throw error; }
       finally { installingUpdate.value = false; updateStatus.value = ''; }
@@ -1469,7 +1470,7 @@ onMounted(async () => {
         update.value = await api.checkUpdate();
         if (update.value.state === "available")
           notify(
-            `Canapey ${update.value.version} est disponible dans les paramètres.`,
+            t('Canapey {0} is available in Settings.', [update.value.version]),
           );
       } catch {
         /* offline must not disturb home */
@@ -1532,30 +1533,27 @@ onUnmounted(() => {
           >canapey<span class="brand-dot">.</span></span
         >
       </div>
-      <nav aria-label="Navigation principale">
+      <nav :aria-label="t('Main navigation')">
         <button
           :class="{ active: view === 'carousel' }"
           @click="
             view = 'carousel';
             focusCard();
           "
-        >
-          Accueil</button
+        > {{ t('Home') }}</button
         ><button
           :class="{ active: view === 'grid' }"
           @click="
             showLibrary();
           "
-        >
-          Bibliothèque
-        </button>
+        > {{ t('Library') }} </button>
       </nav>
       <div class="top-right">
         <button
           class="icon-button audio-trigger"
           :class="{ 'is-muted': audioState?.muted }"
-          :title="`Commandes rapides · ${volumeDescription}`"
-          aria-label="Commandes rapides"
+          :title="t('Quick controls · {0}', [volumeDescription])"
+          :aria-label="t('Quick controls')"
           :aria-description="volumeDescription"
           aria-haspopup="dialog"
           :aria-expanded="panel === 'audio'"
@@ -1572,15 +1570,15 @@ onUnmounted(() => {
         ><time>{{ time }}</time
         ><button
           class="icon-button"
-          aria-label="Paramètres"
+          :aria-label="t('Settings')"
           @click="openSettings"
         >
           <Icon name="settings" :size="22" />
         </button>
         <button
           class="icon-button power-button"
-          aria-label="Alimentation"
-          title="Alimentation"
+          :aria-label="t('Power')"
+          :title="t('Power')"
           aria-haspopup="dialog"
           @click="openPanel('power')"
         >
@@ -1601,44 +1599,44 @@ onUnmounted(() => {
       <h1 :key="heroTitle">{{ heroTitle }}</h1>
       <p v-if="subtitle">{{ subtitle }}</p>
       <div class="hero-actions">
-        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.catalog ? (youtubeDetected ? 'Ouvrir YouTube' : 'Installer YouTube') : current.special === 'add' ? 'Ajouter mes applications' : current.special === 'library' ? 'Voir la bibliothèque' : selectedSession?.status === 'running' ? 'Reprendre' : current.suggestion ? 'Ajouter' : selectedSession ? 'Voir la session' : 'Ouvrir' }}</button>
-        <button v-if="current.entry" class="small-button" @click="openQuick(selected)">Actions</button>
+        <button class="primary-button" @click="activate()"><Icon :name="current.special === 'add' ? 'plus' : current.special === 'library' ? 'grid' : 'play'" :size="21" />{{ current.catalog ? (youtubeDetected ? t('Open YouTube') : t('Install YouTube')) : current.special === 'add' ? t('Add my apps') : current.special === 'library' ? t('View library') : selectedSession?.status === 'running' ? t('Resume') : current.suggestion ? t('Add') : selectedSession ? t('View session') : t('Open') }}</button>
+        <button v-if="current.entry" class="small-button" @click="openQuick(selected)">{{ t('Actions') }}</button>
       </div>
     </section>
     <section
       class="library"
       :inert="!!panel || !!keyboardTarget"
       :class="view"
-      aria-label="Applications"
+      :aria-label="t('Apps')"
     >
       <RemovalNotice v-if="removedApp" class="library-removal" :name="removedApp.app.name" :busy="restoreBusy" :error="restoreError" @restore="restoreRemovedApp" @dismiss="dismissRemoval" />
       <div class="library-heading">
         <div>
           <span class="section-label">{{
             empty
-              ? "Applications suggérées"
+              ? t('Suggested apps')
               : view === "grid"
-                ? "Votre bibliothèque"
-                : hasHomeSelection ? "En cours et favoris" : "Pour commencer"
+                ? t('Your library')
+                : hasHomeSelection ? t('Running and favorites') : t('Get started')
           }}</span>
           <span v-if="!empty" class="section-count" role="status">{{
-            `${tiles.filter(tile => !tile.special).length} application${tiles.filter(tile => !tile.special).length > 1 ? "s" : ""}${view === 'grid' && libraryFiltered ? ` sur ${config.apps.length + Number(!config.apps.some(isVacuumTube))}` : ''}`
+            t('{0} app{1}{2}', [tiles.filter(tile => !tile.special).length, tiles.filter(tile => !tile.special).length > 1 ? "s" : "", view === 'grid' && libraryFiltered ? t(' of {0}', [config.apps.length + Number(!config.apps.some(isVacuumTube))]) : ''])
           }}</span>
         </div>
-        <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />Ajouter</button>
+        <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />{{ t('Add') }}</button>
       </div>
       <div v-if="view === 'grid' && !empty" class="library-tools">
-        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" aria-label="Rechercher dans la bibliothèque" placeholder="Rechercher une application" /></label><button v-if="libraryQuery" class="small-button" aria-label="Effacer la recherche" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" aria-label="Clavier pour la bibliothèque" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
-        <label class="library-sort">Trier<select v-model="config.settings.library.sort" @change="persist"><option value="custom">Mon ordre</option><option value="name">Nom A–Z</option><option value="category">Catégorie</option></select></label>
-        <div class="library-filters" role="group" aria-label="Filtrer la bibliothèque"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="`${filterCounts[key]} application${filterCounts[key] === 1 ? '' : 's'}`" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">Effacer les filtres</button></div>
+        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" :aria-label="t('Search the library')" :placeholder="t('Search for an app')" /></label><button v-if="libraryQuery" class="small-button" :aria-label="t('Clear search')" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" :aria-label="t('Library keyboard')" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
+        <label class="library-sort">{{ t('Sort') }}<select v-model="config.settings.library.sort" @change="persist"><option value="custom">{{ t('My order') }}</option><option value="name">{{ t('Name A–Z') }}</option><option value="category">{{ t('Category') }}</option></select></label>
+        <div class="library-filters" role="group" :aria-label="t('Filter the library')"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="t('{0} app{1}', [filterCounts[key], filterCounts[key] === 1 ? '' : 's'])" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
       </div>
-      <div v-if="view === 'grid' && !empty && !tiles.length" class="library-empty"><h2>Aucune application trouvée</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? 'Ajoutez vos favoris depuis le menu Actions d’une carte.' : libraryQuery.trim() ? `Aucun résultat pour « ${libraryQuery.trim()} »${libraryFilter === 'all' ? '' : ` dans ${libraryFilters[libraryFilter]}`}.` : `Aucune application dans ${libraryFilters[libraryFilter]}. Modifiez la catégorie d’une carte depuis ses actions.` }}</p><button class="small-button" @click="resetLibrary">Effacer les filtres</button></div>
+      <div v-if="view === 'grid' && !empty && !tiles.length" class="library-empty"><h2>{{ t('No apps found') }}</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? t('Add favorites from a card’s Actions menu.') : libraryQuery.trim() ? t('No results for “{0}”{1}.', [libraryQuery.trim(), libraryFilter === 'all' ? '' : t(' in {0}', [libraryFilters[libraryFilter]])]) : t('No apps in {0}. Change a card’s category from its actions.', [libraryFilters[libraryFilter]]) }}</p><button class="small-button" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
       <div
         ref="cardsRoot"
         class="cards"
         :class="view"
         role="group"
-        aria-label="Choisir une application"
+        :aria-label="t('Choose an app')"
       >
         <AppCard
           v-for="(tile, i) in tiles"
@@ -1649,7 +1647,7 @@ onUnmounted(() => {
           :special="tile.special"
           :web="tile.entry?.target.kind === 'uri'"
           :suggestion="tile.suggestion"
-          :suggestion-label="tile.catalog ? (youtubeDetected ? 'Disponible' : 'À installer') : undefined"
+          :suggestion-label="tile.catalog ? (youtubeDetected ? t('Available') : t('Install')) : undefined"
           :image="tileImage(tile)"
           :eager="i < (view === 'grid' ? columns * 3 : 6)"
           :icon="api.imageUrl(tile.entry?.icon)"
@@ -1669,7 +1667,7 @@ onUnmounted(() => {
     </section>
     <footer class="bottom-bar" :inert="!!panel || !!keyboardTarget">
       <div class="hints" :data-controller-family="inputLabels.family">
-        <span class="controller-status" role="img" :aria-label="inputLabels.device" :title="controller ?? 'Navigation au clavier'">
+        <span class="controller-status" role="img" :aria-label="inputLabels.device" :title="controller ?? t('Keyboard navigation')">
           <Icon :name="controller ? 'controller' : 'keyboard'" :size="22" /><i v-if="controller" />
         </span>
         <span
@@ -1677,18 +1675,18 @@ onUnmounted(() => {
           >OK</span
         ><span
           ><kbd :class="{ 'pad-key': controller }">{{ inputLabels.back }}</kbd
-          >Retour</span
+          >{{ t('Back') }}</span
         ><span
           ><kbd>{{ inputLabels.menu }}</kbd
-          >Paramètres</span
+          >{{ t('Settings') }}</span
         >
       </div>
       <span v-if="current.entry" class="quick-hint"
-        >Maintenir {{ inputLabels.acceptName }} ·
+        >{{ t('Hold') }} {{ inputLabels.acceptName }} ·
         Actions</span
       >
       <span v-if="!native" class="preview-badge"
-        >Aperçu interface · fonctions Windows indisponibles</span
+        >{{ t('UI preview · Windows features unavailable') }}</span
       ><span v-else class="footer-date">{{ date }}</span>
     </footer>
     <div v-if="working && !checkingUpdates" class="busy-pill" role="status">
@@ -1699,7 +1697,7 @@ onUnmounted(() => {
         <Icon name="info" :size="20" /><span>{{ toast }}</span
         ><button
           class="icon-button"
-          aria-label="Fermer le message"
+          :aria-label="t('Dismiss message')"
           @click="toast = ''"
         >
           <Icon name="close" :size="18" />
@@ -1733,21 +1731,21 @@ onUnmounted(() => {
           aria-modal="true"
           :aria-label="
             panel === 'youtube' ? 'YouTube' : panel === 'audio'
-              ? 'Commandes rapides'
+              ? t('Quick controls')
               : panel === 'quick'
-                ? `Actions pour ${quickApp?.name}`
+                ? t('Actions for {0}', [quickApp?.name])
                 : panel === 'move'
-                  ? 'Déplacer la carte'
+                  ? t('Move card')
                   : panel === 'settings'
-                    ? 'Paramètres'
+                    ? t('Settings')
                     : panel === 'add'
-                      ? 'Ajouter des applications'
+                      ? t('Add apps')
                       : panel === 'edit'
-                        ? 'Personnaliser une application'
+                        ? t('Customize an app')
                         : panel === 'power'
-                          ? 'Alimentation'
+                          ? t('Power')
                           : panel === 'session'
-                            ? 'Application en cours'
+                            ? t('Running app')
                             : confirmTitle
           "
           @keydown.tab="trapFocus"
@@ -1762,30 +1760,30 @@ onUnmounted(() => {
               <h2>
                 {{
                   panel === 'youtube' ? 'YouTube' : panel === "audio"
-                    ? "Commandes rapides"
+                    ? t('Quick controls')
                     : panel === "quick"
                       ? quickApp?.name
                       : panel === "move"
-                        ? "Déplacer la carte"
+                        ? t('Move card')
                         : panel === "settings"
-                          ? "Paramètres"
+                          ? t('Settings')
                           : panel === "add"
-                            ? "Ajouter des applications"
+                            ? t('Add apps')
                             : panel === "edit"
-                              ? "Personnaliser"
+                              ? t('Customize')
                               : panel === "power"
-                                ? "Alimentation"
+                                ? t('Power')
                                 : panel === "session"
                                   ? current.name
                                   : confirmTitle
                 }}
               </h2>
               <span v-if="panel === 'quick' && quickSession" class="quick-session-status">
-                <i />{{ { starting: 'Démarrage…', running: 'En cours', closing: 'Fermeture…', untracked: 'Suivi limité' }[quickSession.status] }}
+                <i />{{ { starting: t('Starting…'), running: t('Running'), closing: t('Closing…'), untracked: t('Limited tracking') }[quickSession.status] }}
               </span>
               </div>
             </div>
-            <button class="icon-button" aria-label="Fermer" :disabled="installingUpdate || youtubeBusy" @click="closePanel">
+            <button class="icon-button" :aria-label="t('Close')" :disabled="installingUpdate || youtubeBusy" @click="closePanel">
               <Icon name="close" />
             </button>
           </div>
@@ -1810,13 +1808,13 @@ onUnmounted(() => {
                   :disabled="quickSession.status === 'untracked'"
                   @click="resumeSession(quickApp.id)"
                 >
-                  <Icon name="play" /><span>Reprendre</span>
+                  <Icon name="play" /><span>{{ t('Resume') }}</span>
                 </button>
                 <button @click="closeSession(quickApp.id, true)">
                   <Icon name="close" /><span>{{
                     quickSession.status === "untracked"
-                      ? "Ne plus suivre"
-                      : "Fermer normalement"
+                      ? t('Stop tracking')
+                      : t('Close normally')
                   }}</span>
                 </button>
                 <button
@@ -1824,49 +1822,45 @@ onUnmounted(() => {
                   class="danger"
                   @click="forceSession(quickApp.id)"
                 >
-                  <Icon name="power" /><span>Forcer la fermeture</span>
+                  <Icon name="power" /><span>{{ t('Force close') }}</span>
                 </button>
               </template>
-              <p v-if="quickSession?.status === 'untracked'" class="note">
-                Fenêtre partagée ou non identifiable : reprenez-la avec Alt +
-                Tab.
-              </p>
-              <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? 'Retirer des favoris' : 'Ajouter aux favoris' }}</span></button>
+              <p v-if="quickSession?.status === 'untracked'" class="note"> {{ t('Shared or unidentified window: switch to it with Alt + Tab.') }} </p>
+              <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? t('Remove from favorites') : t('Add to favorites') }}</span></button>
               <button :class="{ 'action-group-start': !!quickSession }" @click="edit(quickApp)">
-                <Icon name="edit" /><span>Modifier</span>
+                <Icon name="edit" /><span>{{ t('Edit') }}</span>
               </button>
               <button @click="openPanel('move')">
-                <Icon name="right" /><span>Déplacer</span>
+                <Icon name="right" /><span>{{ t('Move') }}</span>
               </button>
               <button class="danger action-remove" @click="removeQuick">
-                <Icon name="trash" /><span>Retirer la carte</span>
+                <Icon name="trash" /><span>{{ t('Remove card') }}</span>
               </button>
             </div>
           </template>
           <template v-else-if="panel === 'move' && quickApp">
             <p class="panel-intro">
-              {{ quickApp.name }} · Position {{ quickIndex + 1 }} sur
-              {{ config.apps.length }}
+              {{ quickApp.name }} · Position {{ quickIndex + 1 }} {{ t('of') }} {{ config.apps.length }}
             </p>
-            <p class="note">Déplacer une carte active le tri « Mon ordre ».</p>
+            <p class="note">{{ t('Moving a card switches sorting to “My order”.') }}</p>
             <div class="quick-actions power-options">
               <button :disabled="quickIndex <= 0" @click="moveQuick(-1)">
-                <Icon name="back" /><span>Déplacer avant</span>
+                <Icon name="back" /><span>{{ t('Move earlier') }}</span>
               </button>
               <button
                 :disabled="quickIndex >= config.apps.length - 1"
                 @click="moveQuick(1)"
               >
-                <Icon name="right" /><span>Déplacer après</span>
+                <Icon name="right" /><span>{{ t('Move later') }}</span>
               </button>
               <button data-move-done @click="closePanel">
-                <Icon name="check" /><span>Terminé</span>
+                <Icon name="check" /><span>{{ t('Done') }}</span>
               </button>
             </div>
           </template>
           <template v-else-if="panel === 'settings'">
             <div class="settings-layout">
-              <nav class="settings-nav" aria-label="Catégories des paramètres">
+              <nav class="settings-nav" :aria-label="t('Settings categories')">
                 <button
                   v-for="(category, key) in settingsSections"
                   :key="key"
@@ -1880,10 +1874,10 @@ onUnmounted(() => {
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
-                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" aria-label="Périphériques"><button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">Manette</button><button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">Télécommande</button></div>
-                <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" aria-label="Aide"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">Mises à jour</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">Diagnostic</button></div>
+                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" :aria-label="t('Devices')"><button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">{{ t('Controller') }}</button><button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">{{ t('Remote') }}</button></div>
+                <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" :aria-label="t('Help')"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">{{ t('Updates') }}</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">{{ t('Diagnostics') }}</button></div>
                 <div v-if="settingsTab === 'remote'">
-                  <div v-if="remoteDevice === 'iphone'" class="remote-device-tabs" role="group" aria-label="Type de télécommande">
+                  <div v-if="remoteDevice === 'iphone'" class="remote-device-tabs" role="group" :aria-label="t('Remote type')">
                     <button class="small-button" aria-pressed="false" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
                     <button class="small-button" aria-pressed="true" @click="remoteDevice = 'iphone'">iPhone</button>
                   </div>
@@ -1897,7 +1891,7 @@ onUnmounted(() => {
                   @capturing="remoteCaptureChanged"
                 >
                   <template #title>
-                    <div id="remote-title" class="remote-device-tabs in-heading" role="group" aria-label="Type de télécommande">
+                    <div id="remote-title" class="remote-device-tabs in-heading" role="group" :aria-label="t('Remote type')">
                       <button class="small-button" aria-pressed="true" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
                       <button class="small-button" aria-pressed="false" @click="remoteDevice = 'iphone'">iPhone</button>
                     </div>
@@ -1905,9 +1899,9 @@ onUnmounted(() => {
                 </RemoteHomeSettings>
                 </div>
                 <template v-if="settingsTab === 'system'"
-                  ><h3>Démarrage et système</h3>
+                  ><h3>{{ t('Startup and system') }}</h3>
                   <label class="setting-row"
-                    ><span>Plein écran au démarrage</span
+                    ><span>{{ t('Start in full screen') }}</span
                     ><input
                       v-model="config.settings.fullscreen"
                       type="checkbox"
@@ -1915,8 +1909,8 @@ onUnmounted(() => {
                       @change="persist" /></label
                   ><label class="setting-row"
                     ><span
-                      >Démarrer avec Windows<small
-                        >À l’ouverture de votre session.</small
+                      >{{ t('Start with Windows') }}<small
+                        >{{ t('When you sign in.') }}</small
                       ></span
                     ><input
                       v-model="config.settings.autostart"
@@ -1925,16 +1919,16 @@ onUnmounted(() => {
                       role="switch"
                       @change="persist" /></label
                   ></template>
-                <template v-if="settingsTab === 'display'"><h3>Affichage et ambiance</h3><label class="setting-row"
+                <template v-if="settingsTab === 'display'"><h3>{{ t('Display and ambience') }}</h3><label class="setting-row"><span>{{ t('Language') }}<small>{{ t('English is currently the only available language. Your choice is saved for future launches.') }}</small></span><select v-model="config.settings.locale" :aria-label="t('Language')" @change="setLocale(config.settings.locale as Locale); persist()"><option v-for="language in languageOptions" :key="language.value" :value="language.value">{{ language.label }}</option></select></label><label class="setting-row"
                     ><span
-                      >Écran préféré<small
-                        >Écran principal si la TV est absente.</small
+                      >{{ t('Preferred display') }}<small
+                        >{{ t('Uses the primary display when the TV is unavailable.') }}</small
                       ></span
                     ><select
                       v-model="config.settings.monitor"
                       @change="persist"
                     >
-                      <option :value="null">Écran principal</option>
+                      <option :value="null">{{ t('Primary display') }}</option>
                       <option
                         v-for="m in monitorList"
                         :key="m.id"
@@ -1945,7 +1939,7 @@ onUnmounted(() => {
                     </select></label
                   ><label class="setting-row"
                     ><span
-                      >Taille de l’interface<small
+                      >{{ t('Interface size') }}<small
                         >{{ Math.round(config.settings.scale * 100) }} %</small
                       ></span
                     ><input
@@ -1956,24 +1950,21 @@ onUnmounted(() => {
                       step="0.1"
                       @change="persist" /></label
                 ></template>
-                <div v-if="settingsTab === 'system'" class="system-actions"><button class="small-button" @click="run('Retour Windows', api.desktop)"><Icon name="monitor" :size="20" />Retour au bureau Windows</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />Alimentation</button></div>
+                <div v-if="settingsTab === 'system'" class="system-actions"><button class="small-button" @click="run(t('Return to Windows'), api.desktop)"><Icon name="monitor" :size="20" />{{ t('Return to the Windows desktop') }}</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />{{ t('Power') }}</button></div>
                 <template v-if="settingsTab === 'apps'"
                   ><div class="content-heading">
-                    <h3>Vos applications</h3>
+                    <h3>{{ t('Your apps') }}</h3>
                     <button
                       class="small-button"
                       @click="
                         openAdd();
                       "
                     >
-                      <Icon name="plus" :size="18" />Ajouter
-                    </button>
+                      <Icon name="plus" :size="18" />{{ t('Add') }} </button>
                   </div>
                   <RemovalNotice v-if="removedApp" :name="removedApp.app.name" :busy="restoreBusy" :error="restoreError" @restore="restoreRemovedApp" @dismiss="dismissRemoval" />
-                  <p class="note">Les favoris apparaissent sur l’accueil. Les flèches activent le tri « Mon ordre » dans la bibliothèque.</p>
-                  <p v-if="!config.apps.length" class="muted">
-                    Aucune application ajoutée.
-                  </p>
+                  <p class="note">{{ t('Favorites appear on Home. The arrows switch library sorting to “My order”.') }}</p>
+                  <p v-if="!config.apps.length" class="muted"> {{ t('No apps added yet.') }} </p>
                   <div
                     v-for="(a, i) in config.apps"
                     :key="a.id"
@@ -1991,14 +1982,14 @@ onUnmounted(() => {
                         >{{ a.name
                         }}<small>{{
                           a.target.kind === "uri"
-                            ? "Raccourci web / URI"
+                            ? t('Web shortcut / URI')
                             : a.source
                         }}</small></span
                       ></button
-                    ><button class="icon-button" :aria-label="`${favorite(a.id) ? 'Retirer des' : 'Ajouter aux'} favoris : ${a.name}`" :aria-pressed="favorite(a.id)" @click="toggleFavorite(a.id)"><Icon name="home" :size="20" /></button><button
+                    ><button class="icon-button" :aria-label="t('{0} favorites: {1}', [favorite(a.id) ? t('Remove from') : t('Add to'), a.name])" :aria-pressed="favorite(a.id)" @click="toggleFavorite(a.id)"><Icon name="home" :size="20" /></button><button
                       class="icon-button"
                       :disabled="i === 0"
-                      :aria-label="`Avancer ${a.name}`"
+                      :aria-label="t('Move {0} earlier', [a.name])"
                       :data-focus-key="`${a.id}:up`"
                       @click="moveApp(i, -1)"
                     >
@@ -2006,14 +1997,14 @@ onUnmounted(() => {
                     ><button
                       class="icon-button"
                       :disabled="i === config.apps.length - 1"
-                      :aria-label="`Reculer ${a.name}`"
+                      :aria-label="t('Move {0} later', [a.name])"
                       :data-focus-key="`${a.id}:down`"
                       @click="moveApp(i, 1)"
                     >
                       <Icon name="down" :size="18" /></button
                     ><button
                       class="icon-button"
-                      :aria-label="`Modifier ${a.name}`"
+                      :aria-label="t('Edit {0}', [a.name])"
                       :data-focus-key="`${a.id}:edit`"
                       @click="edit(a)"
                     >
@@ -2021,35 +2012,35 @@ onUnmounted(() => {
                     </button></div
                 ></template>
                 <template v-if="settingsTab === 'controls'"
-                  ><h3>Manette et navigation</h3>
+                  ><h3>{{ t('Controller and navigation') }}</h3>
                   <div class="device-line">
                     <Icon name="controller" :size="28" />
                     <div>
-                      {{ controller ?? "Aucune manette connectée"
+                      {{ controller ?? t('No controller connected')
                       }}<small
-                        >Xbox, PlayStation et Nintendo reconnues par Windows</small
+                        >{{ t('Xbox, PlayStation and Nintendo controllers recognized by Windows') }}</small
                       >
                     </div>
                   </div>
                   <label class="setting-row home-shortcut-row"
                     ><span
-                      >Retour global à l’accueil<small
+                      >{{ t('Global Home shortcut') }}<small
                         >{{ config.settings.returnShortcut === 'xbox'
-                          ? 'Un appui Xbox, ou Start + Back maintenus en secours.'
-                          : 'Maintenir les boutons, sans fermer l’application.' }}</small
+                          ? t('Press Xbox once, or hold Start + Back as a fallback.')
+                          : t('Hold the buttons without closing your app.') }}</small
                       ></span
                     ><select
                       v-model="config.settings.returnShortcut"
                       @change="persist"
                     >
-                      <option value="xbox">Touche Xbox</option>
+                      <option value="xbox">{{ t('Xbox button') }}</option>
                       <option value="startBack">Start + Back</option>
                       <option value="shouldersStart">LB + RB + Start</option>
-                      <option value="disabled">Désactivé</option>
+                      <option value="disabled">{{ t('Disabled') }}</option>
                     </select></label
                   ><label class="setting-row"
                     ><span
-                      >Maintien des combinaisons<small
+                      >{{ t('Shortcut hold duration') }}<small
                         >{{
                           (config.settings.holdMs / 1000).toFixed(1)
                         }}
@@ -2064,7 +2055,7 @@ onUnmounted(() => {
                       @change="persist" /></label
                   ><label class="setting-row"
                     ><span
-                      >Zone neutre du stick<small
+                      >{{ t('Stick deadzone') }}<small
                         >{{
                           Math.round(config.settings.deadzone * 100)
                         }}
@@ -2077,17 +2068,14 @@ onUnmounted(() => {
                       max="0.5"
                       step="0.05"
                       @change="persist" /></label>
-                  <button class="small-button" :aria-expanded="showControllerTest" @click="showControllerTest = !showControllerTest">{{ showControllerTest ? 'Masquer le test de la manette' : 'Tester la manette' }}</button>
+                  <button class="small-button" :aria-expanded="showControllerTest" @click="showControllerTest = !showControllerTest">{{ showControllerTest ? t('Hide controller test') : t('Test controller') }}</button>
                   <ControllerTester v-if="showControllerTest" :snapshot="controllerSnapshot" :controller-name="controller" :testing="controllerTesting" :native="native" :deadzone="config.settings.deadzone" @toggle="toggleControllerTest" @deadzone="setDeadzone" />
-                  <button class="disclosure-button" :aria-expanded="controllerHelp" @click="controllerHelp = !controllerHelp">Dépannage Xbox / Steam Input<Icon :name="controllerHelp ? 'up' : 'down'" :size="18" /></button>
-                  <div v-if="controllerHelp"><XboxHomeSettings :native="native" /><p class="note">
-                    Steam Input peut intercepter ces boutons. Désactivez sa
-                    configuration Bureau ou choisissez une autre combinaison.
-                  </p></div></template>
+                  <button class="disclosure-button" :aria-expanded="controllerHelp" @click="controllerHelp = !controllerHelp">{{ t('Xbox / Steam Input troubleshooting') }}<Icon :name="controllerHelp ? 'up' : 'down'" :size="18" /></button>
+                  <div v-if="controllerHelp"><XboxHomeSettings :native="native" /><p class="note"> {{ t('Steam Input may intercept these buttons. Disable its Desktop Layout or choose another combination.') }} </p></div></template>
                 <template v-if="settingsTab === 'display'">
-                  <h3 class="settings-subheading">Ambiance</h3>
-                  <p class="note">Personnalisez l’image et les sons de Canapey. Les changements s’appliquent immédiatement.</p>
-                  <div class="ambiance-gallery" role="group" aria-label="Ambiances générales">
+                  <h3 class="settings-subheading">{{ t('Ambience') }}</h3>
+                  <p class="note">{{ t('Customize Canapey’s appearance and sounds. Changes apply immediately.') }}</p>
+                  <div class="ambiance-gallery" role="group" :aria-label="t('General ambiences')">
                     <button v-for="ambiance in generalAmbiances" :key="ambiance.id"
                       class="ambiance-choice" :aria-label="ambiance.name" :title="ambiance.description"
                       :aria-pressed="config.settings.generalAmbiance === ambiance.id"
@@ -2097,32 +2085,32 @@ onUnmounted(() => {
                       <Icon v-if="config.settings.generalAmbiance === ambiance.id" name="check" :size="18" />
                     </button>
                   </div>
-                  <p class="ambiance-choice-hint">Choisissez une ambiance pour la conserver partout, ou activez les fonds par application ci-dessous.</p>
-                  <div class="ambiance-preview" aria-label="Aperçu du fond d’écran">
+                  <p class="ambiance-choice-hint">{{ t('Choose an ambience to use everywhere, or enable per-app backgrounds below.') }}</p>
+                  <div class="ambiance-preview" :aria-label="t('Background preview')">
                     <img :src="heroBg" alt="" />
-                    <span>Aperçu du fond</span>
+                    <span>{{ t('Preview background') }}</span>
                   </div>
                   <label class="setting-row">
-                    <span>Fond lié à l’application<small>Chaque application a son univers. L’accueil garde votre ambiance générale.</small></span>
+                    <span>{{ t('Per-app background') }}<small>{{ t('Each app has its own atmosphere. Home keeps your general ambience.') }}</small></span>
                     <input v-model="config.settings.dynamicBackground" type="checkbox" role="switch" @change="persist" />
                   </label>
                   <label class="setting-row">
-                    <span>Luminosité du fond<small>{{ Math.round(config.settings.backgroundBrightness * 100) }} %</small></span>
+                    <span>{{ t('Background brightness') }}<small>{{ Math.round(config.settings.backgroundBrightness * 100) }} %</small></span>
                     <input v-model.number="config.settings.backgroundBrightness" type="range" min="0.3" max="1" step="0.05" @change="persist" />
                   </label>
                   <label class="setting-row">
-                    <span>Flou du fond<small>{{ config.settings.backgroundBlur === 0 ? 'Aucun' : config.settings.backgroundBlur + ' px' }}</small></span>
+                    <span>{{ t('Background blur') }}<small>{{ config.settings.backgroundBlur === 0 ? t('None') : config.settings.backgroundBlur + ' px' }}</small></span>
                     <input v-model.number="config.settings.backgroundBlur" type="range" min="0" max="12" step="1" @change="persist" />
                   </label>
                   <label class="setting-row"
-                    ><span>Animations<small>{{ osReducedMotion ? 'Réduites selon vos préférences système.' : 'Transitions entre les cartes et les fonds.' }}</small></span
+                    ><span>{{ t('Animations') }}<small>{{ osReducedMotion ? t('Reduced according to your system preferences.') : t('Transitions between cards and backgrounds.') }}</small></span
                     ><input
                       v-model="config.settings.motion"
                       type="checkbox"
                       role="switch"
                       @change="persist" /></label
                   ><label class="setting-row"
-                    ><span>Sons de navigation</span
+                    ><span>{{ t('Navigation sounds') }}</span
                     ><input
                       v-model="config.settings.sound"
                       type="checkbox"
@@ -2130,10 +2118,10 @@ onUnmounted(() => {
                       @change="persist"
                   /></label>
                   <label class="setting-row">
-                    <span>Volume des sons<small>{{ Math.round(config.settings.soundVolume * 100) }} % · Sons de Canapey uniquement.</small></span>
+                    <span>{{ t('Sound volume') }}<small>{{ Math.round(config.settings.soundVolume * 100) }} {{ t('% · Canapey sounds only.') }}</small></span>
                     <input v-model.number="config.settings.soundVolume" :disabled="!config.settings.sound" type="range" min="0" max="1" step="0.05" @change="persist(); sound()" />
                   </label>
-                  <button class="small-button ambiance-sound-test" :disabled="!config.settings.sound || config.settings.soundVolume === 0" @click="sound">Écouter un son</button>
+                  <button class="small-button ambiance-sound-test" :disabled="!config.settings.sound || config.settings.soundVolume === 0" @click="sound">{{ t('Preview sound') }}</button>
                 </template>
                 <template v-if="settingsTab === 'updates'"
                   ><div class="version-art">
@@ -2143,26 +2131,18 @@ onUnmounted(() => {
                   <h3 aria-live="polite" aria-atomic="true">
                     {{
                       checkingUpdates
-                        ? "Recherche de mises à jour…"
+                        ? t('Checking for updates…')
                         : update?.state === "available"
-                          ? `Version ${update.version} disponible`
+                          ? t('Version {0} available', [update.version])
                           : update?.state === "current"
-                            ? "Vous êtes à jour."
-                            : "Mises à jour"
+                            ? t('You’re up to date.')
+                            : t('Updates')
                     }}
                   </h3>
-                  <p v-if="update?.state === 'current'" class="muted">
-                    Vous utilisez la dernière version disponible de Canapey.
-                  </p>
-                  <p v-else class="muted">
-                    Canapey ferme les applications suivies avant l’installation,
-                    puis redémarre. Vos réglages sont conservés.
-                  </p>
-                  <p v-if="sessions.some(session => session.status === 'untracked')" class="note">Les fenêtres partagées ou non identifiables restent ouvertes.</p>
-                  <p v-if="update?.state === 'disabled'" class="note">
-                    Les mises à jour ne sont pas encore configurées pour cette
-                    distribution.
-                  </p>
+                  <p v-if="update?.state === 'current'" class="muted"> {{ t('You’re using the latest available version of Canapey.') }} </p>
+                  <p v-else class="muted"> {{ t('Canapey closes tracked apps before installing, then restarts. Your settings are preserved.') }} </p>
+                  <p v-if="sessions.some(session => session.status === 'untracked')" class="note">{{ t('Shared or unidentified windows stay open.') }}</p>
+                  <p v-if="update?.state === 'disabled'" class="note"> {{ t('Updates are not configured for this distribution yet.') }} </p>
                   <p v-if="updateError" class="inline-error">
                     {{ updateError }}
                   </p>
@@ -2172,39 +2152,39 @@ onUnmounted(() => {
                     :disabled="!!working"
                     @click="checkUpdates"
                   >
-                    <Icon name="update" :size="18" />Rechercher une mise à jour</button
+                    <Icon name="update" :size="18" />{{ t('Check for updates') }}</button
                   ><button
                     v-if="update?.state === 'available'"
                     class="small-button"
                     :disabled="!!working"
                     @click="requestUpdateInstall"
                   >
-                    {{ appsToClose.length ? 'Fermer les applications et installer' : 'Télécharger et installer' }}
+                    {{ appsToClose.length ? t('Close apps and install') : t('Download and install') }}
                   </button></div>
                   <ReleaseNotes v-if="update?.notes" :notes="update.notes" /></template
                 >
                 <template v-if="settingsTab === 'diagnostic'"
-                  ><h3>Diagnostic</h3>
+                  ><h3>{{ t('Diagnostics') }}</h3>
                   <dl class="diagnostic">
                     <div>
-                      <dt>Version</dt>
+                      <dt>{{ t('Version') }}</dt>
                       <dd>{{ version }}</dd>
                     </div>
                     <div>
-                      <dt>Plateforme</dt>
+                      <dt>{{ t('Platform') }}</dt>
                       <dd>
                         {{
-                          native ? "Windows 11 x64" : "Aperçu de l’interface"
+                          native ? "Windows 11 x64" : t('UI preview')
                         }}
                       </dd>
                     </div>
                     <div>
-                      <dt>Applications suivies</dt>
+                      <dt>{{ t('Tracked apps') }}</dt>
                       <dd>{{ sessions.length }}</dd>
                     </div>
                     <div>
-                      <dt>Manette</dt>
-                      <dd>{{ controller ?? "Non connectée" }}</dd>
+                      <dt>{{ t('Controller') }}</dt>
+                      <dd>{{ controller ?? t('Not connected') }}</dd>
                     </div>
                   </dl>
                   <div
@@ -2217,70 +2197,57 @@ onUnmounted(() => {
                       class="small-button"
                       :disabled="session.status === 'untracked'"
                       @click="resumeSession(session.appId)"
-                    >
-                      Reprendre</button
+                    > {{ t('Resume') }}</button
                     ><button
                       class="small-button"
                       @click="closeSession(session.appId)"
                     >
                       {{
                         session.status === "untracked"
-                          ? "Ne plus suivre"
-                          : "Fermer"
+                          ? t('Stop tracking')
+                          : t('Close')
                       }}</button
                     ><button
                       v-if="session.canForce"
                       class="small-button danger"
                       @click="forceSession(session.appId)"
-                    >
-                      Forcer
-                    </button>
+                    > {{ t('Force close') }} </button>
                   </div>
                   <button
                     class="small-button"
-                    @click="run('Ouverture des logs', api.logs)"
+                    @click="run(t('Opening logs'), api.logs)"
                   >
-                    <Icon name="folder" :size="18" />Ouvrir les logs
-                  </button>
-                  <p class="note">
-                    Sortie de secours : <b>Ctrl + Maj + Q</b>.<br />Alt + F4
-                    ferme également Canapey.<br />Rouvrez-le depuis l’icône de
-                    notification ou son raccourci.
-                  </p>
+                    <Icon name="folder" :size="18" />{{ t('Open logs') }} </button>
+                  <p class="note"> {{ t('Exit shortcut:') }} <b>{{ t('Ctrl + Shift + Q') }}</b>.<br />{{ t('Alt + F4 also closes Canapey.') }}<br />{{ t('Reopen it from the system tray icon or its shortcut.') }} </p>
                   <button
                     class="text-button danger"
                     @click="
                       confirm(
-                        'Quitter Canapey ?',
-                        'Vos applications resteront ouvertes.',
-                        'Quitter',
+                        t('Quit Canapey?'),
+                        t('Your apps will stay open.'),
+                        t('Quit'),
                         api.quit,
                       )
                     "
-                  >
-                    Quitter Canapey
-                  </button></template
+                  > {{ t('Quit Canapey') }} </button></template
                 >
               </div>
             </div>
           </template>
           <template v-else-if="panel === 'add'">
-            <p class="panel-intro">
-              Sélectionnez vos applications, puis ajoutez-les à votre bibliothèque.
-            </p>
+            <p class="panel-intro"> {{ t('Select apps to add to your library.') }} </p>
             <div class="import-toolbar">
               <label class="search-field"
                 ><Icon name="search" :size="19" /><input
                   v-model="query"
                   type="search"
-                  placeholder="Rechercher une application"
-                  aria-label="Rechercher une application" /></label
+                  :placeholder="t('Search for an app')"
+                  :aria-label="t('Search for an app')" /></label
               ><button
                 class="small-button"
-                aria-label="Clavier pour rechercher"
+                :aria-label="t('Search keyboard')"
                 @click="keyboardFor('input[type=search]')"
-              >
-                Clavier</button
+              > {{ t('Keyboard') }}</button
               ><button
                 class="small-button"
                 :disabled="scanBusy || !native"
@@ -2288,17 +2255,16 @@ onUnmounted(() => {
               >
                 <Icon name="refresh" :size="18" />{{
                   scanBusy
-                    ? "Recherche…"
+                    ? t('Searching…')
                     : scanned
-                      ? "Actualiser"
-                      : "Détecter mes applications"
+                      ? t('Refresh')
+                      : t('Detect my apps')
                 }}</button
               ><button class="small-button" :disabled="!native" @click="manual">
-                <Icon name="folder" :size="18" />Parcourir
-              </button>
+                <Icon name="folder" :size="18" />{{ t('Browse') }} </button>
             </div>
             <div class="import-filters">
-              <div class="quick-search" aria-label="Recherches rapides">
+              <div class="quick-search" :aria-label="t('Quick searches')">
                 <button
                   v-for="name in [
                     'YouTube',
@@ -2316,34 +2282,24 @@ onUnmounted(() => {
                 </button>
               </div>
               <label class="system-filter">
-                <input v-model="showSystemTools" type="checkbox" />
-                Afficher les outils système
-              </label>
+                <input v-model="showSystemTools" type="checkbox" /> {{ t('Show system tools') }} </label>
             </div>
             <div class="detected-list">
               <div v-if="scanBusy" class="empty-search">
-                <span class="spinner" />Recherche dans le menu Démarrer, le
-                bureau et les applications enregistrées…
-              </div>
+                <span class="spinner" />{{ t('Searching the Start menu, desktop and registered apps…') }} </div>
               <p v-else-if="scanError" class="inline-error">{{ scanError }}</p>
               <div v-else-if="!native" class="empty-search">
                 <Icon name="monitor" :size="32" />
-                <p>
-                  La détection et l’ajout d’applications sont disponibles sous
-                  Windows.
-                </p>
+                <p> {{ t('App discovery and import are available on Windows.') }} </p>
               </div>
               <div v-else-if="!scanned" class="empty-search">
-                <Icon name="search" :size="30" />Lancez la détection pour
-                retrouver vos applications.
-              </div>
-              <div v-else-if="!filtered.length" class="empty-search">
-                Aucune application trouvée{{
-                  query ? ` pour « ${query} »` : ""
+                <Icon name="search" :size="30" />{{ t('Start a scan to find your apps.') }} </div>
+              <div v-else-if="!filtered.length" class="empty-search"> {{ t('No apps found') }}{{
+                  query ? t('for “{0}”', [query]) : ""
                 }}. {{
                   showSystemTools
-                    ? 'Essayez l’ajout manuel.'
-                    : 'Essayez d’afficher les outils système ou utilisez Parcourir.'
+                    ? t('Try adding the app manually.')
+                    : t('Try showing system tools or use Browse.')
                 }}
               </div>
               <button
@@ -2368,20 +2324,17 @@ onUnmounted(() => {
                   >{{ a.name }}<small>{{ a.source }}</small></span
                 >
                 <span v-if="isAlreadyAdded(a)" class="added-label"
-                  >Déjà ajoutée</span
+                  >{{ t('Already added') }}</span
                 >
               </button>
             </div>
             <div v-if="selectedImports.length" class="import-action">
               <span
-                >{{ selectedImports.length }} sélectionnée{{
-                  selectedImports.length > 1 ? "s" : ""
-                }}</span
+                >{{ t('{0} selected', [selectedImports.length]) }}</span
               ><button
                 class="primary-button"
                 @click="addEntries(selectedImports)"
-              >
-                Ajouter {{ selectedImports.length }} application{{ selectedImports.length > 1 ? 's' : '' }}<Icon name="plus" :size="18" />
+              > {{ t('Add') }} {{ selectedImports.length }} {{ t('app') }}{{ selectedImports.length > 1 ? 's' : '' }}<Icon name="plus" :size="18" />
               </button>
             </div>
           </template>
@@ -2400,40 +2353,35 @@ onUnmounted(() => {
                   selected
                 />
                 <div class="image-actions">
-                  <button class="small-button" @click="imagePick('card')">
-                    Image de carte</button
+                  <button class="small-button" @click="imagePick('card')"> {{ t('Card image') }}</button
                   ><button
                     class="small-button"
                     @click="imagePick('background')"
-                  >
-                    Fond d’écran</button
+                  > {{ t('Background') }}</button
                   ><button
                     class="text-button"
                     @click="
                       editing.card = null;
                       editing.background = null;
                     "
-                  >
-                    Visuels d’origine
-                  </button>
+                  > {{ t('Original artwork') }} </button>
                 </div>
               </div>
               <div class="edit-fields">
                 <label
-                  >Nom<input
-                    v-model="editing.name"
-                    aria-label="Nom"
+                  >{{ t('Name') }}<input
+                    v-model="editing.name" data-name-editor
+                    :aria-label="t('Name')"
                     maxlength="100" /></label
                 ><button
                   class="small-button"
-                  aria-label="Clavier pour le nom"
-                  @click="keyboardFor('input[aria-label=Nom]')"
-                >
-                  Clavier</button
-                ><label>Catégorie<select v-model="editingCategory"><option value="auto">Automatique ({{ categories[categoryFor(editing, { ...config.settings.library, categories: {} })] }})</option><option v-for="(label, key) in categories" :key="key" :value="key">{{ label }}</option></select></label><label
-                  >Ambiance<select v-model="editing.theme">
+                  :aria-label="t('Name keyboard')"
+                  @click="keyboardFor('input[data-name-editor]')"
+                > {{ t('Keyboard') }}</button
+                ><label>{{ t('Category') }}<select v-model="editingCategory"><option value="auto">{{ t('Automatic ({0})', [categories[categoryFor(editing, { ...config.settings.library, categories: {} })]]) }}</option><option v-for="(label, key) in categories" :key="key" :value="key">{{ label }}</option></select></label><label
+                  >{{ t('Ambience') }}<select v-model="editing.theme">
                     <option
-                      v-for="t in [
+                      v-for="theme in [
                         'home',
                         'netflix',
                         'youtube',
@@ -2443,14 +2391,14 @@ onUnmounted(() => {
                         'plezy',
                         'silo',
                       ]"
-                      :key="t"
-                      :value="t"
+                      :key="theme"
+                      :value="theme"
                     >
-                      {{ t === "home" ? "Ambiance générale" : t === "silo" ? "Silo · Streaming" : t }}
+                      {{ theme === "home" ? t('General ambience') : theme === "silo" ? t('Silo · Streaming') : theme }}
                     </option>
                   </select></label
                 ><label
-                  >Cible<input
+                  >{{ t('Target') }}<input
                     v-model="editing.target.value"
                     spellcheck="false" /></label
                 ><template
@@ -2458,16 +2406,15 @@ onUnmounted(() => {
                     ['executable', 'shortcut'].includes(editing.target.kind)
                   "
                   ><label
-                    >Arguments<small
-                      >Un argument par ligne, sans guillemets
-                      supplémentaires.</small
+                    >{{ t('Arguments') }}<small
+                      >{{ t('One argument per line, without extra quotation marks.') }}</small
                     ><textarea
                       v-model="argumentsText"
                       rows="3"
                       spellcheck="false"
                     /></label
                   ><label
-                    >Dossier de travail<input
+                    >{{ t('Working directory') }}<input
                       v-model="editing.target.workingDir"
                       spellcheck="false" /></label
                 ></template>
@@ -2477,16 +2424,15 @@ onUnmounted(() => {
                     class="text-button danger"
                     @click="
                       confirm(
-                        'Retirer cette carte ?',
-                        'L’application restera installée sur votre PC.',
-                        'Retirer',
+                        t('Remove this card?'),
+                        t('The app will remain installed on your PC.'),
+                        t('Remove'),
                         removeApp,
                       )
                     "
                   >
-                    <Icon name="trash" :size="18" />Retirer</button
-                  ><button class="primary-button" @click="saveEditing">
-                    Enregistrer<Icon name="check" :size="18" />
+                    <Icon name="trash" :size="18" />{{ t('Remove') }}</button
+                  ><button class="primary-button" @click="saveEditing"> {{ t('Save') }}<Icon name="check" :size="18" />
                   </button>
                 </div>
               </div>
@@ -2494,55 +2440,55 @@ onUnmounted(() => {
           </template>
           <template v-else-if="panel === 'power'"
             ><div class="power-options">
-              <button @click="run('Retour Windows', api.desktop)"><Icon name="monitor" /><span>Retour au bureau Windows</span><Icon name="right" :size="18" /></button>
+              <button @click="run(t('Return to Windows'), api.desktop)"><Icon name="monitor" /><span>{{ t('Return to the Windows desktop') }}</span><Icon name="right" :size="18" /></button>
               <button
                 @click="
                   confirm(
-                    'Mettre le PC en veille ?',
-                    'Votre session sera conservée.',
-                    'Mettre en veille',
+                    t('Put the PC to sleep?'),
+                    t('Your session will be preserved.'),
+                    t('Sleep'),
                     sleepPc,
                   )
                 "
               >
-                <Icon name="moon" /><span>Mettre en veille</span
+                <Icon name="moon" /><span>{{ t('Sleep') }}</span
                 ><Icon name="right" :size="18" /></button
               ><button
                 @click="
                   confirm(
-                    'Redémarrer le PC ?',
-                    'Enregistrez votre travail dans les applications ouvertes.',
-                    'Redémarrer',
+                    t('Restart the PC?'),
+                    t('Save your work in open apps.'),
+                    t('Restart'),
                     restartPc,
                   )
                 "
               >
-                <Icon name="restart" /><span>Redémarrer</span
+                <Icon name="restart" /><span>{{ t('Restart') }}</span
                 ><Icon name="right" :size="18" /></button
               ><button
                 @click="
                   confirm(
-                    'Éteindre le PC ?',
-                    'Enregistrez votre travail dans les applications ouvertes.',
-                    'Éteindre',
+                    t('Shut down the PC?'),
+                    t('Save your work in open apps.'),
+                    t('Shut down'),
                     shutdownPc,
                   )
                 "
               >
-                <Icon name="power" /><span>Éteindre</span
+                <Icon name="power" /><span>{{ t('Shut down') }}</span
                 ><Icon name="right" :size="18" />
               </button>
               <button
                 @click="
                   confirm(
-                    'Quitter Canapey ?',
-                    'Vos applications resteront ouvertes.',
-                    'Quitter',
+                    t('Quit Canapey?'),
+                    t('Your apps will stay open.'),
+                    t('Quit'),
                     api.quit,
                   )
                 "
               >
-                <Icon name="close" /><span>Quitter le launcher</span
+                <Icon name="close" /><span>{{ t('Quit launcher') }}</span
                 ><Icon name="right" :size="18" />
               </button></div
           ></template>
@@ -2550,47 +2496,44 @@ onUnmounted(() => {
             ><p class="panel-intro">
               {{
                 selectedSession?.status === "untracked"
-                  ? "Ce lancement utilise une fenêtre partagée ou non identifiable. Reprenez-la avec Alt + Tab."
-                  : "Votre application est toujours ouverte."
+                  ? t('This launch uses a shared or unidentified window. Switch to it with Alt + Tab.')
+                  : t('Your app is still open.')
               }}
             </p>
             <div class="power-options">
               <button
                 :disabled="selectedSession?.status === 'untracked'"
-                @click="run('Reprise', resumeCurrent)"
+                @click="run(t('Resuming'), resumeCurrent)"
               >
-                <Icon name="play" /><span>Reprendre</span></button
+                <Icon name="play" /><span>{{ t('Resume') }}</span></button
               ><button @click="closeSession(current.id, true)">
                 <Icon name="close" /><span>{{
                   selectedSession?.status === "untracked"
-                    ? "Ne plus suivre ce lancement"
-                    : "Fermer normalement"
+                    ? t('Stop tracking this launch')
+                    : t('Close normally')
                 }}</span></button
               ><button
                 v-if="selectedSession?.canForce"
                 class="danger"
                 @click="
                   confirm(
-                    'Forcer la fermeture ?',
-                    'Les données non enregistrées de cette application peuvent être perdues. Seuls les processus lancés et identifiés par Canapey seront arrêtés.',
-                    'Forcer la fermeture',
+                    t('Force close?'),
+                    t('Unsaved data in this app may be lost. Only processes launched and identified by Canapey will be stopped.'),
+                    t('Force close'),
                     forceCurrent,
                   )
                 "
               >
-                <Icon name="power" /><span>Forcer la fermeture</span>
+                <Icon name="power" /><span>{{ t('Force close') }}</span>
               </button>
             </div>
-            <p v-if="selectedSession?.status === 'closing'" class="note">
-              Fermeture demandée. Si l’application ne répond pas, une option de
-              fermeture forcée apparaît après 5 secondes.
-            </p></template
+            <p v-if="selectedSession?.status === 'closing'" class="note"> {{ t('Close requested. If the app does not respond, a force-close option appears after 5 seconds.') }} </p></template
           >
           <template v-else-if="panel === 'confirm'"
             ><p class="confirm-copy">{{ confirmText }}</p>
             <p v-if="installingUpdate" class="update-progress" role="status">{{ updateStatus }}</p>
             <div class="confirm-actions">
-              <button class="small-button" :disabled="installingUpdate" @click="closePanel">Annuler</button
+              <button class="small-button" :disabled="installingUpdate" @click="closePanel">{{ t('Cancel') }}</button
               ><button
                 class="primary-button"
                 :disabled="!!working"
@@ -2602,25 +2545,23 @@ onUnmounted(() => {
           >
           <div class="panel-footer" aria-live="polite">
             <span v-if="controllerTesting"
-              >Maintenir {{ inputLabels.backName }} 1,2 s : arrêter le test · Échap au
-              clavier</span
+              >{{ t('Hold') }} {{ inputLabels.backName }} {{ t('1.2 s: stop test · Esc on keyboard') }}</span
             >
             <template v-else
               ><span
                 ><kbd :class="{ 'pad-key': controller }">{{ inputLabels.back }}</kbd
-                >Retour</span
+                >{{ t('Back') }}</span
               ><span v-if="editingControl">{{
                 isTextControl(editingControl)
-                  ? "Saisie · Entrée pour terminer · Maj+Entrée pour une nouvelle ligne"
-                  : "Flèches pour régler · OK pour terminer"
+                  ? t('Typing · Enter to finish · Shift+Enter for a new line')
+                  : t('Arrows to adjust · OK to finish')
               }}</span
               ><span v-else-if="panel === 'audio'"
-                >↑ ↓ Naviguer · ← → Volume ·
-                {{ inputLabels.acceptName }} Choisir</span
+                >{{ t('↑ ↓ Navigate · ← → Volume ·') }} {{ inputLabels.acceptName }} {{ t('Choose') }}</span
               ><span v-else-if="panel === 'settings' && settingsSaveStatus" class="save-status" role="status">{{ settingsSaveStatus }}</span><span v-else>{{
                 controller
-                  ? `Croix directionnelle : naviguer · ${inputLabels.acceptName} : OK`
-                  : "Flèches : naviguer · Entrée : OK / modifier"
+                  ? t('D-pad: navigate · {0}: OK', [inputLabels.acceptName])
+                  : t('Arrows: navigate · Enter: OK / edit')
               }}</span></template
             >
           </div>

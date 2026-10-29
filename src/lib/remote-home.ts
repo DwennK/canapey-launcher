@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { RemoteShortcut, RemoteBinding } from "./types";
@@ -12,7 +13,7 @@ export const setRemoteCapture = (enabled: boolean) => invoke<void>("set_remote_c
 export const onRemoteCapture = (handler: (key: RemoteShortcut) => void) =>
   listen<RemoteShortcut>("remote-home-captured", (event) => handler(event.payload));
 
-export const shortcutHelp = "Cette touche ne peut pas être réservée. Les touches Windows, F12 et les combinaisons système restent exclues.";
+export const shortcutHelp = t('This key cannot be reserved. Windows keys, F12 and system combinations are excluded.');
 export const validRemoteShortcut = (key: RemoteShortcut) => validLocalShortcut(key);
 export const canonicalCode = (code: string) => code === 'NumpadEnter' ? 'Enter' : code === 'MediaPause' ? 'Pause' : code;
 export function captureShortcut(event: KeyboardEvent, global = true): RemoteShortcut | null {
@@ -26,8 +27,8 @@ export function captureShortcut(event: KeyboardEvent, global = true): RemoteShor
   return key;
 }
 export function shortcutLabel(key: RemoteShortcut | null | undefined) {
-  if (!key) return "Non associé";
-  return [key.ctrl && "Ctrl", key.alt && "Alt", key.shift && "Maj", key.code.replace(/^(Key|Digit)/, "")].filter(Boolean).join(" + ");
+  if (!key) return t('Not mapped');
+  return [key.ctrl && "Ctrl", key.alt && "Alt", key.shift && t('Shift'), key.code.replace(/^(Key|Digit)/, "")].filter(Boolean).join(" + ");
 }
 
 export function validLocalShortcut(key: RemoteShortcut) {

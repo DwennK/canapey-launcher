@@ -43,11 +43,11 @@ pub fn test_xbox_button(state: tauri::State<XboxHomeState>) -> Result<XboxStatus
     let mut m = state.0.lock().unwrap();
     if !m.status.available {
         return Err(
-            "Détection Xbox indisponible sur ce PC. Utilisez une combinaison de secours.".into(),
+            "Xbox detection unavailable on this PC. Use a fallback button combination.".into(),
         );
     }
     if !m.status.connected {
-        return Err("Connectez une manette compatible Xbox puis réessayez.".into());
+        return Err("Connect an Xbox-compatible controller and try again.".into());
     }
     m.status.test = TestResult::Listening;
     m.deadline = Some(Instant::now() + Duration::from_secs(15));

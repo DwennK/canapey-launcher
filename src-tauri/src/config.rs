@@ -26,12 +26,12 @@ impl ConfigStore {
             .as_millis();
         let _ = fs::rename(&p, self.dir.join(format!("config.invalid-{stamp}.json")));
         let restored = Self::read(&self.dir.join("config.backup.json")).unwrap_or_default();
-        (restored,Some("Configuration endommagée : sauvegarde récupérée, ou réglages par défaut. L’original est conservé.".into()))
+        (restored,Some("Damaged configuration: restored a backup or default settings. The original file is preserved.".into()))
     }
     fn read(p: &Path) -> Result<Config, String> {
         let meta = fs::metadata(p).map_err(|e| e.to_string())?;
         if meta.len() > 2_000_000 {
-            return Err("Configuration trop volumineuse".into());
+            return Err("Configuration is too large".into());
         }
         let mut c: Config = serde_json::from_slice(&fs::read(p).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
@@ -71,6 +71,27 @@ impl ConfigStore {
 mod tests {
     use super::*;
     use crate::model::{AppEntry, Target, TargetKind};
+    #[test]
+    fn language_migrates_without_resetting_existing_settings() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(directory.path().into());
+        let mut config = Config::default();
+        config.settings.sound = false;
+        let mut legacy = serde_json::to_value(&config).unwrap();
+        legacy["settings"].as_object_mut().unwrap().remove("locale");
+        let mut migrated: Config = serde_json::from_value(legacy).unwrap();
+        assert!(migrated.settings.locale.is_none());
+        assert!(!migrated.settings.sound);
+        migrated.settings.locale = Some("en".into());
+        store.save(&migrated).unwrap();
+        let (restored, warning) = store.load();
+        assert!(warning.is_none());
+        assert_eq!(restored.settings.locale.as_deref(), Some("en"));
+        assert!(!restored.settings.sound);
+        migrated.settings.locale = Some("unsupported".into());
+        assert!(store.save(&migrated).is_err());
+    }
+
     #[test]
     fn library_preferences_migrate_and_survive_reload() {
         let d = tempfile::tempdir().unwrap();
@@ -205,7 +226,7 @@ mod tests {
                 card: None,
                 background: None,
                 icon: None,
-                source: "Raccourci web explicite".into(),
+                source: "Explicit web shortcut".into(),
             });
         }
         config.selected_id = Some("internet".into());

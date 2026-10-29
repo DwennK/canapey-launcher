@@ -25,6 +25,7 @@ export interface AppEntry {
   source: string;
 }
 export interface Settings {
+  locale: import("./i18n").Locale | null;
   library: import("./library").LibraryPreferences;
   lastSettingsTab: string;
   fullscreen: boolean;
@@ -114,6 +115,7 @@ export const defaults = (): Config => ({
   apps: [],
   selectedId: null,
   settings: {
+    locale: null,
     library: { favorites: [], categories: {}, sort: "custom" },
     lastSettingsTab: "display",
     fullscreen: true,
@@ -131,7 +133,7 @@ export const defaults = (): Config => ({
     returnShortcut: "xbox",
     remoteHome: null,
     remoteBindings: [],
-    appleRemote: { enabled: false, name: "Canapey — Salon", interface: null },
+    appleRemote: { enabled: false, name: 'Canapey — Living room', interface: null },
     holdMs: 1200,
   },
 });

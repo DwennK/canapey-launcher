@@ -1,3 +1,4 @@
+import { t, resolveLocale, setLocale } from './i18n';
 import { version as appVersion } from "../../package.json";
 export { appVersion };
 import { invoke, convertFileSrc, isTauri } from "@tauri-apps/api/core";
@@ -20,10 +21,14 @@ export const native = isTauri();
 const browserKey = "canapey-ui-preview-v1";
 const unavailable = () =>
   Promise.reject(
-    new Error("Cette action nécessite Canapey Launcher sous Windows 11."),
+    new Error(t('This action requires Canapey Launcher on Windows 11.')),
   );
 export async function boot(): Promise<Boot> {
-  if (native) return invoke("bootstrap");
+  if (native) {
+    const result = await invoke<Boot>("bootstrap");
+    await initializeLanguage(result);
+    return result;
+  }
   let config = defaults();
   try {
     const saved = localStorage.getItem(browserKey);
@@ -55,7 +60,7 @@ export async function boot(): Promise<Boot> {
     config.settings.remoteBindings = [{ button: 'home', key: config.settings.remoteHome, action: 'home', global: true, appId: null }];
     config.settings.remoteHome = null;
   }
-  return {
+  const result: Boot = {
     config,
     warning: null,
     version: appVersion,
@@ -63,6 +68,18 @@ export async function boot(): Promise<Boot> {
     sessions: [],
     controller: null,
   };
+  await initializeLanguage(result);
+  return result;
+}
+async function initializeLanguage(result: Boot) {
+  const previous = result.config.settings.locale;
+  const chosen = resolveLocale(previous, typeof navigator === 'undefined' ? [] : navigator.languages);
+  result.config.settings.locale = chosen;
+  setLocale(chosen);
+  if (previous !== chosen) {
+    try { await save(result.config); }
+    catch { result.warning = [result.warning, t('Could not save the language preference. Choose it again in Settings.')].filter(Boolean).join(' '); }
+  }
 }
 export async function save(config: Config, remoteHomeUpdate = false): Promise<Config> {
   if (native) return invoke("save_config", { config, remoteHomeUpdate });

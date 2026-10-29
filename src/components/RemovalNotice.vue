@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 defineProps<{ name: string; busy: boolean; error: string }>();
 defineEmits<{ restore: []; dismiss: [] }>();
 </script>
 
 <template>
   <div class="removal-notice">
-    <div><p role="status">Carte « {{ name }} » retirée.</p><p v-if="error" class="removal-error" role="alert">{{ error }}</p></div>
-    <button class="small-button" :disabled="busy" @click="$emit('restore')">{{ busy ? 'Restauration…' : 'Restaurer la carte' }}</button>
-    <button class="text-button" :disabled="busy" aria-label="Fermer la restauration" @click="$emit('dismiss')">Fermer</button>
+    <div><p role="status">{{ t('Card “') }} {{ name }} {{ t('” removed.') }}</p><p v-if="error" class="removal-error" role="alert">{{ error }}</p></div>
+    <button class="small-button" :disabled="busy" @click="$emit('restore')">{{ busy ? t('Restoring…') : t('Restore card') }}</button>
+    <button class="text-button" :disabled="busy" :aria-label="t('Dismiss restore')" @click="$emit('dismiss')">{{ t('Close') }}</button>
   </div>
 </template>
 

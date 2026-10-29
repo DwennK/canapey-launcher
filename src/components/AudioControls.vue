@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../lib/i18n';
 import Icon from "./Icon.vue";
 import type { AudioState } from "../lib/types";
 defineProps<{
@@ -18,19 +19,14 @@ const emit = defineEmits<{
 </script>
 <template>
   <div class="audio-controls" :aria-busy="busy">
-    <p v-if="!native" class="note">
-      Les commandes audio sont disponibles dans Canapey sous Windows.
-    </p>
+    <p v-if="!native" class="note"> {{ t('Audio controls are available in Canapey on Windows.') }} </p>
     <template v-else>
       <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
-      <p v-if="!state && busy" class="note" role="status">
-        Recherche des sorties audio…
-      </p>
+      <p v-if="!state && busy" class="note" role="status"> {{ t('Finding audio outputs…') }} </p>
       <div class="audio-volume">
         <div class="audio-volume-heading">
           <label for="quick-volume"
-            ><Icon :name="state?.muted ? 'muted' : 'volume'" :size="24" />Volume
-            général</label
+            ><Icon :name="state?.muted ? 'muted' : 'volume'" :size="24" />{{ t('Master volume') }}</label
           >
           <output for="quick-volume">{{
             state?.volume != null ? volume + " %" : "—"
@@ -45,7 +41,7 @@ const emit = defineEmits<{
           step="2"
           :value="volume"
           :disabled="state?.volume == null || switching"
-          :aria-valuetext="`${volume} %${state?.muted ? ', son coupé' : ''}`"
+          :aria-valuetext="`${volume} %${state?.muted ? t(', muted') : ''}`"
           @input="
             emit('volume', Number(($event.target as HTMLInputElement).value))
           "
@@ -60,8 +56,8 @@ const emit = defineEmits<{
       >
         <Icon :name="state?.muted ? 'muted' : 'volume'" />
         <span
-          >Muet<small>{{
-            state?.muted ? "Le son est coupé" : "Couper le son"
+          >{{ t('Mute') }}<small>{{
+            state?.muted ? t('Sound is muted') : t('Mute sound')
           }}</small></span
         >
         <span
@@ -72,15 +68,11 @@ const emit = defineEmits<{
         /></span>
       </button>
       <div class="audio-outputs">
-        <h3>Sortie audio</h3>
-        <p class="audio-caption">La sortie par défaut de votre PC.</p>
-        <p v-if="state && !state.outputs.length" class="note">
-          Aucune sortie connectée. Allumez votre TV ou connectez votre casque.
-        </p>
-        <p v-else-if="state && !state.defaultId" class="note">
-          Choisissez une sortie pour activer le son.
-        </p>
-        <div class="audio-output-list" role="group" aria-label="Sortie audio">
+        <h3>{{ t('Audio output') }}</h3>
+        <p class="audio-caption">{{ t('Your PC’s default output.') }}</p>
+        <p v-if="state && !state.outputs.length" class="note"> {{ t('No output connected. Turn on your TV or connect your headphones.') }} </p>
+        <p v-else-if="state && !state.defaultId" class="note"> {{ t('Choose an output to enable sound.') }} </p>
+        <div class="audio-output-list" role="group" :aria-label="t('Audio output')">
           <button
             v-for="output in state?.outputs ?? []"
             :key="output.id"
@@ -102,8 +94,7 @@ const emit = defineEmits<{
           :aria-disabled="busy"
           @click="!busy && emit('refresh')"
         >
-          <Icon name="refresh" :size="16" />Actualiser les sorties
-        </button>
+          <Icon name="refresh" :size="16" />{{ t('Refresh outputs') }} </button>
       </div>
     </template>
   </div>

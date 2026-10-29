@@ -46,11 +46,11 @@ describe('reversible library removal', () => {
   it('refuses duplicate identities, equivalent targets and a full library without changes', () => {
     const {config, removed} = removeLibraryApp(fixture(), 'b')!;
     config.apps.push({...app('replacement'), target: removed.app.target});
-    expect(() => restoreLibraryApp(config, removed)).toThrow('déjà');
+    expect(() => restoreLibraryApp(config, removed)).toThrow('already');
     config.apps = [app('b')];
-    expect(() => restoreLibraryApp(config, removed)).toThrow('déjà');
+    expect(() => restoreLibraryApp(config, removed)).toThrow('already');
     config.apps = Array.from({length:250}, (_, i) => app(String(i)));
-    expect(() => restoreLibraryApp(config, removed)).toThrow('pleine');
+    expect(() => restoreLibraryApp(config, removed)).toThrow('full');
     expect(config.apps).toHaveLength(250);
   });
 });

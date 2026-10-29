@@ -1,3 +1,4 @@
+import { t } from './i18n';
 export type ControllerFamily = 'keyboard' | 'xbox' | 'playstation' | 'nintendo';
 
 export function controllerFamily(name: string | null | undefined): ControllerFamily {
@@ -14,15 +15,15 @@ export function controllerLabels(name: string | null | undefined) {
   const ps = family === 'playstation', nintendo = family === 'nintendo';
   return {
     family,
-    device: family === 'keyboard' ? 'Clavier' : ps ? 'Manette PlayStation' : nintendo ? 'Manette Nintendo' : 'Manette Xbox / compatible',
+    device: family === 'keyboard' ? t('Keyboard') : ps ? t('PlayStation controller') : nintendo ? t('Nintendo controller') : t('Xbox / compatible controller'),
     south: ps ? '×' : nintendo ? 'B' : 'A',
     east: ps ? '○' : nintendo ? 'A' : 'B',
     west: ps ? '□' : nintendo ? 'Y' : 'X',
     north: ps ? '△' : nintendo ? 'X' : 'Y',
     accept: family === 'keyboard' ? '↵' : ps ? '×' : nintendo ? 'B' : 'A',
-    acceptName: family === 'keyboard' ? 'Entrée' : ps ? 'Croix' : nintendo ? 'B' : 'A',
+    acceptName: family === 'keyboard' ? t('Enter') : ps ? t('Cross') : nintendo ? 'B' : 'A',
     back: family === 'keyboard' ? '⌫ / esc' : ps ? '○' : nintendo ? 'A' : 'B',
-    backName: family === 'keyboard' ? 'Échap' : ps ? 'Rond' : nintendo ? 'A' : 'B',
+    backName: family === 'keyboard' ? t('Escape') : ps ? t('Circle') : nintendo ? 'A' : 'B',
     menu: family === 'keyboard' ? 'F1' : ps ? 'Options' : nintendo ? '+' : '☰',
     select: ps ? 'Share' : nintendo ? '−' : 'Back',
     lb: ps ? 'L1' : nintendo ? 'L' : 'LB',
