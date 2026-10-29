@@ -1,65 +1,65 @@
-# Démarrage : optimisation et mesures
+# Startup optimization and measurements
 
-Comparatif du 17 octobre 2026, référence `fc77e57`. Aucun push ni publication ne fait partie de cette modification.
+Historical comparison from October 17, 2026, baseline `fc77e57`. That local change did not itself push or publish a release.
 
-## Résultat vérifié localement
+## Locally verified result
 
-Deux builds de production, servis localement avec le même serveur HTTP, testés dans Chrome système 155.0.8059.79 sur Mac Apple M4 / 16 Gio. Viewport 1440×900, animations activées. Douze navigations par version et par scénario, ordre avant/après alterné, nouveau contexte isolé à chaque navigation : 48 mesures. Chrome et le système sont déjà lancés ; les caches du système ne sont pas purgés. Aucun profil personnel utilisé.
+Two production builds served by the same local HTTP server, tested with system Chrome 155.0.8059.79 on an Apple M4 / 16 GiB Mac. Viewport 1440×900, motion enabled. Twelve navigations per version/scenario, alternating before/after, with a fresh isolated context each time: 48 samples. Chrome and the OS were already running; OS caches were not cleared. No personal profile.
 
-Médianes, depuis le début de navigation :
+Medians from navigation start:
 
-| Scénario / mesure | Avant | Après |
+| Scenario / measurement | Before | After |
 | --- | ---: | ---: |
-| Bibliothèque vide : focus puis deux frames | 64,9 ms | 66,2 ms |
-| Bibliothèque vide : premier écran stabilisé | 665,0 ms | 66,3 ms |
-| 24 applications, dernière sélectionnée : focus puis deux frames | 62,7 ms | 66,2 ms |
-| 24 applications, dernière sélectionnée : carte entièrement dans le viewport | 1 062,7 ms | 41,2 ms |
-| 24 applications, dernière sélectionnée : premier écran stabilisé | 1 063,5 ms | 66,4 ms |
-| JavaScript demandé au démarrage, décompressé | 149 663 octets | 142 776 octets |
-| CSS demandé au démarrage, décompressé | 32 894 octets | 28 789 octets |
+| Empty library: focus plus two frames | 64.9 ms | 66.2 ms |
+| Empty library: stable first screen | 665.0 ms | 66.3 ms |
+| 24 apps, last selected: focus plus two frames | 62.7 ms | 66.2 ms |
+| 24 apps, last selected: card fully in viewport | 1,062.7 ms | 41.2 ms |
+| 24 apps, last selected: stable first screen | 1,063.5 ms | 66.4 ms |
+| Initial JavaScript requested, uncompressed | 149,663 bytes | 142,776 bytes |
+| Initial CSS requested, uncompressed | 32,894 bytes | 28,789 bytes |
 
-Le gain démontré concerne l’affichage stable : suppression du fondu d’entrée et du déplacement animé vers la sélection mémorisée. Le délai jusqu’aux premières frames ne présente pas de gain démontré ; les écarts observés sont de quelques millisecondes. Le JavaScript initial diminue de 4,6 % et le CSS initial de 12,5 %. Les modules différés sont toujours présents dans la distribution et se chargent à leur ouverture.
+The demonstrated improvement is visual stability, from removing the initial fade and animated scrolling to the saved selection. No improvement in time to first frames was demonstrated; differences were only a few milliseconds. Initial JavaScript decreased 4.6%, CSS 12.5%. Deferred modules remain distributed and load when opened.
 
-« Stabilisé » signifie : carte sélectionnée entièrement visible et focalisée, image de carte et fond attendu chargés, police chargée, aucune animation en cours sur le fond ou le titre. Ce contrôle DOM n’est pas une mesure du compositeur Windows. Les mesures brutes, médianes, p95 et empreintes des assets sont dans [startup-benchmark.json](startup-benchmark.json).
+“Stable” means the selected card is fully visible/focused, its image and expected background/font are loaded, and background/title animations have stopped. This DOM check does not measure the Windows compositor. Raw samples, medians, p95 and asset hashes: [startup-benchmark.json](startup-benchmark.json).
 
-**Aucune durée native Windows, à froid ou à chaud, n’a été mesurée.** Le benchmark frontend ne comprend pas le chargeur Windows, WebView2 ni les appels système réels. Il ne permet donc pas d’annoncer que Canapey démarre en 66 ms sous Windows.
+**No cold or warm native Windows startup was measured.** This frontend benchmark excludes the Windows loader, WebView2 and real system calls. It does not support claiming a 66 ms Windows startup.
 
-## Modifications
+## Changes
 
-- Clavier virtuel, diagnostic de la manette et aide/test Xbox chargés à la demande. Le clavier conserve sa prise de focus à son montage.
-- Image de la carte sélectionnée chargée immédiatement et prioritaire ; les autres restent différées.
-- Première sélection positionnée sans défilement animé. Premier titre et fond affichés sans fondu ; les transitions de fond après navigation et les animations après changement de vue restent actives.
-- Lecture audio initiale lancée après le signal des deux premières frames.
-- Menu et icône de notification créés sur le thread principal après ce signal. Le watchdog les crée aussi après trois secondes si le signal manque, sans créer de doublon. Le délai de trois secondes n’est pas une attente imposée au démarrage normal.
-- Vérification des images manquantes conservée avant le bootstrap, afin de préserver la récupération de configuration existante ; son coût est désormais mesuré.
+- Lazy-load on-screen keyboard, controller diagnostics and Xbox help/test. Keyboard still takes focus when mounted.
+- Load selected-card artwork immediately with priority; defer others.
+- Position the initial selection without animated scrolling and show initial title/background without a fade. Later background/view transitions remain enabled.
+- Read initial audio after the first two-frame signal.
+- Create tray/menu on the main thread after that signal. A three-second watchdog also creates them if the signal never arrives, without duplication. Normal startup does not wait three seconds.
+- Keep missing-artwork checks before bootstrap to preserve configuration recovery; measure their cost.
 
-## Mesures natives automatiques
+## Automatic native measurements
 
-Elles sont écrites dans les journaux existants à chaque lancement normal, sans activation ni test manuel. Accès par **Paramètres → Diagnostic → Ouvrir les logs**. Aucun envoi réseau n’est ajouté.
+Normal launches write these to existing logs without manual activation. Open **Settings → Help and updates → Diagnostics → Open logs**. No network reporting is added.
 
-| Champ | Signification |
+| Field | Meaning |
 | --- | --- |
-| `startup_begin` | Version, OS, architecture, profil debug/release, PID. `setup_enter_ms` : délai depuis l’entrée du runtime Rust jusqu’au début du setup Tauri. |
-| `startup_config_ms` | Création du dossier de données, lecture/récupération de configuration et vérification du démarrage automatique. |
-| `startup_artwork_check_ms` | Vérification des fichiers d’images ; nombre d’applications enregistré avec cette durée. |
-| `startup_display_ms` | Choix de l’écran et application du mode de fenêtre. |
-| `startup_setup_ms` | Durée du setup Tauri. `startup_setup_complete_ms` : cumul depuis l’entrée du runtime Rust. |
-| `frontend_loaded_ms` | Cumul natif au moment de la demande d’affichage, après configuration, abonnements et focus frontend. |
-| `startup_interactive_ms` | Cumul natif au signal frontend après affichage et deux callbacks `requestAnimationFrame`. Ce signal ne garantit pas le chargement complet des images ni la disponibilité matérielle de la manette. |
-| `startup_frontend_timings` | JSON des marques `entry`, `mounted`, `bootstrapStart/End`, `subscribeStart/End`, `focused`, `painted`, en ms depuis l’origine de navigation de la WebView. Une étape non atteinte vaut `null`. |
-| `startup_deferred_tray_ms` | Durée de création du menu/icône, hors chemin normal jusqu’au premier signal des frames. |
-| `startup_show_watchdog_ms` | Présent uniquement si le secours doit afficher la fenêtre faute de signal de disponibilité dans les trois secondes suivant son lancement. |
+| `startup_begin` | Version, OS, architecture, debug/release profile, PID. `setup_enter_ms`: Rust runtime entry to Tauri setup start. |
+| `startup_config_ms` | Data-directory creation, configuration read/recovery and autostart check. |
+| `startup_artwork_check_ms` | Artwork checks, with saved app count. |
+| `startup_display_ms` | Display selection and window-mode application. |
+| `startup_setup_ms` | Tauri setup duration. `startup_setup_complete_ms`: cumulative time from Rust runtime entry. |
+| `frontend_loaded_ms` | Native cumulative time when display is requested after config, subscriptions and frontend focus. |
+| `startup_interactive_ms` | Cumulative time at the frontend signal after display and two `requestAnimationFrame` callbacks. Does not guarantee complete artwork loading or physical-controller readiness. |
+| `startup_frontend_timings` | JSON marks `entry`, `mounted`, `bootstrapStart/End`, `subscribeStart/End`, `focused`, `painted`, in ms from WebView navigation origin. Unreached steps are `null`. |
+| `startup_deferred_tray_ms` | Tray/menu creation duration outside the normal path to the initial frame signal. |
+| `startup_show_watchdog_ms` | Present only when the fallback shows the window after three seconds without a readiness signal. |
 
-Les marques frontend sont aussi consultables via `performance.getEntriesByType('mark')`, préfixe `canapey:`. `entry` est posé après évaluation des imports ; `mounted` après montage de Vue. Soustraire les bornes Start/End pour les durées d’IPC. Les horloges Rust et frontend ont des origines différentes : ne pas les soustraire entre elles. Les durées de phases imbriquées ne s’additionnent pas au total.
+Frontend marks are also available through `performance.getEntriesByType('mark')`, prefixed `canapey:`. `entry` follows import evaluation; `mounted` follows Vue mounting. Subtract Start/End boundaries for IPC durations. Rust/frontend clocks have different origins and must not be subtracted from each other. Nested phase durations do not sum to the total.
 
-Les logs identifient le profil mais ne devinent pas si un démarrage est froid ou chaud. Le retour depuis une application conserve ses mesures `return_window_request_ms` et `return_interactive_ms`.
+Logs identify the build profile but do not infer cold versus warm starts. Returning from an app retains `return_window_request_ms` and `return_interactive_ms`.
 
-## Vérifications et reproduction
+## Validation and reproduction
 
-- `npm run check` sur les seuls changements de startup isolés depuis `fc77e57` : version cohérente, build production, 46 tests JavaScript/TypeScript et 18 tests Rust réussis. Après intégration du commit parallèle `ed355d2`, les 21 tests Rust et Clippy Windows passent également. Les assets frontend sont identiques à ceux mesurés.
-- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` et `cargo check --manifest-path src-tauri/Cargo.toml --locked` réussis.
-- Compilation croisée Windows : `cargo xwin clippy --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings` réussie avec LLVM Homebrew. Cela compile et analyse le code Windows et ses tests, sans les exécuter sous Windows.
-- Parcours Playwright `qa-sofa-tools.js` et `qa-audio.js` sur le build production : desktop 1440×900 et mobile 390×844, clavier virtuel, champs, test manette et commandes audio avec fixtures IPC ; aucune erreur JavaScript. Contrôle supplémentaire de l’ordre `frontend_painted` puis `audio_state` et du contenu des mesures. Vérification de l’absence des trois modules secondaires au démarrage et du chargement Xbox à la demande. Inspection visuelle des captures et de l’accueil dans le navigateur intégré.
-- Tests dédiés au handshake : la fenêtre doit être montrée avant de demander des frames (évite le blocage d’une WebView masquée), le signal final attend deux callbacks et le mode navigateur ne fait aucun appel natif.
+- Isolated startup changes from `fc77e57`: `npm run check`, matching versions, production build, 46 JS/TS and 18 Rust tests passed. After integrating parallel commit `ed355d2`, 21 Rust tests and Windows Clippy passed. Frontend assets matched the measured builds.
+- Rustfmt and macOS `cargo check --locked` passed.
+- Windows cross-check with `cargo xwin clippy --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings` and Homebrew LLVM passed, without Windows execution.
+- Production Playwright `qa-sofa-tools.js` / `qa-audio.js`, desktop/mobile, checked keyboard, fields, controller test and audio fixtures without JS errors. Checked `frontend_painted` before `audio_state`, metric contents, absence of three secondary startup modules and on-demand Xbox loading. Inspected captures/Home in the in-app browser.
+- Handshake tests require showing the window before requesting frames, avoiding hidden-WebView suspension; final signal waits for two callbacks, and browser mode makes no native calls.
 
-Pour reproduire le comparatif, construire la référence et la version candidate dans deux dossiers distincts. Servir leurs répertoires de sortie à la racine de `http://127.0.0.1:4174/` et `http://127.0.0.1:4175/`, puis exécuter `scripts/benchmark-startup.js` avec `playwright-cli run-code` dans une session Chrome isolée utilisant `.playwright/cli.config.json`. Le script retourne les échantillons et les statistiques ; il ne lance ni ne modifie une application Windows réelle.
+To reproduce, build baseline/candidate in separate directories, serve their outputs at `http://127.0.0.1:4174/` and `http://127.0.0.1:4175/`, and run `scripts/benchmark-startup.js` using `playwright-cli run-code` with isolated system Chrome and `.playwright/cli.config.json`. It returns samples/statistics without launching or changing a Windows app.

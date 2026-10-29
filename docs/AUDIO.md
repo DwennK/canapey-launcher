@@ -1,39 +1,32 @@
-# Commandes rapides — 16 octobre 2026
+# Quick controls
 
-Le bouton audio à gauche de l’heure ouvre un panneau latéral : volume général de la sortie Windows par défaut, muet, sorties connectées et veille avec confirmation. L’heure reste informative.
+The audio button beside the clock opens Windows master volume, mute and connected output selection. The clock is informational. Sleep is now in the Power menu; the October 16 validation below predates that move.
 
-- Haut/bas parcourt les commandes dans l’ordre. Gauche/droite règle le volume de 2 points lorsque la barre est sélectionnée, sans mode d’édition supplémentaire.
-- A/Croix ou Entrée active une commande. B/Rond ou Échap ferme le panneau et restaure le focus. La confirmation de veille commence sur Annuler.
-- Le volume et les sorties sont relus toutes les deux secondes lorsque Canapey est visible et au premier plan, ainsi qu’à l’ouverture du panneau. Les changements externes et déconnexions sont ainsi reflétés.
-- Les écritures audio sont sérialisées ; les mouvements rapprochés du curseur sont regroupés. Une ancienne commande conserve son identifiant de sortie, et Windows refuse un réglage de volume/muet si cette sortie n’est plus la sortie par défaut.
-- Le mode navigateur indique que les commandes Windows sont indisponibles et ne simule aucun périphérique.
+- Up/down navigates controls. Left/right changes selected volume by two points without an extra editing mode.
+- A / Cross or Enter activates. B / Circle or Escape closes and restores focus. Power confirmations start on Cancel.
+- Volume/outputs refresh every two seconds while visible and foreground, and when opening the panel, reflecting external changes and disconnections.
+- Audio writes are serialized and rapid slider changes coalesced. Commands retain their output ID; Windows rejects volume/mute changes if it is no longer the default output.
+- Browser preview reports Windows controls as unavailable and does not invent devices.
 
-## Intégration Windows
+## Windows integration
 
-Le volume et le muet utilisent Core Audio (`IMMDeviceEnumerator`, `IAudioEndpointVolume`), sans PowerShell ni programme auxiliaire. Les objets COM sont créés et libérés sur le même thread de travail ; les chaînes et PROPVARIANT sont libérés.
+Volume/mute use Core Audio (`IMMDeviceEnumerator`, `IAudioEndpointVolume`) without PowerShell or helpers. COM objects are created/released on the same worker thread; strings and PROPVARIANT values are freed.
 
-Le changement de sortie utilise l’interface COM **non documentée** `IPolicyConfig::SetDefaultEndpoint`, également employée par [EarTrumpet](https://github.com/File-New-Project/EarTrumpet/blob/master/EarTrumpet/Interop/MMDeviceAPI/IPolicyConfig.cs). Les trois rôles Windows (console, multimédia et communications) sont modifiés. En cas d’échec partiel, les anciens rôles sont restaurés au mieux et une erreur est affichée. Cette interface interne reste une dépendance de compatibilité à vérifier lors des évolutions Windows. Les applications qui imposent leur propre périphérique peuvent conserver leur routage.
+Output switching uses the **undocumented** `IPolicyConfig::SetDefaultEndpoint`, also used by [EarTrumpet](https://github.com/File-New-Project/EarTrumpet/blob/master/EarTrumpet/Interop/MMDeviceAPI/IPolicyConfig.cs). It changes all three Windows roles (console, multimedia, communications). Partial failure attempts to restore previous roles and reports an error. This internal interface needs compatibility checks after Windows changes. Apps choosing their own device may retain their routing.
 
-Référence Microsoft : [contrôle du volume des périphériques](https://learn.microsoft.com/en-us/windows/win32/coreaudio/endpoint-volume-controls).
+Microsoft reference: [Endpoint volume controls](https://learn.microsoft.com/en-us/windows/win32/coreaudio/endpoint-volume-controls).
 
-## Vérification locale
+## Historical local validation — October 16, 2026
 
-- `npm run check` : compilation et tests TypeScript/Rust.
-- `cargo fmt --manifest-path src-tauri/Cargo.toml --check`.
-- `cargo check --manifest-path src-tauri/Cargo.toml --locked` sur macOS.
-- `PATH="/opt/homebrew/opt/llvm/bin:$PATH" cargo xwin clippy --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc --all-targets -- -D warnings` : vérification du code Windows et de ses tests par compilation croisée, sans exécution Windows.
-- `tests/audio.test.ts` : regroupement des mouvements rapides, sérialisation lecture/écriture, conservation de l’identité du périphérique, erreurs et récupération.
-- `scripts/qa-audio.js` : Chrome système isolé, desktop 1440×900 et mobile 390×844. Navigation clavier et événements IPC manette de test, volume, muet, choix de sortie, annulation/confirmation de veille, déconnexion, noms longs, défilement et restauration du focus.
+- `npm run check`, Rustfmt and macOS `cargo check --locked` passed.
+- Windows code/tests were cross-checked with `cargo xwin clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` using Homebrew LLVM, without Windows execution.
+- `tests/audio.test.ts` covers coalescing, read/write serialization, device identity, errors and recovery.
+- `scripts/qa-audio.js` used isolated system Chrome at 1440×900 and 390×844: keyboard/simulated controller navigation, volume, mute, outputs, sleep cancellation/confirmation, disconnects, long names, scrolling and focus restoration.
+- 17 TypeScript and 13 Rust tests passed, as did frontend/macOS compilation and Windows Clippy. The audio flow and 76 existing menu states passed without JavaScript errors; browser mode without native capabilities was also checked.
+- Local ignored evidence: `output/playwright/audio-validation.json` and `audio-*.png` captures.
 
-```sh
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=canapey-audio open http://127.0.0.1:1420 --browser chrome --config .playwright/cli.config.json
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=canapey-audio run-code "$(cat scripts/qa-audio.js)"
-```
+Run the QA function with `playwright-cli run-code "$(cat scripts/qa-audio.js)"` against Vite in an isolated system Chrome session using `.playwright/cli.config.json`. Audio devices, volume and sleep in this script are **IPC fixtures**: it never changes Mac audio or puts a computer to sleep.
 
-Les périphériques, le volume et la veille du script navigateur sont des **fixtures IPC**. Il ne modifie pas le son du Mac et ne met aucun ordinateur en veille. Les captures `output/playwright/audio-*.png` sont des aperçus de cette fixture.
+## Remaining hardware checks
 
-Résultat local : 17 tests TypeScript et 13 tests Rust réussis, compilation frontend/macOS et Clippy Windows réussis. Le nouveau parcours audio et les 76 états des menus existants passent dans Chrome sans erreur JavaScript. Le mode navigateur sans fonctions natives a également été vérifié. Résumé de cette exécution : `output/playwright/audio-validation.json` (artefact local ignoré par Git).
-
-## Essais matériels restant à effectuer
-
-Sur un vrai Windows 11, vérifier les haut-parleurs, HDMI/TV et casque Bluetooth : variation audible, muet, changement des trois rôles Windows, déconnexion pendant un réglage, changement depuis les paramètres Windows, absence de périphérique et arrêt/reprise du service audio. Vérifier aussi la manette physique, la confirmation de veille, le réveil et les applications déjà ouvertes ayant un routage spécifique. Les tests navigateur et la compilation croisée ne prouvent pas ces comportements matériels.
+On Windows 11, test speakers, HDMI/TV and Bluetooth headphones: audible changes, mute, all three default roles, disconnect during adjustment, changes from Windows settings, no device and audio-service restart. Check a physical controller, sleep confirmation/wake and open apps with their own routing. Browser tests and cross-compilation do not prove these behaviors.

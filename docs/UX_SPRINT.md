@@ -1,58 +1,56 @@
-# Sprint UX — 29 octobre 2026
+# UX sprint — October 29, 2026
 
-État initial du sprint : implémentation locale, version inchangée 0.5.0, non publiée. Aucun installateur Windows construit ni installé localement.
+Historical delivery record: initial work was local at version 0.5.0, with no local Windows installer build/install. The sprint was then committed and pushed (`a67e379`, `e7b2986`, `fc65b09`). Windows [run 40795854630](https://github.com/DwennK/canapey-launcher/actions/runs/40795854630) passed, including an unsigned test installer. The pre-existing Companion failure was fixed separately in `c124046`; the complete local oracle and CI Companion job passed. No release or local installation accompanied that sprint push. The later work below was grouped into a separate UX commit from YouTube integration and subsequently included in v0.6.0.
 
-Mise à jour : sprint commité et poussé le 29 octobre (`a67e379`, `e7b2986`, `fc65b09`). Le job Windows du run [40795854630](https://github.com/DwennK/canapey-launcher/actions/runs/40795854630) a réussi, y compris la construction de l’installateur non signé. L’échec Companion préexistant a été corrigé séparément par `c124046`, avec test local complet réussi puis réussite du job Companion en CI. Pas de nouvelle release ni d’installation locale. L’itération ci-dessous complète ce sprint et est regroupée dans un commit UX distinct de l’intégration YouTube.
+## Second iteration
 
-## Seconde itération
+### Missing card images
 
-### Correction des cartes sans image
+The eight pictured cards already had photographic assets in `public/art/`; no ImageGen generation was needed. Files were inspected and all eight thumbnails decoded at 640×360. Initial rows now load immediately while later cards remain lazy. The previous error handler could hide an image permanently after a source change; it was replaced with custom → theme → Living room fallback and error reset on source changes. Fullscreen backgrounds also try bundled alternatives before abandoning a failed file.
 
-Les huit cartes de la capture disposent déjà de visuels photographiques dans `public/art/` ; aucune nouvelle génération ImageGen n’était nécessaire. Les fichiers ont été inspectés et les huit miniatures décodées à 640 × 360. Les premières rangées chargent désormais leurs images immédiatement (le reste de la bibliothèque garde le chargement différé). L’ancien gestionnaire d’erreur masquait l’élément image sans recours et pouvait le laisser masqué après changement de source : il est remplacé par une chaîne image personnalisée → thème → Salon, avec remise à zéro des erreurs lors d’un changement de source. Le fond plein écran essaie également ses variantes intégrées avant d’abandonner un fichier défectueux.
+Build and 81 TypeScript tests passed. Isolated Chrome at 1440×1000 and 390×844 checked eight visible backgrounds, immediate loading, deliberately corrupt images, Living room fallback, reload recovery, failed custom cards/backgrounds, theme changes after errors and preserved logo identity. Evidence: `output/playwright/artwork-fix/`, two scripts with `passed: true`; final captures followed viewport stabilization.
 
-Compilation et 81 tests TypeScript réussis. Parcours Chrome isolé à 1440 × 1000 et 390 × 844 : huit fonds visibles, chargement immédiat, image volontairement corrompue, secours par Salon, récupération après rechargement, image personnalisée de carte et fond défectueux, changement de thème après erreur et identité du logo conservée. Preuves dans `output/playwright/artwork-fix/` ; résultats des deux scripts `passed: true`. Rendu final capturé après stabilisation du viewport. Ces corrections font partie de la seconde itération UX.
+The pushed sprint's final remote [run 40796398721](https://github.com/DwennK/canapey-launcher/actions/runs/40796398721) passed Windows and Companion jobs and generated an unsigned test installer. That run did not yet contain the later library changes below.
 
-Validation distante finale du sprint poussé : [run 40796398721](https://github.com/DwennK/canapey-launcher/actions/runs/40796398721) réussi, jobs Windows et Companion verts, installateur de test non signé généré. Cette CI ne contient pas les modifications locales de bibliothèque décrites ci-dessous.
+- Restore the last removed card with its position, favorite and category without reverting later edits. The notice remains in Library and Apps settings until dismissal, another removal or restart. Save failure leaves the card removed and permits retry; duplicates/capacity remain guarded.
+- Category counts include search, results show the total, clearing search keeps the category and restores field focus. Empty favorites have specific help.
+- Moving a card enables custom sorting, preventing invisible moves under alphabetical sorting; the form explains this.
+- Build/version checks and 79 TypeScript tests in 14 files passed for the library iteration. Isolated Chrome at 1440×900 and 390×844 covered removal, Cancel default, restoration/metadata, failure/retry, final card, keyboard navigation, reload, Apps settings, filters and focus. No console errors/warnings; filters also checked in the in-app browser.
+- Evidence: `output/playwright/ux-iteration/`, two flow scripts with explicit `passed: true`; captures waited for panels/notifications to close.
+- No Rust changed in that iteration. The CI correction pins development-only `srptools==1.0.1` for pyatv 0.18.0's constructor; shipped dependencies are unchanged. The complete local oracle passed wrong PIN, pairing, encrypted verification, commands, reconnection and revocation.
+- Cleanup removed the dedicated Cargo target, isolated Python environment and `dist/`, reclaiming 501.2 MiB while preserving sources/shared dependencies/evidence/Vite preview.
 
-- Restaurer la dernière carte retirée avec sa position, son favori et sa catégorie, sans annuler les autres modifications effectuées ensuite. Le message reste disponible dans la bibliothèque et les réglages Applications jusqu’à fermeture, retrait suivant ou redémarrage. Échec de sauvegarde : la carte reste retirée, le message permet de réessayer. Doublons et capacité maximale restent protégés.
-- Compteurs par catégorie tenant compte de la recherche, résultat sur le total, effacement de la recherche conservant le filtre et retour du focus dans le champ. Aide spécifique lorsqu’aucun favori n’existe.
-- Un déplacement active le tri personnalisé, ce qui évite un déplacement invisible sous un tri alphabétique. Le formulaire annonce ce comportement.
-- Validation : compilation et contrôle de version réussis ; 79 tests TypeScript dans 14 fichiers. Chrome système isolé à 1440 × 900 et 390 × 844 : suppression, annulation proposée par défaut, restauration et métadonnées, échec puis nouvelle tentative, dernière carte, navigation clavier, rechargement, réglages Applications, filtres et focus. Console sans erreur ni avertissement. Contrôle complémentaire des filtres dans le navigateur intégré.
-- Preuves locales : `output/playwright/ux-iteration/`, avec deux scripts de parcours et résultats explicites `passed: true`. Les captures attendent la fermeture des panneaux et notifications.
-- Aucun code Rust modifié pendant cette itération. La correction CI fige uniquement la dépendance de développement `srptools==1.0.1` compatible avec le constructeur appelé par pyatv 0.18.0 ; aucune dépendance de l’application distribuée n’est modifiée. Oracle complet local : mauvais PIN, association, vérification chiffrée, commandes, reconnexion et révocation réussis.
-- Nettoyage après validation : cible Cargo temporaire, environnement Python isolé et `dist/` retirés ; 501,2 Mio récupérés. Sources, dépendances partagées, preuves et aperçu Vite conservés.
+## Changes
 
-## Changements
+- Home shows running apps then favorites without duplicates, or the first six apps when neither exists. Explicit Open / Resume, Actions and Library card.
+- Library has accent-insensitive search, All / Favorites / Games / Video / Music / Other filters and custom/name/category sorting. Automatic categories use name/target, never artwork; the editor allows overrides. Favorites are available through card actions and app management.
+- Five Settings sections with saved last page, save feedback and visible errors restoring previous values: Display and ambience, Apps, Controls, Startup and system, Help and updates.
+- Inline controller test and collapsible Xbox / Steam Input help; existing capture-stop behavior retained.
+- Ten-essential-button remote guide with per-step saving, optional skip, first-unconfigured-step resume, binding summary and custom form. Conflicts block saving; leaving/skipping creates no binding.
+- Add detects on first opening, focuses search, caches session results, retries errors and labels the number of apps to add.
+- Larger copy/controls, visible mobile navigation, restored subpage focus and on-screen library keyboard. Windows desktop access moved into Power/system settings.
 
-- Accueil : applications en cours puis favoris, sans doublons ; les six premières applications servent de point de départ en l’absence de favoris et de sessions. Actions explicites Ouvrir / Reprendre, menu Actions et carte vers la bibliothèque.
-- Bibliothèque : recherche insensible aux accents, filtres Tout / Favoris / Jeux / Vidéo / Musique / Autres, tri personnel / alphabétique / catégorie. Les catégories automatiques reposent sur le nom et la cible, jamais sur l’ambiance visuelle ; l’éditeur permet de les corriger. Les favoris sont accessibles dans les actions de carte et dans la gestion des applications.
-- Paramètres : cinq sections, dernière page mémorisée, état de sauvegarde et message d’échec avec restauration des valeurs. Affichage et ambiance ; Applications ; Manettes et télécommandes ; Démarrage et système ; Aide et mises à jour.
-- Manettes : test intégré dans la même page, dépannage Xbox / Steam Input repliable. Les arrêts de capture existants restent actifs.
-- Télécommande : guide des dix boutons essentiels, sauvegarde par étape, passage facultatif, reprise au premier bouton non associé, résumé des associations et accès au formulaire personnalisé. Les conflits empêchent l’enregistrement ; quitter ou passer ne crée pas d’association.
-- Ajout : détection à la première ouverture, recherche focalisée, résultats conservés pendant la session, relance en cas d’erreur et libellé Ajouter N applications.
-- Lisibilité : textes et commandes agrandis, navigation mobile visible, focus entre sous-pages restauré, clavier virtuel utilisable pour rechercher dans la bibliothèque. Retour Windows déplacé dans le menu d’alimentation et les réglages système.
+## Persistence and compatibility
 
-## Persistance et compatibilité
+`Settings.library` stores favorites, categories and sorting; `lastSettingsTab` stores the Settings page. Serde defaults load older configurations. Tests cover save/reload and invalid categories. Preview storage normalizes missing/malformed preferences. No Windows user data files were touched during local validation.
 
-`Settings.library` conserve favoris, catégories et tri ; `lastSettingsTab` conserve la page des paramètres. Les valeurs par défaut Serde permettent de charger les configurations antérieures. Tests de sauvegarde/rechargement et de rejet de catégorie invalide. Le stockage isolé de l’aperçu normalise également les préférences manquantes ou mal formées. Aucun fichier de données utilisateur Windows n’a été touché.
+## Initial sprint validation
 
-## Validation effectuée
+- `npm run check`: versions, frontend build, TypeScript and Rust tests passed. Final frontend corrections were followed by build, tests, version check and Rustfmt.
+- Initial sprint result: 75 TypeScript tests in 13 files, 48 Rust tests (`--no-default-features` on macOS).
+- Isolated system Chrome at 1440×900 and 390×844; additional 1920×1080 check with 140% text and reduced-motion preference.
+- Favorites, accented search, combined filters, empty results, sorting, category editing, reload persistence, subpages/focus, virtual keyboard with inert background and first grid row → search.
+- Guide: preview keyboard learning, shortcut conflict, saving, skipping/resuming and exit focus. No Windows system reservation occurred.
+- Save success and simulated storage failure/restoration. Power confirmations focused Cancel without performing system actions.
+- Mocked Windows bridge only for automatic detection, failure/retry, multi-import, selecting the first imported card, deduplication, cached detection and running-session presentation; removed after testing.
+- Additional in-app browser inspection; no final console errors/warnings.
 
-- `npm run check` : version cohérente, compilation frontend, tests TypeScript et Rust réussis. Après les dernières corrections frontend : `npm run build`, `npm test`, `npm run version:check` et `cargo fmt --manifest-path src-tauri/Cargo.toml --check` réussis.
-- Résultat final : 75 tests TypeScript dans 13 fichiers ; 48 tests Rust. Les tests Rust utilisent `--no-default-features` sur macOS.
-- Chrome système, profil isolé, à 1440 × 900 et 390 × 844 ; contrôle supplémentaire à 1920 × 1080 avec texte à 140 % et préférence système de réduction des animations.
-- Parcours : favoris, recherche accentuée, filtres combinés, résultat vide, tri, catégorie modifiée, persistance après rechargement, sous-pages et retour du focus, clavier virtuel et arrière-plan inerte, première ligne de grille vers recherche.
-- Guide : apprentissage au clavier dans l’aperçu, conflit de raccourci, enregistrement, passage et reprise, focus à la sortie. Aucune réservation système Windows dans cet essai.
-- Sauvegarde : succès visible ; échec de stockage simulé et retour à la valeur enregistrée. Confirmation d’alimentation focalisée sur Annuler, sans exécuter l’action système.
-- Pont Windows simulé uniquement pour vérifier détection automatique, échec et relance, import multiple, sélection de la première carte importée, déduplication, cache de détection et présentation d’une session en cours. La simulation a été retirée après le test.
-- Inspection interactive complémentaire dans le navigateur intégré. Pas d’erreur ni d’avertissement console dans le contrôle final.
+Local scripts/results/captures: `output/playwright/ux-sprint/` (Git-ignored), including `rapport.html`. Initial assertions were adjusted to await transitions and target exact accessible names; final flows passed.
 
-Les scripts, résultats et captures locaux sont dans `output/playwright/ux-sprint/` (ignorés par Git). Le rapport visuel est `output/playwright/ux-sprint/rapport.html`. Certaines premières assertions de test ont été ajustées pour attendre la fin des transitions et cibler les libellés accessibles exacts ; les parcours finaux décrits ci-dessus sont passés.
+## Limits
 
-## Limites
+App launch/closure, real discovery, global shortcuts, audio outputs, physical controllers, Skip 1s / Flirc and iPhone still need interactive Windows testing. Browser/mocked-bridge checks do not prove native behavior. No accessibility certification or physical TV-distance readability measurement.
 
-Lancement et fermeture d’applications, découverte réelle, raccourcis globaux, sorties audio, manettes physiques, Skip 1s / Flirc et iPhone restent à vérifier sur un PC Windows. Les essais navigateur et le pont simulé ne prouvent pas le fonctionnement natif. Aucune certification d’accessibilité ni mesure de lecture à distance sur une TV réelle.
+## Storage
 
-## Espace disque
-
-Les sorties Cargo dédiées à ce sprint et `dist/` ont été supprimés après validation : environ 497 Mio récupérés (mesure exacte dans `output/playwright/ux-sprint/cleanup.txt`). Sources, dépendances, captures et aperçu Vite conservés.
+The initial sprint's dedicated Cargo outputs and `dist/` were removed after validation, reclaiming about 497 MiB (exact measurement: `output/playwright/ux-sprint/cleanup.txt`). Sources, dependencies, captures and Vite preview were preserved.

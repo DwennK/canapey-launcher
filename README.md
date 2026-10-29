@@ -29,7 +29,7 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/home.png" alt="Canapey 0.6.0 home screen with Netflix selected, favorite cards and the YouTube installation card" width="100%">
+  <img src="docs/images/home.png" alt="Canapey development home screen with Netflix selected, favorite cards and the YouTube installation card" width="100%">
   <br><sub><strong>Make yourself at home.</strong> Your favourites, clear Open and Actions controls, and cinematic backdrops.</sub>
 </p>
 
@@ -68,15 +68,19 @@
   </tr>
 </table>
 
-<sub>Actual 0.6.0 browser UI captures at 1440 × 1000, taken on 29 October 2026. The French interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “À installer” opens the installation flow. Native Windows actions are unavailable in browser preview. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
+<sub>Current development browser UI captures at 1440 × 1000, taken on 29 October 2026. The English interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “Install” opens the installation flow. Native Windows actions are unavailable in browser preview. These captures include the unreleased English interface; the v0.6.0 installer still uses French. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
 
 ## Why Canapey
 
 - **Made for the sofa.** Large cards, clear focus and navigation with a controller, keyboard or mouse.
-- **Your apps, together.** Import Windows applications, Store apps and existing shortcuts into one personal library.
+- **Your apps, together.** Import Windows apps, Store apps and existing shortcuts into one personal library.
 - **A home that works offline.** Artwork and fonts ship with the launcher. Everyday launcher use needs no account, server or remote service; web destinations still need a connection.
 - **Windows stays yours.** Explorer keeps running. Return to the desktop, use the system tray or reopen Canapey at any time. No shell replacement.
 - **Make it feel like home.** Reorder cards, import artwork, choose your screen, adjust interface size and turn motion or navigation sounds on or off. Navigation sounds are enabled by default on new installations; saved preferences are preserved.
+
+## Language
+
+The current source uses English throughout. First-launch system-language detection falls back to English, the only available language, and saves the preference. Find it under **Settings → Display and ambience → Language**. Other languages can be added later through the [language catalog](docs/LANGUAGES.md).
 
 ## What it does
 
@@ -85,7 +89,7 @@
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
 | **Shortcuts** | Executables, Windows shortcuts and supported URIs |
-| **Quick controls** | Header audio button, Windows master volume/mute, default output selection and confirmed sleep; controller-accessible side panel |
+| **Quick controls** | Header audio button, Windows master volume/mute, default output selection; controller-accessible side panel |
 | **iPhone remote** | Experimental Apple TV Remote receiver in Rust: PIN pairing, navigation, Home and media controls; disabled by default, private IPv4 networks only |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
 | **App sessions** | Launch, resume and request a normal close for identifiable apps; return when their last tracked window closes |
@@ -108,7 +112,7 @@
 
 WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
 
-On first launch, choose **Add applications**: detection starts automatically. Browse for an executable or Windows shortcut if needed. Select the applications you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Applications already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
+On first launch, choose **Add apps**: detection starts automatically. Browse for an executable or Windows shortcut if needed. Select the apps you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Apps already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
 
 ## Controls
 
@@ -121,44 +125,44 @@ On first launch, choose **Add applications**: detection starts automatically. Br
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
-| Return globally without closing the running app | Configurable in **Settings → Manettes et télécommandes → Télécommande** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
+| Return globally without closing the running app | Configurable in **Settings → Controls → Remote** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
 ### iPhone / Apple TV Remote
 
-In **Settings → Manettes et télécommandes → Télécommande → iPhone**, enable the receiver and choose **Associer un iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
+In **Settings → Controls → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
 
-Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active application's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
+Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
 
 This feature remains experimental: real Windows/iPhone compatibility and wake-from-sleep recovery have not yet been validated. Mouse mode, Siri, AirPlay, playback information and waking the PC are outside this version. See [implementation, upstream tracking and hardware checks](docs/APPLE_REMOTE.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ### Home, library and settings
 
-Home shows running applications first, followed by favorites without duplicates. Before favorites are selected, it offers up to six applications. Use **Actions → Ajouter aux favoris**, or the favorite control in **Settings → Applications**. **Bibliothèque** contains all applications, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the application editor; changing artwork does not change categorization. **Retour au bureau Windows** is in the power menu and **Démarrage et système**.
+Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
 
-Settings now have five sections: **Affichage et ambiance**, **Applications**, **Manettes et télécommandes**, **Démarrage et système**, and **Aide et mises à jour**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. These changes are included in v0.6.0.
+Settings now have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone entries are in the current development source.
 
 ### Skip 1s / Flirc remote
 
-In **Settings → Manettes et télécommandes → Télécommande**, choose **Configurer les boutons essentiels** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Enregistrer**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Couleurs** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
+In **Settings → Controls → Remote**, choose **Set up essential buttons** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Save**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Colors** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
-Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Activer dans tout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. OK, arrows and Back target the active application; only Home returns to Canapey. Launcher-only panels stay inactive while another application has focus. The same physical keyboard keys are affected and may lose their usual behavior in other applications. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
+Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Enable throughout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. OK, arrows and Back target the active app; only Home returns to Canapey. Launcher-only panels stay inactive while another app has focus. The same physical keyboard keys are affected and may lose their usual behavior in other apps. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
 
-A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Annuler l’écoute**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
+A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Cancel listening**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
 
-The **Quick controls** button sits immediately to the left of the clock. In its side panel, Up/Down moves through controls, Left/Right adjusts the focused volume slider by 2 percentage points, A / Cross or Enter selects an output or toggles mute, and B / Circle or Esc closes the panel. Sleep requires confirmation and initially focuses Cancel. Audio reflects the Windows default playback device; output selection changes the console, multimedia and communications defaults. Apps pinned to another output may retain their own routing. See [audio implementation and validation](docs/AUDIO.md) for platform limits and the hardware checklist.
+The **Quick controls** button sits immediately to the left of the clock. In its side panel, Up/Down moves through controls, Left/Right adjusts the focused volume slider by 2 percentage points, A / Cross or Enter selects an output or toggles mute, and B / Circle or Esc closes the panel. Sleep is available in the Power menu, requires confirmation and initially focuses Cancel. Audio reflects the Windows default playback device; output selection changes the console, multimedia and communications defaults. Apps pinned to another output may retain their own routing. See [audio implementation and validation](docs/AUDIO.md) for platform limits and the hardware checklist.
 
-On added application cards, a short Enter / A / Cross press activates on release. A running tracked application resumes directly, including on click; starting, closing and untracked sessions retain their session panel. A long press shows progress and opens card actions without launching or resuming on release. Right-click or touch-and-hold also opens the menu; touch scrolling cancels the gesture. Edit, move and remove cards here, or resume and close tracked sessions. Back / Esc dismisses the menu and restores the selected card. Suggestions and system cards keep their usual action.
+On added app cards, a short Enter / A / Cross press activates on release. A running tracked app resumes directly, including on click; starting, closing and untracked sessions retain their session panel. A long press shows progress and opens card actions without launching or resuming on release. Right-click or touch-and-hold also opens the menu; touch scrolling cancels the gesture. Edit, move and remove cards here, or resume and close tracked sessions. Back / Esc dismisses the menu and restores the selected card. Suggestions and system cards keep their usual action.
 
 New configurations default to **Xbox button + Start/Back fallback**. Existing saved choices are preserved. You can also choose **Start + Back**, **LB + RB + Start** (L1 + R1 + Options on PlayStation), or disable the shortcut. Hold duration applies to combinations; the Xbox button needs one press. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
 
-In **Settings → Manettes et télécommandes → Manette → Dépannage Xbox / Steam Input**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
+In **Settings → Controls → Controllers → Xbox / Steam Input troubleshooting**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
 
 <details>
 <summary><strong>Field editing, focus and controller compatibility</strong></summary>
 
-- Arrow keys move focus between controls. A / Cross on a text field opens the on-screen AZERTY keyboard, with accents, uppercase, numbers, symbols and caret controls. Choose **Terminé** to apply the draft or B / Circle to cancel; focus returns to the field. Search and name fields also have a **Clavier** button. Physical typing remains available. Enter starts or ends physical text editing; Enter / A / Cross starts or ends selector and slider editing.
+- Arrow keys move focus between controls. A / Cross on a text field opens the on-screen QWERTY keyboard, with uppercase, numbers, symbols and caret controls. Choose **Done** to apply the draft or B / Circle to cancel; focus returns to the field. Search and name fields also have a **Keyboard** button. Physical typing remains available. Enter starts or ends physical text editing; Enter / A / Cross starts or ends selector and slider editing.
 - While editing text, arrows move the caret and **Backspace deletes text**. Esc / B / Circle ends editing without closing the menu. Shift + Enter adds a line in the arguments field. Outside editing, Backspace returns to the previous menu.
 - From the carousel, Up reaches the main action and then the header. From the first library row, Up reaches search and filters. The power menu remains available in the header. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
 - Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Paths and arguments can also use the on-screen keyboard; choosing files still uses a Windows dialog.
@@ -167,7 +171,7 @@ In **Settings → Manettes et télécommandes → Manette → Dépannage Xbox / 
 
 </details>
 
-In **Settings → Manettes et télécommandes → Manette → Tester la manette**, choose **Démarrer le test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Arrêter le test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
+In **Settings → Controls → Controllers → Test controller**, choose **Start test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Stop test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
 
 ## Quick start
 
@@ -231,22 +235,22 @@ This produces a Windows installer; it does not prove that the app runs correctly
 
 Discovery runs only when requested, after the home screen is visible. It examines user/common Start menus and desktops, **App Paths** registry keys and packaged identities returned by **Get-StartApps**. Searches are bounded to 600 shortcuts per root, 1,500 results and 60 seconds.
 
-A fixed PowerShell script uses WScript.Shell to resolve `.lnk` files while retaining arguments and working directories. `CommandLineToArgvW` parses arguments. Executables use `std::process::Command` with an argument list; unresolved shortcuts and URIs use `ShellExecuteExW`; Store identities use `IApplicationActivationManager`. User paths are never concatenated into shell commands or scripts. If AppLocker or PowerShell policy blocks discovery, manual `.exe` entry remains available.
+A fixed PowerShell script uses WScript.Shell to resolve `.lnk` files while retaining arguments and working directories. `CommandLineToArgvW` parses arguments. Executables use `std::process::Command` with an argument list; unresolved shortcuts and URIs use `ShellExecuteExW`; Store identities use `IAppActivationManager`. User paths are never concatenated into shell commands or scripts. If AppLocker or PowerShell policy blocks discovery, manual `.exe` entry remains available.
 
 Allowed URI schemes: `http`, `https`, `steam`, `spotify`, `ms-xbox`. UNC paths, `.bat` / `.cmd` scripts and additional arguments for URI or packaged-app targets are deliberately rejected.
 
 Tracking uses **PID + creation time**, follows descendants and recognises existing non-browser instances by exact executable path. When the last associated window disappears, Canapey returns after a short delay; the first process exiting alone does not trigger a return. Apps with no window after 20 seconds are marked untracked, or removed from tracking if no relevant process remains. No process is killed by name.
 
-Normal close requests use `WM_CLOSE`. After five seconds, the interface may offer an explicitly confirmed force close, restricted to processes started by Canapey and their identified descendants. Existing instances cannot be force-closed. Tracked sessions remain available in Diagnostics even after their card is removed.
+Normal close requests use `WM_CLOSE`. After five seconds, the interface may offer an explicitly confirmed force close, restricted to processes started by Canapey and their identified descendants. Existing instances cannot be force-closed. Tracked sessions remain available in Diagnosticss even after their card is removed.
 
-Tracked applications are maximized when their resizable main window appears and when resumed from Canapey, preserving the application's title bar and close controls. Dialogs, tool windows and fixed-size windows are left unchanged. Automatic maximization happens once per window so subsequent manual resizing remains possible. Shared browser/URI windows are excluded; applications that refuse Windows window commands may retain their own size or fullscreen mode.
+Tracked apps are maximized when their resizable main window appears and when resumed from Canapey, preserving the app's title bar and close controls. Dialogs, tool windows and fixed-size windows are left unchanged. Automatic maximization happens once per window so subsequent manual resizing remains possible. Shared browser/URI windows are excluded; apps that refuse Windows window commands may retain their own size or fullscreen mode.
 
 **Tracking limits:**
 
 - Browser and URI launches often share processes or windows. Their launch is real, but their session is not individually identifiable: use Alt + Tab to resume and the global shortcut to return. Force close is unavailable. Stopping tracking does not close the browser.
-- Very short-lived launcher chains, unrelated service activations and system-hosted windows can evade association. Canapey does not adopt arbitrary PIDs to compensate. Store apps, Steam and single-instance applications need testing with the installed versions.
-- Elevated, protected, windowless or exclusive-fullscreen applications may refuse inspection, closing or focus. If Windows denies focus, Canapey flashes its taskbar button.
-- An application opened outside Canapey is recognised when its card is activated, rather than through a blocking startup scan.
+- Very short-lived launcher chains, unrelated service activations and system-hosted windows can evade association. Canapey does not adopt arbitrary PIDs to compensate. Store apps, Steam and single-instance apps need testing with the installed versions.
+- Elevated, protected, windowless or exclusive-fullscreen apps may refuse inspection, closing or focus. If Windows denies focus, Canapey flashes its taskbar button.
+- An app opened outside Canapey is recognised when its card is activated, rather than through a blocking startup scan.
 
 </details>
 
@@ -257,13 +261,13 @@ Windows data directory: `%APPDATA%\com.canapey.launcher\`.
 
 | File or directory | Contents |
 | --- | --- |
-| `config.json` | Applications, ordering, selection and settings; validated on every write |
+| `config.json` | Apps, ordering, selection and settings; validated on every write |
 | `config.backup.json` | Previous valid configuration; writes use a synced temporary file and atomic replacement in the same directory |
 | `config.invalid-<timestamp>.json` | Preserved invalid original before recovery |
 | `art/` | Imported images converted to WebP: 640 × 360 cards, 1920 × 1080 backgrounds; source limit 20 MB / 8,192 px, storage quota 128 MB |
 | `icons/` | Extracted icon cache, capped at 64 MB |
 
-Rotating logs are available under **Settings → Aide et mises à jour → Diagnostic → Ouvrir les logs**. They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
+Rotating logs are available under **Settings → Help and updates → Diagnostics → Open logs**. They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
 
 Optional start at login uses Tauri's official autostart plugin. Starting a second instance brings back the first; the tray offers open and quit actions. **Return to Windows** shows the desktop while keeping Canapey available. The preferred monitor is saved, with fallback to the primary screen if the TV is disconnected. Display topology is checked periodically, including after sleep. Winlogon and Explorer are left unchanged.
 
@@ -274,7 +278,7 @@ Optional start at login uses Tauri's official autostart plugin. Starting a secon
 
 Development builds keep updates disabled. Release builds, including `0.x`, embed the public verification key and use signed installers. The `0.x` channel reads `https://raw.githubusercontent.com/DwennK/canapey-launcher/updates/0.x.json`; it does not use GitHub's `latest` endpoint, which excludes prereleases. Future stable builds retain the stable release endpoint.
 
-**Migration:** v0.1.0 and v0.2.0 were built without an updater endpoint. Install the first updater-enabled release manually; subsequent versions can be offered in the application. No release has been republished or retagged.
+**Migration:** v0.1.0 and v0.2.0 were built without an updater endpoint. Install the first updater-enabled release manually; subsequent versions can be offered in the app. No release has been republished or retagged.
 
 For an authorised publication, follow [AGENTS.md](AGENTS.md): use a patch for fixes and small improvements, a minor for substantial features or breaking changes during the experimental phase. Moving to `1.0.0` requires an explicit decision.
 
@@ -291,7 +295,7 @@ The bump command synchronises `package.json`, `package-lock.json`, `src-tauri/ta
 
 Signing configuration (already provisioned for this repository; do not rotate existing keys casually):
 
-1. For a new repository only, generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the application; remove temporary local copies after verification and import into Actions secrets. Retain the same key for future releases.
+1. For a new repository only, generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the app; remove temporary local copies after verification and import into Actions secrets. Retain the same key for future releases.
 2. Store the private key in the Actions secret `TAURI_SIGNING_PRIVATE_KEY` and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 3. Store the **complete base64 contents** of the `.pub` file in the Actions variable `TAURI_UPDATER_PUBLIC_KEY`.
 4. The [release workflow](.github/workflows/release.yml) generates the ignored `tauri.release.conf.json` with the correct channel and signs the installer. Missing signing configuration fails the build instead of producing a release with updates disabled.

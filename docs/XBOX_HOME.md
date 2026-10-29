@@ -1,30 +1,30 @@
-# Retour à l’accueil avec la touche Xbox
+# Returning Home with the Xbox button
 
-Les nouvelles configurations utilisent `xbox` : un appui sur Xbox, avec Start + Back maintenus en secours. Les préférences déjà enregistrées ne sont pas modifiées. Les modes `startBack`, `shouldersStart` et `disabled` restent disponibles. La durée configurable ne concerne que les combinaisons. Revenir à Canapey ne ferme pas l’application ouverte et ne garantit pas sa mise en pause.
+New configurations use `xbox`: press Xbox, with held Start + Back as a fallback. Existing preferences remain unchanged. `startBack`, `shouldersStart` and `disabled` remain available. The configurable duration applies only to button combinations. Returning to Canapey leaves the current application open and does not guarantee that it pauses.
 
-## Implémentation
+## Implementation
 
-- Navigation au premier plan : gilrs / Windows Gaming Input, comme auparavant.
-- Lecture complémentaire des quatre emplacements XInput, toutes les 12 ms, indépendante du focus. Les combinaisons en arrière-plan sont suivies séparément pour chaque manette ; les boutons de plusieurs manettes ne sont jamais assemblés.
-- La DLL `xinput1_4.dll` est chargée exclusivement depuis System32. L’extension Guide par ordinal 100 est **non documentée par Microsoft**, également employée par [SDL](https://github.com/libsdl-org/SDL/blob/main/src/core/windows/SDL_xinput.c). Si elle manque, repli sur `XInputGetState` pour les combinaisons et indication de détection Xbox indisponible.
-- Un bouton Xbox déjà maintenu au démarrage, à la reconnexion ou au changement de mode doit être relâché avant d’être pris en compte. Un maintien ne répète pas le retour. Une interruption de lecture de plus de deux secondes remet les maintiens à zéro.
-- Le test dédié écoute pendant 15 secondes, y compris si Game Bar prend le focus. Un appui reçu valide uniquement la détection, sans retour à l’accueil. Il ne prouve pas l’absence d’un conflit avec Windows ou Steam. Fermer ce panneau annule son test ; un délai natif limite aussi l’écoute si le frontend disparaît.
-- Le test général de la manette suspend les retours Xbox. La lecture des autres boutons reste gérée par son propre panneau.
-- Le bouton Game Bar ouvre uniquement l’URI fixe `ms-settings:gaming-gamebar`. Aucun changement du Registre, aucune désinstallation et aucune désactivation automatique. Désactiver l’option permettant à la manette d’ouvrir Game Bar laisse Windows + G disponible.
+- Foreground navigation uses gilrs / Windows Gaming Input.
+- All four XInput slots are additionally read every 12 ms, independently of focus. Background combinations are tracked per controller; buttons from different controllers are never combined.
+- Loads `xinput1_4.dll` exclusively from System32. The Guide extension at ordinal 100 is **undocumented by Microsoft** and also used by [SDL](https://github.com/libsdl-org/SDL/blob/main/src/core/windows/SDL_xinput.c). If absent, combinations fall back to `XInputGetState`, with Xbox detection shown as unavailable.
+- An Xbox button held at startup, reconnection or mode change must be released before it can trigger Home. Holding never repeats Home. A read interruption longer than two seconds resets held-button state.
+- The dedicated test listens for 15 seconds even if Game Bar takes focus. Receiving a press confirms detection only, without returning Home; it does not prove that Windows or Steam has no conflicting binding. Closing the panel cancels the test; a native timeout also stops listening if the frontend disappears.
+- The general controller test suspends Xbox Home actions. Its own panel handles other buttons.
+- The Game Bar button opens only `ms-settings:gaming-gamebar`. It does not modify the registry, uninstall anything or automatically disable Game Bar. Disabling the controller shortcut leaves Windows + G available.
 
-## Limites et validation
+## Limits and validation
 
-La touche Xbox et les retours XInput en arrière-plan nécessitent une manette exposée comme périphérique XInput. Une manette PlayStation peut nécessiter un pilote/mappage adapté ; Canapey n’en installe pas. Les manettes uniquement WGI gardent leur navigation et leurs combinaisons existantes, mais leur réception en arrière-plan dépend du pilote. Windows, Steam Input et les overlays peuvent intercepter le bouton. Un test concluant sur une connexion USB ne prouve pas son fonctionnement en Bluetooth.
+Xbox-button detection and background XInput combinations require an XInput device. A PlayStation controller may need an appropriate driver/mapping; Canapey does not install one. WGI-only controllers retain navigation and existing combinations, but background reception depends on the driver. Windows, Steam Input and overlays can intercept the button. USB success does not prove Bluetooth support.
 
-Vérifications locales : tests Rust de la logique d’appui/maintien, compilation et Clippy Windows croisés, tests d’interface desktop/mobile. **Aucune manette physique ni exécution native Windows validée ici.**
+Local validation covered Rust press/hold logic, Windows cross-compilation and Clippy, and desktop/mobile UI tests. **No physical controller or native Windows interaction was validated in these local checks.**
 
-À vérifier sur le PC cible :
+Check on the target PC:
 
-1. USB puis Bluetooth : détection d’un appui, maintien sans répétition, déconnexion/reconnexion avec bouton maintenu.
-2. Depuis un jeu ou une application, retour Xbox puis Start + Back ; vérifier que l’application reste ouverte et peut être reprise.
-3. Choix LB + RB + Start : seul ce raccourci provoque le retour ; mode Désactivé : aucun retour global.
-4. Deux manettes : chaque combinaison doit venir d’une seule manette.
-5. Game Bar activée puis raccourci désactivé, Steam Input activé/désactivé ; vérifier les éventuels conflits et le lien vers les paramètres Windows.
-6. Test dédié : réussite, délai expiré, annulation, fermeture des paramètres et passage au test général de la manette.
+1. USB and Bluetooth: presses, nonrepeating holds, disconnection/reconnection while held.
+2. Return from a game/app with Xbox and Start + Back; confirm the app remains open and can resume.
+3. LB + RB + Start mode responds only to that shortcut; Disabled produces no global Home action.
+4. Each combination must come from one controller.
+5. Game Bar shortcut and Steam Input enabled/disabled; conflicts and Windows settings link.
+6. Dedicated test success, timeout, cancellation, settings closure and switching to the general test.
 
-Références : [URI des paramètres Windows](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-settings), [Game Bar](https://support.microsoft.com/en-gb/accessibility/windows/use-a-screen-reader-to-record-your-screen-with-xbox-game-bar), [limites Windows de gilrs](https://docs.rs/gilrs/latest/gilrs/).
+References: [Windows settings URIs](https://learn.microsoft.com/en-us/windows/apps/develop/launch/launch-settings), [Game Bar](https://support.microsoft.com/en-gb/accessibility/windows/use-a-screen-reader-to-record-your-screen-with-xbox-game-bar), [gilrs Windows limitations](https://docs.rs/gilrs/latest/gilrs/).
