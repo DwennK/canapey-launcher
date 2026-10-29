@@ -67,7 +67,6 @@ const XboxHomeSettings = defineAsyncComponent(
   () => import("./components/XboxHomeSettings.vue"),
 );
 const AppleRemoteSettings = defineAsyncComponent(() => import("./components/AppleRemoteSettings.vue"));
-const remoteDevice = ref<"flirc" | "iphone">("flirc");
 async function saveAppleRemote(settings: import("./lib/apple-remote").AppleRemoteSettings) {
   config.value.settings.appleRemote = settings;
   return queueSave();
@@ -266,11 +265,11 @@ const settingsTab = ref("display"),
   scanBusy = ref(false),
   scanError = ref(""),
   chosen = ref(new Set<string>());
-const settingsSection = computed(() => ['controls', 'remote'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
+const settingsSection = computed(() => ['controls', 'remote', 'iphone'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
 const settingsSections = {
   display: { get label() { return t('Display and ambience'); }, icon: 'ambiance', page: 'display' },
   apps: { get label() { return t('Apps'); }, icon: 'grid', page: 'apps' },
-  devices: { get label() { return t('Controllers and remotes'); }, icon: 'controller', page: 'controls' },
+  devices: { get label() { return t('Controls'); }, icon: 'controller', page: 'controls' },
   system: { get label() { return t('Startup and system'); }, icon: 'monitor', page: 'system' },
   help: { get label() { return t('Help and updates'); }, icon: 'info', page: 'updates' },
 };
@@ -1394,7 +1393,7 @@ onMounted(async () => {
     const b = await api.boot();
     startupMark("bootstrapEnd");
     config.value = b.config;
-    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
+    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'iphone', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
     native.value = b.native;
@@ -1874,30 +1873,23 @@ onUnmounted(() => {
                 ><small>Canapey {{ version }}</small>
               </nav>
               <div :key="settingsTab" class="settings-content">
-                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" :aria-label="t('Devices')"><button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">{{ t('Controller') }}</button><button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">{{ t('Remote') }}</button></div>
+                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" :aria-label="t('Controls')">
+                  <button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">{{ t('Controllers') }}</button>
+                  <button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">{{ t('Remote') }}</button>
+                  <button :aria-pressed="settingsTab === 'iphone'" @click="settingsTab = 'iphone'">iPhone</button>
+                </div>
                 <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" :aria-label="t('Help')"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">{{ t('Updates') }}</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">{{ t('Diagnostics') }}</button></div>
-                <div v-if="settingsTab === 'remote'">
-                  <div v-if="remoteDevice === 'iphone'" class="remote-device-tabs" role="group" :aria-label="t('Remote type')">
-                    <button class="small-button" aria-pressed="false" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
-                    <button class="small-button" aria-pressed="true" @click="remoteDevice = 'iphone'">iPhone</button>
-                  </div>
-                  <AppleRemoteSettings v-if="remoteDevice === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
+                <AppleRemoteSettings v-if="settingsTab === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
                 <RemoteHomeSettings
-                  v-else
+                  v-if="settingsTab === 'remote'"
                   :native="native"
                   :bindings="config.settings.remoteBindings ?? []"
                   :apps="config.apps"
                   :save-bindings="saveRemoteBindings"
                   @capturing="remoteCaptureChanged"
                 >
-                  <template #title>
-                    <div id="remote-title" class="remote-device-tabs in-heading" role="group" :aria-label="t('Remote type')">
-                      <button class="small-button" aria-pressed="true" @click="remoteDevice = 'flirc'">Skip 1s / Flirc</button>
-                      <button class="small-button" aria-pressed="false" @click="remoteDevice = 'iphone'">iPhone</button>
-                    </div>
-                  </template>
+                  <template #title><h3 id="remote-title">Skip 1s / Flirc</h3></template>
                 </RemoteHomeSettings>
-                </div>
                 <template v-if="settingsTab === 'system'"
                   ><h3>{{ t('Startup and system') }}</h3>
                   <label class="setting-row"

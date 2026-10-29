@@ -252,6 +252,7 @@ impl Config {
                 "apps",
                 "controls",
                 "remote",
+                "iphone",
                 "system",
                 "updates",
                 "diagnostic",
