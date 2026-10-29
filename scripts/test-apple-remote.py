@@ -1,4 +1,7 @@
-"""Interop only: pip install pyatv==0.18.0. Never shipped in the installer."""
+"""Interop only: pip install -r scripts/apple-remote-test-requirements.txt.
+
+These dependencies are never shipped in the installer.
+"""
 import asyncio
 import json
 import sys

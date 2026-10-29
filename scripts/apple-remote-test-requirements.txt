@@ -1,2 +1,4 @@
 # Development/CI oracle only; never packaged in Canapey.
 pyatv==0.18.0
+# pyatv 0.18 uses the pre-2.0 SRPClientSession constructor.
+srptools==1.0.1
