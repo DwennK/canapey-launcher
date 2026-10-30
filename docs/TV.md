@@ -1,6 +1,6 @@
 # Philips TV power
 
-Controls → TV pairs one compatible Philips jointSPACE v6 TV with the current Windows account. This is development-source functionality; it is not included in the published v0.6.0 installer.
+Controls → TV pairs one compatible Philips jointSPACE v6 TV with the current Windows account. Available from v0.7.0; physical Windows lifecycle validation is still required.
 
 ## Setup
 

@@ -23,8 +23,8 @@ The initial name is `Canapey — <COMPUTERNAME>`. **Name and network** changes i
 
 | Source | Latest reviewed reference | Ported / used reference |
 | --- | --- | --- |
-| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0; HEAD rechecked October 29, 2026 | Companion subset of this commit, adapted to Rust for v0.5.0; not a complete port |
-| [pyatv](https://github.com/postlund/pyatv) | [`b277a4c8222ecdcbaab8a24e3e713ca44765adb4`](https://github.com/postlund/pyatv/tree/b277a4c8222ecdcbaab8a24e3e713ca44765adb4), HEAD rechecked October 29, 2026; compared with `v0.18.0` for Companion, HAP/SRP, OPACK and ChaCha20 | Interoperability oracle `pyatv==0.18.0`; adapted cryptographic/serialization conventions |
+| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0; HEAD rechecked October 30, 2026 | Companion subset of this commit, adapted to Rust for v0.5.0; not a complete port |
+| [pyatv](https://github.com/postlund/pyatv) | [`b277a4c8222ecdcbaab8a24e3e713ca44765adb4`](https://github.com/postlund/pyatv/tree/b277a4c8222ecdcbaab8a24e3e713ca44765adb4), HEAD rechecked October 30, 2026; compared with `v0.18.0` for Companion, HAP/SRP, OPACK and ChaCha20 | Interoperability oracle `pyatv==0.18.0`; adapted cryptographic/serialization conventions |
 | [Companion documentation](https://pyatv.dev/documentation/protocols/#companion-link) | Read October 19, 2026 | Protocol description, not an Apple compatibility guarantee |
 
 Full MIT licenses and copyrights are retained in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md), also bundled as an application resource. The reference Python code is not shipped.
@@ -55,6 +55,7 @@ The implementation chat's recorded Codex monitor runs **Mondays at 09:00 Europe/
 | --- | --- | --- |
 | October 19, 2026, v0.5.0 | windows-apple-remote `c8a494d`; pyatv `b277a4c8222ecdcbaab8a24e3e713ca44765adb4` versus `v0.18.0` | windows-apple-remote HEAD unchanged, no open issues at review time; no Companion/OPACK/HAP-SRP/ChaCha20/TLV8 changes in pyatv comparison. No additional fix to port; integrated references unchanged. pyatv oracle and release checks rerun. |
 | October 29, 2026, v0.6.0 | windows-apple-remote `c8a494dcb656c79248fd24d60a814b35aa051e54`, latest `v0.2.0`; pyatv `b277a4c8222ecdcbaab8a24e3e713ca44765adb4` | Both HEADs unchanged since October 19; no open windows-apple-remote issues. pyatv comparison with `v0.18.0` changes only `CHANGES.md` and `pyatv/const.py`, no Companion/crypto files. No new fixes accepted/rejected; actually ported references unchanged. Local Rust tests and CI Companion oracle required for this release. |
+| October 30, 2026, v0.7.0 | windows-apple-remote `c8a494dcb656c79248fd24d60a814b35aa051e54`; pyatv `b277a4c8222ecdcbaab8a24e3e713ca44765adb4` | Both HEADs unchanged; no open windows-apple-remote issues. Comparing pyatv with v0.18.0 still changes only CHANGES.md and pyatv/const.py. No new Companion fix to accept or reject; integrated revisions unchanged. Windows tests and the CI Companion oracle are release gates. |
 
 ## Architecture and protection limits
 

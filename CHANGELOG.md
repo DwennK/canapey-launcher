@@ -2,9 +2,13 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-30
+
 - Add a LaunchBox card and Arcade ambience with bundled ImageGen artwork. Recognize LaunchBox and Big Box during Windows app import, including common portable folders.
 
 - Add Controls → TV with local Philips discovery, PIN pairing, protected credentials and manual wake/standby tests. Automatic wake at launch and PC resume is enabled after pairing; automatic TV standby at PC sleep/shutdown is a separate option, disabled by default. Windows lifecycle behavior still requires physical PC testing.
+
+- Preserve bundled application logos after Windows import, independently of the selected artwork theme.
 
 - Remove duplicate Open / Resume and Actions buttons below the Home title; keep card activation and long-press actions.
 

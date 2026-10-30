@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.6.0-experimental-78664E?style=flat-square" alt="Version 0.6.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.7.0-experimental-78664E?style=flat-square" alt="Version 0.7.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.6.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.7.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -68,7 +68,7 @@
   </tr>
 </table>
 
-<sub>Current development browser UI captures at 1440 × 1000, taken on 29 October 2026. The English interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “Install” opens the installation flow. Native Windows actions are unavailable in browser preview. These captures include the unreleased English interface; the v0.6.0 installer still uses French. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
+<sub>Current development browser UI captures at 1440 × 1000, taken on 29 October 2026. The English interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “Install” opens the installation flow. Native Windows actions are unavailable in browser preview. The English interface ships in v0.7.0. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
 
 ## Why Canapey
 
@@ -102,7 +102,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.6.0.** Download the Windows installer from [the v0.6.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.6.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.7.0.** Download the Windows installer from [the v0.7.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.7.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -133,13 +133,13 @@ On first launch, choose **Add apps**: detection starts automatically. Browse for
 
 LaunchBox has a suggested card, a dedicated backdrop and an **Arcade** general ambience with bundled ImageGen artwork. Import **LaunchBox** or **Big Box** through **Add apps → LaunchBox**; Windows discovery checks shortcuts, registered apps and common portable folders. Use **Browse** for a custom location. Big Box remains a separate application and follows LaunchBox's licensing; Canapey does not install games, emulators or a LaunchBox license. The artwork is original Canapey artwork, not a game screenshot or official LaunchBox branding. See [asset provenance and generation prompt](public/art/LAUNCHBOX.md).
 
-### Philips TV power (development source)
+### Philips TV power
 
 In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and enter the four-digit code shown on its screen. Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
 
 After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and a Philips screen-power command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
 
-Only Philips TVs with jointSPACE v6 PIN pairing are supported. This is in the development source, not the published v0.6.0 installer. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
+Only Philips TVs with jointSPACE v6 PIN pairing are supported. Available from v0.7.0. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
 
 ### iPhone / Apple TV Remote
 
@@ -153,7 +153,7 @@ This feature remains experimental: real Windows/iPhone compatibility and wake-fr
 
 Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
 
-Settings now have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone entries are in the current development source.
+Settings now have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone / TV entries ship in v0.7.0.
 
 ### Skip 1s / Flirc remote
 
