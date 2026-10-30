@@ -104,7 +104,7 @@ pub fn format_mac(bytes: [u8; 6]) -> String {
 }
 pub fn magic_packet(mac: [u8; 6]) -> [u8; 102] {
     let mut packet = [0xff; 102];
-    for chunk in packet[6..].chunks_exact_mut(6) {
+    for chunk in packet[6..].as_chunks_mut::<6>().0 {
         chunk.copy_from_slice(&mac);
     }
     packet
