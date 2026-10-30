@@ -66,6 +66,7 @@ import {
 const XboxHomeSettings = defineAsyncComponent(
   () => import("./components/XboxHomeSettings.vue"),
 );
+const TvSettings = defineAsyncComponent(() => import("./components/TvSettings.vue"));
 const AppleRemoteSettings = defineAsyncComponent(() => import("./components/AppleRemoteSettings.vue"));
 async function saveAppleRemote(settings: import("./lib/apple-remote").AppleRemoteSettings) {
   config.value.settings.appleRemote = settings;
@@ -265,7 +266,7 @@ const settingsTab = ref("display"),
   scanBusy = ref(false),
   scanError = ref(""),
   chosen = ref(new Set<string>());
-const settingsSection = computed(() => ['controls', 'remote', 'iphone'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
+const settingsSection = computed(() => ['controls', 'remote', 'iphone', 'tv'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
 const settingsSections = {
   display: { get label() { return t('Display and ambience'); }, icon: 'ambiance', page: 'display' },
   apps: { get label() { return t('Apps'); }, icon: 'grid', page: 'apps' },
@@ -1393,7 +1394,7 @@ onMounted(async () => {
     const b = await api.boot();
     startupMark("bootstrapEnd");
     config.value = b.config;
-    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'iphone', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
+    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'iphone', 'tv', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
     native.value = b.native;
@@ -1874,8 +1875,10 @@ onUnmounted(() => {
                   <button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">{{ t('Controllers') }}</button>
                   <button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">{{ t('Remote') }}</button>
                   <button :aria-pressed="settingsTab === 'iphone'" @click="settingsTab = 'iphone'">iPhone</button>
+                  <button :aria-pressed="settingsTab === 'tv'" @click="settingsTab = 'tv'">{{ t('TV') }}</button>
                 </div>
                 <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" :aria-label="t('Help')"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">{{ t('Updates') }}</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">{{ t('Diagnostics') }}</button></div>
+                <TvSettings v-if="settingsTab === 'tv'" :native="native" :autostart="config.settings.autostart" @startup="settingsTab = 'system'" />
                 <AppleRemoteSettings v-if="settingsTab === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
                 <RemoteHomeSettings
                   v-if="settingsTab === 'remote'"

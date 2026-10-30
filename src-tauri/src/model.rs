@@ -253,6 +253,7 @@ impl Config {
                 "controls",
                 "remote",
                 "iphone",
+                "tv",
                 "system",
                 "updates",
                 "diagnostic",

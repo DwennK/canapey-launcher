@@ -129,6 +129,14 @@ On first launch, choose **Add apps**: detection starts automatically. Browse for
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
+### Philips TV power (development source)
+
+In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and enter the four-digit code shown on its screen. Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
+
+After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and a Philips screen-power command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
+
+Only Philips TVs with jointSPACE v6 PIN pairing are supported. This is in the development source, not the published v0.6.0 installer. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
+
 ### iPhone / Apple TV Remote
 
 In **Settings → Controls → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.

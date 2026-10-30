@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Controls → TV with local Philips discovery, PIN pairing, protected credentials and manual wake/standby tests. Automatic wake at launch and PC resume is enabled after pairing; automatic TV standby at PC sleep/shutdown is a separate option, disabled by default. Windows lifecycle behavior still requires physical PC testing.
+
 - Remove duplicate Open / Resume and Actions buttons below the Home title; keep card activation and long-press actions.
 
 - Simplify Controls into direct Controllers, Remote and iPhone tabs, with the iPhone page remembered after restart.

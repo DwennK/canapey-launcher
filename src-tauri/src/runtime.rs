@@ -769,8 +769,17 @@ pub(crate) fn remote_dispatcher(
 }
 
 #[tauri::command]
-fn power_action(action: String) -> Result<(), String> {
-    platform::power(&action)
+async fn power_action(app: tauri::AppHandle, action: String) -> Result<(), String> {
+    if matches!(action.as_str(), "sleep" | "shutdown" | "restart") {
+        crate::tv_desktop::before_pc_power(&app, Duration::from_secs(4)).await;
+    }
+    let result = tauri::async_runtime::spawn_blocking(move || platform::power(&action))
+        .await
+        .map_err(|e| e.to_string())?;
+    if result.is_err() {
+        crate::tv_desktop::power_cancelled(&app);
+    }
+    result
 }
 #[tauri::command]
 fn quit(app: tauri::AppHandle) {
@@ -1103,6 +1112,8 @@ pub fn run() {
                 update: Mutex::new(None),
                 active: Mutex::new(None),
             });
+            app.manage(crate::tv_desktop::TvState::new(dir.join("tv.dpapi")));
+            crate::tv_desktop::start(app.handle());
             app.manage(crate::xbox_home::XboxHomeState::default());
             app.manage(crate::apple_remote_desktop::AppleRemoteState::new(
                 config.settings.apple_remote.clone(),
@@ -1152,6 +1163,16 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            crate::tv_desktop::tv_status,
+            crate::tv_desktop::tv_discover,
+            crate::tv_desktop::tv_inspect,
+            crate::tv_desktop::tv_pair,
+            crate::tv_desktop::tv_pair_finish,
+            crate::tv_desktop::tv_cancel_pairing,
+            crate::tv_desktop::tv_preferences,
+            crate::tv_desktop::tv_forget,
+            crate::tv_desktop::tv_wake,
+            crate::tv_desktop::tv_standby,
             run_remote_action,
             crate::apple_remote_desktop::apple_remote_status,
             crate::apple_remote_desktop::apple_remote_pair,
@@ -1194,6 +1215,7 @@ pub fn run() {
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 crate::apple_remote_desktop::shutdown(app);
+                crate::tv_desktop::shutdown(app);
             }
         });
 }
