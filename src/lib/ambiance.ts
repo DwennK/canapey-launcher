@@ -6,6 +6,7 @@ export const generalAmbiances = [
   { id: 'spotify', get name() { return t('Emerald'); }, get description() { return t('Green light, Spotify atmosphere'); } },
   { id: 'night', get name() { return t('Night'); }, get description() { return t('Deep blue, city rain'); } },
   { id: 'dusk', get name() { return t('Dusk'); }, get description() { return t('Copper and soft light'); } },
+  { id: 'launchbox', get name() { return t('Arcade'); }, get description() { return t('Warm light, retro games'); } },
 ] as const;
 
 export function backgroundFor(theme: Theme, customImage: string, settings: Pick<Settings, 'dynamicBackground' | 'generalAmbiance'>) {

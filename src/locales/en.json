@@ -654,5 +654,9 @@
   "Pair a TV first.": "Pair a TV first.",
   "The TV did not respond to the standby command.": "The TV did not respond to the standby command.",
   "startup": "startup",
-  "Put the TV in standby when the PC sleeps, shuts down or restarts. Canapey must stay open.": "Put the TV in standby when the PC sleeps, shuts down or restarts. Canapey must stay open."
+  "Put the TV in standby when the PC sleeps, shuts down or restarts. Canapey must stay open.": "Put the TV in standby when the PC sleeps, shuts down or restarts. Canapey must stay open.",
+  "Arcade": "Arcade",
+  "Warm light, retro games": "Warm light, retro games",
+  "LaunchBox · Arcade": "LaunchBox · Arcade",
+  "LaunchBox and Big Box share an installation. Use Browse if your portable folder is not detected.": "LaunchBox and Big Box share an installation. Use Browse if your portable folder is not detected."
 }

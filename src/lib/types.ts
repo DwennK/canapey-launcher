@@ -6,6 +6,7 @@ export type Theme =
   | "internet"
   | "plezy"
   | "steam"
+  | "launchbox"
   | "silo"
   | "windows";
 export type Target = {
@@ -36,7 +37,7 @@ export interface Settings {
   sound: boolean;
   soundVolume: number;
   dynamicBackground: boolean;
-  generalAmbiance: "home" | "spotify" | "night" | "dusk";
+  generalAmbiance: "home" | "spotify" | "night" | "dusk" | "launchbox";
   backgroundBrightness: number;
   backgroundBlur: number;
   deadzone: number;
@@ -139,6 +140,7 @@ export const defaults = (): Config => ({
 });
 export const themeFor = (name: string): Theme => {
   const n = name.toLowerCase();
+  if (/\b(?:launchbox|big\s?box)\b/i.test(n)) return "launchbox";
   return (
     (
       [

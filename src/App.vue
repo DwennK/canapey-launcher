@@ -379,6 +379,7 @@ const examples: Tile[] = [
     theme: "internet",
     suggestion: true,
   },
+  { id: "suggest-launchbox", name: "LaunchBox", theme: "launchbox", suggestion: true },
   { id: "suggest-steam", name: "Steam", theme: "steam", suggestion: true },
   { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
   { id: "suggest-silo", name: "Silo", theme: "silo", suggestion: true },
@@ -2263,6 +2264,7 @@ onUnmounted(() => {
                     'Netflix',
                     'Spotify',
                     'Plezy',
+                    'LaunchBox',
                     'Steam',
                     'Silo',
                   ]"
@@ -2276,6 +2278,7 @@ onUnmounted(() => {
               <label class="system-filter">
                 <input v-model="showSystemTools" type="checkbox" /> {{ t('Show system tools') }} </label>
             </div>
+            <p v-if="/launchbox|big\s?box/i.test(query)" class="note">{{ t('LaunchBox and Big Box share an installation. Use Browse if your portable folder is not detected.') }}</p>
             <div class="detected-list">
               <div v-if="scanBusy" class="empty-search">
                 <span class="spinner" />{{ t('Searching the Start menu, desktop and registered apps…') }} </div>
@@ -2383,11 +2386,12 @@ onUnmounted(() => {
                         'steam',
                         'plezy',
                         'silo',
+                        'launchbox',
                       ]"
                       :key="theme"
                       :value="theme"
                     >
-                      {{ theme === "home" ? t('General ambience') : theme === "silo" ? t('Silo · Streaming') : theme }}
+                      {{ theme === "home" ? t('General ambience') : theme === "silo" ? t('Silo · Streaming') : theme === "launchbox" ? t('LaunchBox · Arcade') : theme }}
                     </option>
                   </select></label
                 ><label

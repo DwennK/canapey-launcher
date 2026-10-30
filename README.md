@@ -129,6 +129,10 @@ On first launch, choose **Add apps**: detection starts automatically. Browse for
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
+### LaunchBox and Arcade
+
+LaunchBox has a suggested card, a dedicated backdrop and an **Arcade** general ambience with bundled ImageGen artwork. Import **LaunchBox** or **Big Box** through **Add apps → LaunchBox**; Windows discovery checks shortcuts, registered apps and common portable folders. Use **Browse** for a custom location. Big Box remains a separate application and follows LaunchBox's licensing; Canapey does not install games, emulators or a LaunchBox license. The artwork is original Canapey artwork, not a game screenshot or official LaunchBox branding. See [asset provenance and generation prompt](public/art/LAUNCHBOX.md).
+
 ### Philips TV power (development source)
 
 In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and enter the four-digit code shown on its screen. Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.

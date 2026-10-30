@@ -28,7 +28,7 @@ export function categoryFor(app: AppEntry, preferences: LibraryPreferences): App
   if (Object.hasOwn(preferences.categories, app.id)) return preferences.categories[app.id]!;
   // Artwork is a personal choice, not the application's identity.
   const identity = `${app.name} ${app.target.value}`.toLowerCase();
-  if (/\b(steam|xbox|epic games|gog|battle\.net)\b/.test(identity)) return 'games';
+  if (/\b(launchbox|big\s?box|steam|xbox|epic games|gog|battle\.net)\b/.test(identity)) return 'games';
   if (/\b(netflix|youtube|plezy|silo|plex|vlc|disney|prime video)\b/.test(identity)) return 'video';
   if (/\b(spotify|deezer|tidal|apple music|qobuz)\b/.test(identity)) return 'music';
   return 'other';

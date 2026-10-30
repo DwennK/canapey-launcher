@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 
 describe('general and application ambiances', () => {
   it('provides a real bundled card and backdrop for every application theme', () => {
-    for (const theme of ['home', 'netflix', 'youtube', 'spotify', 'steam', 'plezy', 'silo', 'internet', 'windows'] as const) {
+    for (const theme of ['home', 'netflix', 'youtube', 'spotify', 'steam', 'plezy', 'silo', 'internet', 'launchbox', 'windows'] as const) {
       for (const path of [...cardArtwork(theme), ...backgroundCandidates(theme, '', defaults().settings)]) {
         expect(existsSync(`public${path}`), path).toBe(true);
       }

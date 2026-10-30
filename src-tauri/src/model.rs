@@ -273,7 +273,8 @@ impl Config {
             || !(0.0..=1.0).contains(&s.sound_volume)
             || !(0.3..=1.0).contains(&s.background_brightness)
             || !(0.0..=12.0).contains(&s.background_blur)
-            || !["home", "spotify", "night", "dusk"].contains(&s.general_ambiance.as_str())
+            || !["home", "spotify", "night", "dusk", "launchbox"]
+                .contains(&s.general_ambiance.as_str())
             || !s.deadzone.is_finite()
             || !(0.1..=0.5).contains(&s.deadzone)
             || !(600..=4000).contains(&s.hold_ms)
@@ -293,7 +294,15 @@ impl Config {
                 return Err("Invalid app name or identifier.".into());
             }
             if ![
-                "home", "youtube", "netflix", "spotify", "internet", "plezy", "steam", "silo",
+                "home",
+                "youtube",
+                "netflix",
+                "spotify",
+                "internet",
+                "plezy",
+                "steam",
+                "silo",
+                "launchbox",
                 "windows",
             ]
             .contains(&a.theme.as_str())

@@ -41,6 +41,24 @@ if (!$env:CANAPEY_SINGLE_LINK) {
   foreach ($reg in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths','HKLM:\Software\Microsoft\Windows\CurrentVersion\App Paths')) {
     if (Test-Path $reg) { foreach ($key in Get-ChildItem $reg -ErrorAction SilentlyContinue) { try { $p=$key.GetValue(''); if ($p) { $p=$p.Trim('"'); Add-App ([IO.Path]::GetFileNameWithoutExtension($key.PSChildName)) 'executable' $p '' '' 'Registered app' } } catch {} } }
   }
+  # LaunchBox is portable; shortcuts may be absent. Check a small set of known folders
+  # plus the folder of any existing LaunchBox/Big Box shortcut, never entire drives.
+  $launchboxRoots = @(
+    (Join-Path $env:USERPROFILE 'LaunchBox'),
+    (Join-Path $env:LOCALAPPDATA 'LaunchBox'),
+    (Join-Path $env:SystemDrive 'LaunchBox')
+  )
+  foreach ($row in @($rows.ToArray())) {
+    if ($row.kind -eq 'executable' -and [IO.Path]::GetFileName($row.value) -match '^(LaunchBox|BigBox)\.exe$') {
+      $launchboxRoots += Split-Path -Parent $row.value
+    }
+  }
+  foreach ($folder in ($launchboxRoots | Select-Object -Unique)) {
+    foreach ($item in @(@('LaunchBox','LaunchBox.exe'), @('Big Box','BigBox.exe'))) {
+      $candidate = Join-Path $folder $item[1]
+      if (Test-Path -LiteralPath $candidate -PathType Leaf) { Add-App $item[0] 'executable' $candidate '' $folder 'Portable app' }
+    }
+  }
   $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue)
   foreach ($app in Get-StartApps -ErrorAction SilentlyContinue) {
     if ($app.AppID -like '*!*') {

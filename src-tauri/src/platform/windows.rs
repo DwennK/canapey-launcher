@@ -469,12 +469,23 @@ pub fn scan(cache: &Path, single: Option<&Path>) -> Result<Vec<AppEntry>, String
         rows.into_iter()
             .map(|f| {
                 let lower = f.name.to_lowercase();
-                let theme = [
-                    "youtube", "netflix", "spotify", "internet", "plezy", "steam", "silo",
-                ]
-                .into_iter()
-                .find(|s| lower.split(|c: char| !c.is_alphanumeric()).any(|w| w == *s))
-                .unwrap_or("home")
+                let theme = if lower == "big box" || lower == "bigbox" {
+                    "launchbox"
+                } else {
+                    [
+                        "youtube",
+                        "netflix",
+                        "spotify",
+                        "internet",
+                        "plezy",
+                        "steam",
+                        "silo",
+                        "launchbox",
+                    ]
+                    .into_iter()
+                    .find(|s| lower.split(|c: char| !c.is_alphanumeric()).any(|w| w == *s))
+                    .unwrap_or("home")
+                }
                 .to_owned();
                 AppEntry {
                     id: uuid::Uuid::new_v4().to_string(),
