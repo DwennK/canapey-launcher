@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pairingSeconds, validTvMac, validTvPin } from '../src/lib/tv';
+import { pairingSeconds, validTvMac, validTvPin, tvPairMode, tvFamily } from '../src/lib/tv';
 describe('TV setup input and expiry', () => {
   it('accepts a leading-zero PIN and rejects incomplete or nonnumeric input', () => {
     expect(validTvPin('0042')).toBe(true);
@@ -15,5 +15,18 @@ describe('TV setup input and expiry', () => {
     expect(validTvMac('02:11:22:33:44:55')).toBe(true);
     expect(validTvMac('02-11-22-33-44-55')).toBe(true);
     for (const value of ['FF:FF:FF:FF:FF:FF','00:00:00:00:00:00','01:11:22:33:44:55','02:11:22:33:44','02:11:22:33:44:5']) expect(validTvMac(value)).toBe(false);
+  });
+});
+
+describe('TV connection families', () => {
+  it('keeps saved Philips TVs compatible and chooses the right authorization flow', () => {
+    const tv = {name: 'TV', ip: '192.168.1.20', mac: null};
+    expect(tvPairMode(tv)).toBe('pin');
+    expect(tvFamily(tv)).toBe('Philips');
+    expect(tvPairMode({...tv, protocol: 'lgWebos'})).toBe('approval');
+    expect(tvPairMode({...tv, protocol: 'samsungTizen'})).toBe('approval');
+    expect(tvPairMode({...tv, protocol: 'sonyBravia'})).toBe('psk');
+    expect(tvPairMode({...tv, protocol: 'roku'})).toBe('network');
+    expect(tvFamily({...tv, protocol: 'roku'})).toBe('Roku TV');
   });
 });

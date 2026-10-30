@@ -33,6 +33,10 @@ sha1 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
 digest_auth = "0.3.1"
+quick-xml = { version = "0.42", features = ["serialize"] }
+futures-util = { version = "0.3", features = ["sink"] }
+tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
+native-tls = "0.2"
 if-addrs = "0.15"
 hkdf = "0.12"
 chacha20poly1305 = "0.10"

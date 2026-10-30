@@ -1,10 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
-export interface Television { name: string; ip: string; mac: string | null }
+export type TvProtocol = 'philips' | 'lgWebos' | 'samsungTizen' | 'sonyBravia' | 'roku';
+export type TvPairMode = 'pin' | 'approval' | 'psk' | 'network';
+export interface Television { name: string; ip: string; mac: string | null; protocol?: TvProtocol; secure?: boolean }
+export function tvFamily(tv: Television) {
+  return ({ philips: 'Philips', lgWebos: 'LG webOS', samsungTizen: 'Samsung Tizen', sonyBravia: 'Sony BRAVIA', roku: 'Roku TV' })[tv.protocol ?? 'philips'];
+}
+export function tvPairMode(tv: Television | null): TvPairMode {
+  switch (tv?.protocol) { case 'lgWebos': case 'samsungTizen': return 'approval'; case 'sonyBravia': return 'psk'; case 'roku': return 'network'; default: return 'pin'; }
+}
 export interface TvStatus {
   available: boolean; tv: Television | null; autoWake: boolean; autoStandby: boolean;
   waking: boolean; resumeAvailable: boolean; message: string | null; error: string | null;
 }
-export interface TvPairStarted { secondsRemaining: number; name: string }
+export interface TvPairStarted { secondsRemaining: number; name: string; mode?: TvPairMode }
 export const emptyTvStatus = (): TvStatus => ({ available: false, tv: null, autoWake: false, autoStandby: false, waking: false, resumeAvailable: false, message: null, error: null });
 export const tvStatus = () => invoke<TvStatus>('tv_status');
 export const discoverTvs = () => invoke<Television[]>('tv_discover');

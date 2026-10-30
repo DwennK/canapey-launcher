@@ -1,6 +1,6 @@
 use super::*;
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     net::IpAddr,
     time::{Duration, Instant},
 };
@@ -41,29 +41,33 @@ pub async fn send_wol(mac: &str) -> Result<()> {
         Err("No local network is available. Connect the PC and TV to the same network.".into())
     }
 }
-async fn ssdp() -> Vec<Ipv4Addr> {
+async fn ssdp() -> BTreeMap<Ipv4Addr, Option<String>> {
     let mut jobs = tokio::task::JoinSet::new();
     for interface in interfaces() {
         jobs.spawn(async move {
-            let mut found=BTreeSet::new();
+            let mut found: BTreeMap<Ipv4Addr, Option<String>> = BTreeMap::new();
             let Ok(socket)=UdpSocket::bind((interface.ip,0)).await else{return found};
             let packet=b"M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: ssdp:all\r\n\r\n";
             let _=socket.send_to(packet,(Ipv4Addr::new(239,255,255,250),1900)).await;
             let deadline=tokio::time::Instant::now()+Duration::from_secs(4);
             let mut buf=[0;8192];
             while let Ok(Ok((n,source)))=tokio::time::timeout_at(deadline,socket.recv_from(&mut buf)).await {
-                // Do not follow LOCATION URLs supplied by arbitrary LAN devices.
+                // Descriptions must stay on the packet source; API probes use fixed ports.
                 if let IpAddr::V4(ip)=source.ip() {
                     let text=String::from_utf8_lossy(&buf[..n]).to_ascii_lowercase();
-                    if text.starts_with("http/1.1 200") && (text.contains("philips") || text.contains("chromecast"))
-                        && local_ip(&ip.to_string()).is_ok() {found.insert(ip);}
+                    if ssdp_tv(&text) && local_ip(&ip.to_string()).is_ok() {
+                        let raw = String::from_utf8_lossy(&buf[..n]);
+                        let location = raw.lines().find_map(|line| { let (key, value) = line.split_once(':')?; (key.eq_ignore_ascii_case("location")).then(|| value.trim().to_owned()) });
+                        let location = location.filter(|url| safe_description(url, ip));
+                        found.entry(ip).and_modify(|old| { if old.is_none() { *old = location.clone(); } }).or_insert(location);
+                    }
                 }
                 if found.len()>=32 {break;}
             }
             found
         });
     }
-    let mut found = BTreeSet::new();
+    let mut found = BTreeMap::new();
     while let Some(Ok(ips)) = jobs.join_next().await {
         found.extend(ips);
     }
@@ -106,13 +110,26 @@ pub async fn discover(client: &Client) -> Result<Vec<Television>> {
         );
     }
     let (a, b) = tokio::join!(ssdp(), mdns());
-    let ips: BTreeSet<_> = a.into_iter().chain(b).collect();
+    let mut ips = a;
+    for ip in b {
+        ips.entry(ip).or_insert(None);
+    }
     let mut results = Vec::new();
     // Bounded batches avoid holding an unbounded number of connections open.
     let mut jobs = tokio::task::JoinSet::new();
-    for ip in ips.into_iter().take(32) {
+    for (ip, description) in ips.into_iter().take(32) {
         let client = client.clone();
-        jobs.spawn(async move { client.inspect(ip).await });
+        jobs.spawn(async move {
+            if let Ok(tv) = client.inspect_services(ip).await {
+                return Ok(tv);
+            }
+            if let Some(url) = description {
+                if let Some(tv) = webos_description(&client, ip, &url).await {
+                    return Ok(tv);
+                }
+            }
+            Err::<Television, String>("No supported TV API found.".into())
+        });
     }
     while let Some(result) = jobs.join_next().await {
         if let Ok(Ok(tv)) = result {
@@ -121,6 +138,90 @@ pub async fn discover(client: &Client) -> Result<Vec<Television>> {
     }
     results.sort_by(|a, b| (&a.name, a.ip).cmp(&(&b.name, b.ip)));
     Ok(results)
+}
+// Only a response's source address may serve its unauthenticated XML description.
+// Never follow redirects, DNS names, credentials, or a URL to another host.
+fn safe_description(value: &str, ip: Ipv4Addr) -> bool {
+    if value.len() > 512 || local_ip(&ip.to_string()).is_err() {
+        return false;
+    }
+    let Ok(url) = url::Url::parse(value) else {
+        return false;
+    };
+    matches!(url.scheme(), "http" | "https")
+        && url.host_str() == Some(ip.to_string().as_str())
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.fragment().is_none()
+}
+fn ssdp_tv(text: &str) -> bool {
+    text.starts_with("http/1.1 200")
+        && [
+            "philips",
+            "chromecast",
+            "samsung",
+            "sony",
+            "bravia",
+            "roku:ecp",
+            "lge",
+            "webos",
+            "mediarenderer",
+        ]
+        .iter()
+        .any(|marker| text.contains(marker))
+}
+#[derive(Deserialize)]
+struct DeviceRoot {
+    device: DeviceDescription,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeviceDescription {
+    manufacturer: String,
+    friendly_name: String,
+    #[serde(default)]
+    model_name: String,
+    #[serde(default)]
+    device_type: String,
+}
+fn webos_name(xml: &str) -> Option<String> {
+    let root: DeviceRoot = quick_xml::de::from_str(xml).ok()?;
+    let d = root.device;
+    let maker = d.manufacturer.to_ascii_lowercase();
+    let model = d.model_name.to_ascii_lowercase();
+    // LG also makes speakers. Only advertise TV-like descriptors, then verify the SSAP socket.
+    if !(maker.starts_with("lg") || maker.contains("lg electronics"))
+        || !(model.contains("tv")
+            || d.friendly_name.to_ascii_lowercase().contains("tv")
+            || d.device_type.contains("MediaRenderer"))
+    {
+        return None;
+    }
+    Some(d.friendly_name)
+}
+async fn webos_description(client: &Client, ip: Ipv4Addr, url: &str) -> Option<Television> {
+    if !safe_description(url, ip) {
+        return None;
+    }
+    let xml = client.text(url, None, None, false).await.ok()?;
+    let name = webos_name(&xml)?;
+    let mut tv = Television {
+        name,
+        ip,
+        mac: resolve_mac(ip).await,
+        protocol: TvProtocol::LgWebos,
+        secure: true,
+    };
+    tv.validate().ok()?;
+    if super::websocket::probe_lg(&mut tv).await {
+        Some(tv)
+    } else {
+        None
+    }
+}
+pub(super) async fn find_webos(client: &Client, ip: Ipv4Addr) -> Option<Television> {
+    let descriptions = ssdp().await;
+    webos_description(client, ip, descriptions.get(&ip)?.as_deref()?).await
 }
 pub async fn resolve_mac(ip: Ipv4Addr) -> Option<String> {
     if local_ip(&ip.to_string()).is_err() {
@@ -189,6 +290,36 @@ fn parse_arp_mac(mac: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn discovery_descriptions_cannot_leave_the_packet_source() {
+        let ip = "192.168.1.20".parse().unwrap();
+        assert!(safe_description(
+            "http://192.168.1.20:1450/description.xml",
+            ip
+        ));
+        for url in [
+            "http://192.168.1.21/device.xml",
+            "http://8.8.8.8/",
+            "http://localhost/",
+            "file:///tmp/device.xml",
+            "http://user@192.168.1.20/",
+            "http://192.168.1.20/#fragment",
+        ] {
+            assert!(!safe_description(url, ip));
+        }
+        assert!(ssdp_tv("http/1.1 200 ok\r\nst: roku:ecp\r\n"));
+        assert!(ssdp_tv(
+            "http/1.1 200 ok\r\nst: urn:schemas-upnp-org:device:mediarenderer:1\r\n"
+        ));
+        assert!(!ssdp_tv("http/1.1 500 error\r\nserver: samsung"));
+    }
+    #[test]
+    fn webos_requires_an_lg_tv_description() {
+        let xml = "<root><device><manufacturer>LG Electronics</manufacturer><friendlyName>Living room TV</friendlyName><modelName>LG Smart TV</modelName></device></root>";
+        assert_eq!(webos_name(xml).as_deref(), Some("Living room TV"));
+        assert!(webos_name(&xml.replace("LG Electronics", "Unknown")).is_none());
+        assert!(webos_name("<root><device><manufacturer>LG Electronics</manufacturer><friendlyName>Speaker</friendlyName></device></root>").is_none());
+    }
     #[test]
     fn scoped_arp_and_short_octets_without_matching_other_hosts() {
         let ip = "192.168.1.20".parse().unwrap();

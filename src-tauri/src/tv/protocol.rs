@@ -135,6 +135,8 @@ impl Client {
     pub async fn inspect(&self, ip: Ipv4Addr) -> Result<Television> {
         let system = self.system(ip).await?;
         let tv = Television {
+            protocol: Default::default(),
+            secure: true,
             name: system["name"].as_str().unwrap_or("Philips TV").to_owned(),
             ip,
             mac: resolve_mac(ip).await,
@@ -259,6 +261,8 @@ mod tests {
     async fn invalid_or_expired_pin_is_rejected_before_any_network_request() {
         let mut pending = PendingPair {
             tv: Television {
+                protocol: Default::default(),
+                secure: true,
                 name: "Test TV".into(),
                 ip: "192.168.1.20".parse().unwrap(),
                 mac: Some("AA:BB:CC:DD:EE:02".into()),

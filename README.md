@@ -139,7 +139,9 @@ In **Settings → Controls → TV**, choose **Find my TV**, select the TV by nam
 
 After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and a Philips screen-power command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
 
-Only Philips TVs with jointSPACE v6 PIN pairing are supported. Available from v0.7.1. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
+The published installer supports Philips TVs with jointSPACE v6 PIN pairing. Available from v0.7.1. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
+
+The development version additionally includes experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TV adapters (including compatible TCL/Hisense models). These changes are not in v0.7.1 and have not been physically validated on those TVs. Google TV remote pairing and VIDAA are not included.
 
 ### iPhone / Apple TV Remote
 

@@ -13,7 +13,7 @@ async (page) => {
     window.__TAURI_INTERNALS__={transformCallback:fn=>{callbacks.set(++id,fn);return id;},unregisterCallback:i=>callbacks.delete(i),convertFileSrc:p=>p,invoke:async(cmd,args={})=>{
       const q=window.__tvQA;q.calls.push({cmd,args});
       if(cmd==='plugin:event|listen')return ++id;
-      if(cmd==='bootstrap')return {config:structuredClone(q.config),native:true,version:'0.6.0',warning:null,sessions:[],controller:null};
+      if(cmd==='bootstrap')return {config:structuredClone(q.config),native:true,version:'0.7.1',warning:null,sessions:[],controller:null};
       if(cmd==='save_config'){q.config=structuredClone(args.config);return q.config;}
       if(cmd==='list_monitors')return [];
       if(cmd==='audio_state')return {outputs:[],defaultId:null,volume:null,muted:false};
@@ -23,8 +23,8 @@ async (page) => {
       if(cmd==='tv_pair')return {secondsRemaining:q.timeout,name:args.tv.name};
       if(cmd==='tv_pair_finish'){if(q.failPin)throw 'The TV rejected the code. Check it or request a new code.';q.state.tv=q.tv;q.state.autoWake=true;q.state.autoStandby=false;q.state.message='TV paired. Test the wake sequence before relying on automatic wake.';return structuredClone(q.state);}
       if(cmd==='tv_preferences'){if(q.failSave)throw 'Could not save the TV pairing.';q.state.autoWake=args.autoWake;q.state.autoStandby=args.autoStandby;return structuredClone(q.state);}
-      if(cmd==='tv_standby'){q.state.message='The TV accepted the standby command.';return structuredClone(q.state);}
-      if(cmd==='tv_wake'){if(q.failWake)throw 'The screen did not confirm it was on. Check the TV\'s network wake setting and try again.';q.state.message='The TV reports that its screen is on.';return structuredClone(q.state);}
+      if(cmd==='tv_standby'){q.state.message='TV standby requested. Check the TV screen.';return structuredClone(q.state);}
+      if(cmd==='tv_wake'){if(q.failWake)throw 'The TV did not confirm it was on. Check the TV\'s network wake setting and try again.';q.state.message='The TV reports that it is on. Check the picture on its screen.';return structuredClone(q.state);}
       if(cmd==='tv_forget'){q.state.tv=null;q.state.autoWake=false;q.state.autoStandby=false;q.state.message=null;return structuredClone(q.state);}
       return null;
     }};
@@ -74,7 +74,7 @@ async (page) => {
   await off.check();
   assert(await off.isChecked(),'Standby preference did not persist');
   await page.getByRole('button',{name:'Turn off TV now',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'accepted the standby'}).waitFor();
+  await page.getByRole('status').filter({hasText:'TV standby requested'}).waitFor();
   await page.evaluate(()=>window.__tvQA.failSave=true);
   await resume.click();
   await page.getByRole('alert').filter({hasText:'Could not save'}).waitFor();
@@ -84,10 +84,10 @@ async (page) => {
   assert(!await resume.isChecked(),'Resume preference did not persist');
   await page.evaluate(()=>window.__tvQA.failWake=true);
   await page.getByRole('button',{name:'Test TV wake',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'screen did not confirm'}).waitFor();
+  await page.getByRole('alert').filter({hasText:'TV did not confirm'}).waitFor();
   await page.evaluate(()=>window.__tvQA.failWake=false);
   await page.getByRole('button',{name:'Test TV wake',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'screen is on'}).waitFor();
+  await page.getByRole('status').filter({hasText:'reports that it is on'}).waitFor();
   await page.setViewportSize({width:1440,height:900});
   await page.locator('.settings-content').evaluate(e=>e.scrollTop=0);
   await page.screenshot({path:'output/playwright/tv-desktop-paired.png'});

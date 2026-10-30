@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { t } from '../lib/i18n';
 import Icon from './Icon.vue';
-import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, standbyTv, type Television } from '../lib/tv';
+import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, standbyTv, tvFamily, tvPairMode, type Television } from '../lib/tv';
 const props = defineProps<{ native: boolean; autostart: boolean }>();
 const emit = defineEmits<{ startup: [] }>();
 const status = ref(emptyTvStatus()), busy = ref(''), error = ref('');
@@ -13,6 +13,14 @@ const resultsHeading = ref<HTMLElement>(), connectedHeading = ref<HTMLElement>()
 const supported = computed(() => props.native && status.value.available);
 const working = computed(() => !!busy.value || status.value.waking);
 const setup = computed(() => !status.value.tv || changing.value);
+const mode = computed(() => tvPairMode(selected.value));
+const validCode = computed(() => mode.value === 'pin' ? validTvPin(pin.value) : mode.value === 'psk' ? pin.value.length > 0 && pin.value.length <= 256 : true);
+const pairingHelp = computed(() => ({
+  pin: 'A four-digit code will appear on your TV. Enter it here to connect.',
+  approval: 'Choose Connect TV, then accept the Canapey permission request on your TV using its remote.',
+  psk: 'On your Sony TV, enable IP control with a pre-shared key and Remote start. Enter that key here. Menu names vary by model.',
+  network: 'On your Roku TV, enable Control by mobile apps and Fast TV Start. No pairing code is needed. Use Connect TV, then test wake and standby.'
+})[mode.value]);
 const stage = computed(() => deadline.value ? 2 : selected.value ? 1 : 0);
 let alive = true, timer: ReturnType<typeof setInterval> | undefined, refreshing = false;
 async function refresh() {
@@ -25,7 +33,7 @@ async function refresh() {
 async function run(name: string, action: () => Promise<void>) {
   if (working.value) return;
   busy.value = name; error.value = '';
-  try { await action(); } catch (e) { if (alive) error.value = String(e); }
+  try { await action(); } catch (e) { if (alive && String(e) !== 'Pairing cancelled.') error.value = String(e); }
   finally { if (alive) busy.value = ''; }
 }
 async function search() {
@@ -49,7 +57,7 @@ async function beginPairing() {
   });
 }
 async function finish() {
-  if (!validTvPin(pin.value) || seconds.value === 0) return;
+  if (!validCode.value || seconds.value === 0) return;
   await run('finish', async () => {
     const value = await finishTvPairing(pin.value); if (!alive) return;
     status.value = value; deadline.value = 0; pin.value = ''; selected.value = null; changing.value = false;
@@ -57,9 +65,8 @@ async function finish() {
   });
 }
 async function cancel() {
-  await run('cancel', async () => {
-    await cancelTvPairing(); deadline.value = 0; pin.value = ''; error.value = '';
-  });
+  try { await cancelTvPairing(); deadline.value = 0; pin.value = ''; error.value = ''; }
+  catch (e) { if (alive) error.value = String(e); }
 }
 async function preference(key: 'autoWake' | 'autoStandby', event: Event) {
   const input = event.target as HTMLInputElement;
@@ -86,47 +93,56 @@ onUnmounted(() => {
 
 <template>
   <section class="tv-settings" aria-labelledby="tv-title">
-    <header class="tv-heading"><Icon name="monitor" :size="30" /><div><h3 id="tv-title">{{ t('Your TV and PC, together') }}</h3><p>{{ t('Find your Philips TV, enter its code, and choose when it turns on or off.') }}</p></div></header>
+    <header class="tv-heading"><Icon name="monitor" :size="30" /><div><h3 id="tv-title">{{ t('Your TV and PC, together') }}</h3><p>{{ t('Find your TV, connect it, and choose when it turns on or off.') }}</p></div></header>
+    <details class="tv-manual"><summary>{{ t('TV compatibility') }}</summary><p>{{ t('Philips PIN pairing, LG webOS, Samsung Tizen, Sony BRAVIA IP control, and Roku TVs from TCL, Hisense or Roku. New brand support is experimental; Google TV remote pairing and VIDAA are not included.') }}</p></details>
     <p v-if="!supported" class="tv-note">{{ t('TV pairing and automatic wake are available in Canapey on Windows. Network discovery is disabled in this preview.') }}</p>
     <template v-if="setup">
-      <ol class="tv-steps" :aria-label="t('TV setup progress')"><li v-for="(label, i) in [t('Find your TV'), t('Connect'), t('Enter code')]" :key="label" :aria-current="stage === i ? 'step' : undefined"><span>{{ i + 1 }}</span>{{ label }}</li></ol>
+      <ol class="tv-steps" :aria-label="t('TV setup progress')"><li v-for="(label, i) in [t('Find your TV'), t('Connect'), t('Authorize')]" :key="label" :aria-current="stage === i ? 'step' : undefined"><span>{{ i + 1 }}</span>{{ label }}</li></ol>
       <div v-if="!deadline" class="tv-setup">
         <template v-if="!selected">
           <p>{{ t('Turn your TV on and connect it to the same home network as this PC.') }}</p>
           <button class="primary-button" :disabled="!supported || working" @click="search"><Icon name="search" :size="20" />{{ busy === 'search' ? t('Searching for TVs…') : searched ? t('Search again') : t('Find my TV') }}</button>
           <div v-if="searched" class="tv-results"><h4 ref="resultsHeading" tabindex="-1">{{ results.length ? t('Choose your TV') : t('No compatible TV found yet') }}</h4>
             <p v-if="!results.length">{{ t('Keep the TV on. Guest Wi-Fi, VPNs and firewalls can prevent discovery. You can also enter its IP address below.') }}</p>
-            <button v-for="tv in results" :key="tv.ip" class="tv-result" :disabled="working" @click="choose(tv)"><Icon name="monitor" :size="24" /><span><strong>{{ tv.name }}</strong><small>{{ t('Philips') }} · {{ tv.ip }}</small></span><Icon name="right" :size="18" /></button>
+            <button v-for="tv in results" :key="tv.ip" class="tv-result" :disabled="working" @click="choose(tv)"><Icon name="monitor" :size="24" /><span><strong>{{ tv.name }}</strong><small>{{ t(tvFamily(tv)) }} · {{ tv.ip }}</small></span><Icon name="right" :size="18" /></button>
           </div>
-          <details class="tv-manual"><summary>{{ t('My TV is not listed') }}</summary><p>{{ t('Only Philips TVs with PIN pairing are supported for now. Find the IP address in the TV’s network settings.') }}</p><form @submit.prevent="manual"><label for="tv-ip">{{ t('TV IP address') }}</label><div class="tv-form-row"><input id="tv-ip" v-model="manualIp" placeholder="192.168.1.20" autocomplete="off" inputmode="decimal" maxlength="15" :disabled="!supported || working" /><button class="small-button" :disabled="!supported || working || !manualIp.trim()">{{ busy === 'inspect' ? t('Checking TV…') : t('Find this TV') }}</button></div></form></details>
+          <details class="tv-manual"><summary>{{ t('My TV is not listed') }}</summary><p>{{ t('Find the IP address in the TV’s network settings. Network control must be enabled; discovery cannot identify every model.') }}</p><form @submit.prevent="manual"><label for="tv-ip">{{ t('TV IP address') }}</label><div class="tv-form-row"><input id="tv-ip" v-model="manualIp" placeholder="192.168.1.20" autocomplete="off" inputmode="decimal" maxlength="15" :disabled="!supported || working" /><button class="small-button" :disabled="!supported || working || !manualIp.trim()">{{ busy === 'inspect' ? t('Checking TV…') : t('Find this TV') }}</button></div></form></details>
         </template>
         <template v-else>
           <div class="tv-selected"><Icon name="monitor" :size="28" /><div><h4>{{ selected.name }}</h4><span>{{ selected.ip }}</span></div></div>
-          <p>{{ t('A four-digit code will appear on your TV. Enter it here to connect.') }}</p>
+          <p>{{ t(pairingHelp) }}</p>
           <div v-if="!selected.mac" class="tv-mac"><label for="tv-mac">{{ t('TV network MAC address') }}</label><p>{{ t('We could not read it automatically. Copy the MAC address of the active Wi-Fi or Ethernet connection from the TV’s network settings.') }}</p><input id="tv-mac" v-model="manualMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off" :disabled="working" /></div>
           <p class="tv-note">{{ t('Automatic wake is enabled after pairing. Automatic standby stays off until you enable it.') }}</p>
-          <div class="tv-actions"><button class="primary-button" :disabled="working || !validTvMac(manualMac)" @click="beginPairing">{{ busy === 'pair' ? t('Requesting code…') : t('Show code on TV') }}</button><button class="small-button" :disabled="working" @click="selected = null">{{ t('Back') }}</button></div>
+          <div class="tv-actions"><button class="primary-button" :disabled="working || !validTvMac(manualMac)" @click="beginPairing">{{ busy === 'pair' ? t('Connecting…') : mode === 'pin' ? t('Show code on TV') : t('Continue') }}</button><button class="small-button" :disabled="working" @click="selected = null">{{ t('Back') }}</button></div>
         </template>
       </div>
       <form v-else class="tv-code" @submit.prevent="finish">
-        <h4>{{ t('Enter the code on {0}', [selected?.name]) }}</h4>
-        <label for="tv-pin">{{ t('TV pairing code') }}</label>
-        <input id="tv-pin" ref="pinInput" v-model="pin" class="tv-pin" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4}" maxlength="4" :disabled="working || seconds === 0" aria-describedby="tv-expiry" />
-        <p id="tv-expiry" role="status">{{ seconds > 0 ? t('Code expires in {0} seconds.', [seconds]) : t('The code expired. Request a new one on your TV.') }}</p>
-        <div class="tv-actions"><button v-if="seconds > 0" class="primary-button" :disabled="working || !validTvPin(pin)" type="submit">{{ busy === 'finish' ? t('Connecting…') : t('Connect TV') }}</button><button v-else class="primary-button" type="button" :disabled="working" @click="beginPairing">{{ t('Request a new code') }}</button><button class="small-button" type="button" :disabled="working" @click="cancel">{{ t('Cancel pairing') }}</button></div>
+        <h4>{{ mode === 'pin' ? t('Enter the code on {0}', [selected?.name]) : t('Connect {0}', [selected?.name]) }}</h4>
+        <template v-if="mode === 'pin'">
+          <label for="tv-pin">{{ t('TV pairing code') }}</label>
+          <input id="tv-pin" ref="pinInput" v-model="pin" class="tv-pin" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4}" maxlength="4" :disabled="working || seconds === 0" aria-describedby="tv-expiry" />
+        </template>
+        <template v-else-if="mode === 'psk'">
+          <p>{{ t(pairingHelp) }}</p><label for="tv-key">{{ t('TV pre-shared key') }}</label>
+          <input id="tv-key" ref="pinInput" v-model="pin" type="password" autocomplete="off" maxlength="256" :disabled="working || seconds === 0" />
+        </template>
+        <p v-else>{{ t(pairingHelp) }}</p>
+        <p v-if="busy === 'finish' && mode === 'approval'" role="status">{{ t('Waiting for permission on the TV…') }}</p>
+        <p id="tv-expiry" role="status">{{ seconds > 0 ? (mode === 'pin' ? t('Code expires in {0} seconds.', [seconds]) : t('Connection request expires in {0} seconds.', [seconds])) : t('The request expired. Start again.') }}</p>
+        <div class="tv-actions"><button v-if="seconds > 0" class="primary-button" :disabled="working || !validCode" type="submit">{{ busy === 'finish' ? t('Connecting…') : t('Connect TV') }}</button><button v-else class="primary-button" type="button" :disabled="working" @click="beginPairing">{{ mode === 'pin' ? t('Request a new code') : t('Try again') }}</button><button class="small-button" type="button" :disabled="working && busy !== 'finish'" @click="cancel">{{ t('Cancel pairing') }}</button></div>
       </form>
       <button v-if="changing && !deadline" class="small-button" :disabled="working" @click="changing = false; selected = null; error = ''">{{ t('Keep current TV') }}</button>
     </template>
     <template v-else-if="status.tv">
-      <div class="tv-connected"><Icon name="monitor" :size="28" /><div><h4 ref="connectedHeading" tabindex="-1">{{ status.tv.name }}</h4><span>{{ t('Paired') }}</span></div><button class="small-button" :disabled="working" @click="changing = true; selected = null; results = []; searched = false">{{ t('Change TV') }}</button></div>
+      <div class="tv-connected"><Icon name="monitor" :size="28" /><div><h4 ref="connectedHeading" tabindex="-1">{{ status.tv.name }}</h4><span>{{ t('Paired') }} · {{ t(tvFamily(status.tv)) }}</span></div><button class="small-button" :disabled="working" @click="changing = true; selected = null; results = []; searched = false">{{ t('Change TV') }}</button></div>
       <div class="tv-options">
-        <label class="setting-row"><span>{{ t('Turn on the TV automatically') }}<small>{{ t('Wake on LAN and screen power when Canapey starts or the PC wakes.') }}</small></span><input type="checkbox" role="switch" :checked="status.autoWake" :disabled="working" @change="preference('autoWake', $event)" /></label>
+        <label class="setting-row"><span>{{ t('Turn on the TV automatically') }}<small>{{ t('Wake on LAN and the TV’s power command when Canapey starts or the PC wakes.') }}</small></span><input type="checkbox" role="switch" :checked="status.autoWake" :disabled="working" @change="preference('autoWake', $event)" /></label>
         <label class="setting-row"><span>{{ t('Turn off the TV automatically') }}<small>{{ t('Put the TV in standby when the PC sleeps, shuts down or restarts. Canapey must stay open.') }}</small></span><input type="checkbox" role="switch" :checked="status.autoStandby" :disabled="working" @change="preference('autoStandby', $event)" /></label>
       </div>
       <p v-if="(status.autoWake || status.autoStandby) && !status.resumeAvailable" class="tv-note">{{ t('Windows sleep notifications are not available. Restart Canapey to enable automatic TV power.') }}</p>
       <div v-if="status.autoWake && !autostart" class="tv-startup"><p>{{ t('To wake the TV when Windows starts, also enable Canapey’s launch at startup.') }}</p><button class="small-button" @click="emit('startup')">{{ t('Open startup settings') }}</button></div>
       <div class="tv-test"><div class="tv-actions"><button class="primary-button" :disabled="working" @click="testWake"><Icon name="power" :size="20" />{{ working && (busy === 'wake' || status.waking) ? t('Waking the TV…') : t('Test TV wake') }}</button><button class="small-button" :disabled="working" @click="testStandby">{{ busy === 'standby' ? t('Turning off the TV…') : t('Turn off TV now') }}</button></div><small>{{ t('Put the TV in standby first to test wake. Allow up to 70 seconds.') }}</small></div>
-      <details class="tv-manual"><summary>{{ t('Connection details and troubleshooting') }}</summary><dl><dt>{{ t('IP address') }}</dt><dd>{{ status.tv.ip }}</dd><dt>{{ t('MAC address') }}</dt><dd>{{ status.tv.mac }}</dd></dl><p>{{ t('Enable network wake in the TV’s settings. Philips may call it Switch on with Wi-Fi (WoWLAN) or Wake on LAN. The TV must remain connected to power and the same local network.') }}</p><p>{{ t('If your router changes the TV’s IP address, Canapey tries to find it again. If that fails, turn the TV on and use Change TV to reconnect.') }}</p><p>{{ t('Forgetting removes the pairing from this PC. You can also revoke Canapey in the TV’s paired apps settings.') }}</p><button v-if="!removing" class="small-button" :disabled="working" @click="removing = true">{{ t('Forget this TV') }}</button><div v-else class="tv-actions"><span>{{ t('Remove this pairing and disable automatic TV power?') }}</span><button class="small-button" :disabled="working" @click="remove">{{ t('Forget TV') }}</button><button class="small-button" @click="removing = false">{{ t('Cancel') }}</button></div></details>
+      <details class="tv-manual"><summary>{{ t('Connection details and troubleshooting') }}</summary><dl><dt>{{ t('IP address') }}</dt><dd>{{ status.tv.ip }}</dd><dt>{{ t('MAC address') }}</dt><dd>{{ status.tv.mac }}</dd></dl><p>{{ t('Enable network wake on the TV: WoWLAN / Wake on LAN (Philips), TV On With Mobile (LG), Power On with Mobile (Samsung), Remote start (Sony), or Fast TV Start (Roku TV). Names vary by model. Keep the TV powered and on the same network.') }}</p><p>{{ t('If your router changes the TV’s IP address, Canapey tries to find it again. If that fails, turn the TV on and use Change TV to reconnect.') }}</p><p>{{ t('Forgetting disconnects this PC. To revoke access on the TV, check its allowed apps or network control settings.') }}</p><button v-if="!removing" class="small-button" :disabled="working" @click="removing = true">{{ t('Forget this TV') }}</button><div v-else class="tv-actions"><span>{{ t('Remove this pairing and disable automatic TV power?') }}</span><button class="small-button" :disabled="working" @click="remove">{{ t('Forget TV') }}</button><button class="small-button" @click="removing = false">{{ t('Cancel') }}</button></div></details>
     </template>
     <p v-if="error || status.error" class="tv-error" role="alert">{{ t(error || status.error || '') }}</p>
     <p v-else-if="status.message && !setup" class="tv-message" role="status">{{ t(status.message) }}</p>

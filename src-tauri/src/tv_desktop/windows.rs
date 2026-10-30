@@ -217,6 +217,8 @@ mod tests {
         let path = dir.path().join("tv.dpapi");
         let paired = PairedTv {
             tv: Television {
+                protocol: Default::default(),
+                secure: true,
                 name: "Test TV".into(),
                 ip: "192.168.1.20".parse().unwrap(),
                 mac: Some("02:11:22:33:44:55".into()),

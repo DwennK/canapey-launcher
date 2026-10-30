@@ -1,8 +1,10 @@
-//! Philips jointSPACE v6 pairing and network wake. No UI or Windows lifecycle dependency.
+//! Local TV pairing and network power. No UI or Windows lifecycle dependency.
+mod multibrand;
 mod network;
 mod protocol;
+mod websocket;
+pub use multibrand::{Client, PendingPair};
 pub use network::{discover, resolve_mac, send_wol};
-pub use protocol::{Client, PendingPair};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 
@@ -10,9 +12,36 @@ pub type Result<T> = std::result::Result<T, String>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Television {
+    #[serde(default)]
+    pub protocol: TvProtocol,
+    #[serde(default = "secure_default")]
+    pub secure: bool,
     pub name: String,
     pub ip: Ipv4Addr,
     pub mac: Option<String>,
+}
+fn secure_default() -> bool {
+    true
+}
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum TvProtocol {
+    #[default]
+    Philips,
+    LgWebos,
+    SamsungTizen,
+    SonyBravia,
+    Roku,
+}
+impl TvProtocol {
+    pub fn pairing_mode(self) -> &'static str {
+        match self {
+            Self::Philips => "pin",
+            Self::LgWebos | Self::SamsungTizen => "approval",
+            Self::SonyBravia => "psk",
+            Self::Roku => "network",
+        }
+    }
 }
 impl Television {
     pub fn validate(&self) -> Result<()> {
@@ -60,7 +89,7 @@ impl PairedTv {
         if self.credentials.username.is_empty()
             || self.credentials.username.len() > 128
             || self.credentials.password.is_empty()
-            || self.credentials.password.len() > 256
+            || self.credentials.password.len() > 4096
         {
             return Err("The saved TV pairing is invalid. Pair the TV again.".into());
         }
@@ -116,6 +145,13 @@ pub struct PowerState {
     pub screen: Option<String>,
 }
 impl PowerState {
+    pub fn confirms_on(&self, protocol: TvProtocol) -> bool {
+        if matches!(protocol, TvProtocol::SamsungTizen | TvProtocol::SonyBravia) {
+            self.power.as_deref() == Some("On")
+        } else {
+            self.screen_on()
+        }
+    }
     pub fn screen_on(&self) -> bool {
         self.power.as_deref() == Some("On") && self.screen.as_deref() == Some("On")
     }
@@ -136,7 +172,7 @@ pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         if resolve_mac(paired.tv.ip).await.as_deref() == Some(&mac) {
             match client.power(paired).await {
-                Ok(power) if power.screen_on() => return Ok(power),
+                Ok(power) if power.confirms_on(paired.tv.protocol) => return Ok(power),
                 Ok(_) => {
                     if let Err(e) = client.turn_on(paired).await {
                         if e.contains("rejected this pairing") {
@@ -152,7 +188,10 @@ pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> 
         attempts += 1;
         if attempts % 4 == 0 {
             if let Ok(tvs) = discover(client).await {
-                if let Some(tv) = tvs.into_iter().find(|tv| tv.mac.as_deref() == Some(&mac)) {
+                if let Some(tv) = tvs
+                    .into_iter()
+                    .find(|tv| tv.mac.as_deref() == Some(&mac) && tv.protocol == paired.tv.protocol)
+                {
                     paired.tv = tv;
                 }
             }
@@ -173,6 +212,8 @@ mod tests {
         paired.validate().unwrap();
         assert!(paired.auto_wake);
         assert!(!paired.auto_standby);
+        assert_eq!(paired.tv.protocol, TvProtocol::Philips);
+        assert!(paired.tv.secure);
     }
     #[test]
     fn validates_local_targets_and_wol_bytes() {
@@ -200,6 +241,28 @@ mod tests {
         let packet = magic_packet(mac);
         assert_eq!(&packet[..6], &[255; 6]);
         assert!(packet[6..].chunks_exact(6).all(|v| v == mac));
+    }
+    #[test]
+    fn protocol_specific_confirmation_preserves_unknown_screen_state() {
+        let power = PowerState {
+            power: Some("On".into()),
+            screen: None,
+        };
+        assert!(power.confirms_on(TvProtocol::SamsungTizen));
+        assert!(power.confirms_on(TvProtocol::SonyBravia));
+        assert!(!power.screen_on());
+        for protocol in [TvProtocol::Philips, TvProtocol::LgWebos, TvProtocol::Roku] {
+            assert!(!power.confirms_on(protocol));
+        }
+        for protocol in [
+            TvProtocol::Philips,
+            TvProtocol::LgWebos,
+            TvProtocol::SamsungTizen,
+            TvProtocol::SonyBravia,
+            TvProtocol::Roku,
+        ] {
+            assert!(!PowerState::default().confirms_on(protocol));
+        }
     }
     #[test]
     fn network_or_power_on_does_not_prove_screen_on() {

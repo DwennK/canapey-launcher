@@ -37,6 +37,7 @@ pub struct TvState {
     sleeping: AtomicBool,
     power_epoch: AtomicU64,
     power_changed: tokio::sync::Notify,
+    pair_changed: tokio::sync::Notify,
     message: Mutex<Option<String>>,
     error: Mutex<Option<String>>,
 }
@@ -63,6 +64,7 @@ impl TvState {
             sleeping: AtomicBool::new(false),
             power_epoch: AtomicU64::new(0),
             power_changed: tokio::sync::Notify::new(),
+            pair_changed: tokio::sync::Notify::new(),
             message: Mutex::new(None),
             error: Mutex::new(error),
         }
@@ -128,6 +130,7 @@ pub async fn tv_inspect(state: tauri::State<'_, TvState>, ip: String) -> tv::Res
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PairStarted {
+    mode: &'static str,
     seconds_remaining: u64,
     name: String,
 }
@@ -141,23 +144,28 @@ pub async fn tv_pair(state: tauri::State<'_, TvState>, tv: Television) -> tv::Re
     let generation = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
     *state.pending.lock().unwrap() = None;
     let pending = Client::new()?.pair(tv).await?;
+    let mut pending_guard = state.pending.lock().unwrap();
     if state.generation.load(Ordering::SeqCst) != generation {
         return Err("Pairing cancelled.".into());
     }
     let result = PairStarted {
+        mode: pending.tv.protocol.pairing_mode(),
         seconds_remaining: pending
             .expires
             .saturating_duration_since(Instant::now())
             .as_secs(),
         name: pending.tv.name.clone(),
     };
-    *state.pending.lock().unwrap() = Some(pending);
+    *pending_guard = Some(pending);
     Ok(result)
 }
 #[tauri::command]
 pub fn tv_cancel_pairing(state: tauri::State<TvState>) {
+    // Serialize cancellation with committing a completed pairing. No late save after return.
+    let mut pending = state.pending.lock().unwrap();
     state.generation.fetch_add(1, Ordering::SeqCst);
-    *state.pending.lock().unwrap() = None;
+    *pending = None;
+    state.pair_changed.notify_waiters();
 }
 #[tauri::command]
 pub async fn tv_pair_finish(
@@ -170,6 +178,9 @@ pub async fn tv_pair_finish(
         .operation
         .try_lock()
         .map_err(|_| "Another TV operation is in progress.")?;
+    let cancelled = state.pair_changed.notified();
+    tokio::pin!(cancelled);
+    cancelled.as_mut().enable();
     let generation = state.generation.load(Ordering::SeqCst);
     let pending = state
         .pending
@@ -177,7 +188,13 @@ pub async fn tv_pair_finish(
         .unwrap()
         .take()
         .ok_or("Request a new pairing code.")?;
-    let paired = Client::new()?.grant(&pending, pin.trim()).await;
+    let client = Client::new()?;
+    let paired = tokio::select! {
+        biased;
+        _ = &mut cancelled => Err("Pairing cancelled.".into()),
+        result = tokio::time::timeout(pending.expires.saturating_duration_since(Instant::now()), client.grant(&pending, if pending.tv.protocol == tv::TvProtocol::SonyBravia { &pin } else { pin.trim() })) => result.unwrap_or_else(|_| Err("The pairing request expired. Connect the TV again.".into())),
+    };
+    let mut pending_guard = state.pending.lock().unwrap();
     if state.generation.load(Ordering::SeqCst) != generation {
         return Err("Pairing cancelled.".into());
     }
@@ -192,7 +209,7 @@ pub async fn tv_pair_finish(
         }
         Err(e) => {
             if pending.expires > Instant::now() {
-                *state.pending.lock().unwrap() = Some(pending);
+                *pending_guard = Some(pending);
             }
             Err(e)
         }
@@ -284,14 +301,15 @@ async fn wake(app: &tauri::AppHandle, automatic_request: bool) -> tv::Result<TvS
                 return Err("TV wake cancelled because the PC is going to sleep.".into());
             }
             tokio::time::timeout(Duration::from_secs(70), tv::wake(&client, &mut paired)).await
-                .map_err(|_| "The screen did not confirm it was on. Check the TV's network wake setting and try again.".to_owned()).and_then(|r|r)
+                .map_err(|_| "The TV did not confirm it was on. Check the TV's network wake setting and try again.".to_owned()).and_then(|r|r)
         } => result,
     };
     let result = result.and_then(|_| state.save(&paired));
     state.waking.store(false, Ordering::SeqCst);
     match &result {
         Ok(()) => {
-            *state.message.lock().unwrap() = Some("The TV reports that its screen is on.".into());
+            *state.message.lock().unwrap() =
+                Some("The TV reports that it is on. Check the picture on its screen.".into());
         }
         Err(e) => {
             *state.message.lock().unwrap() = None;
@@ -339,7 +357,8 @@ pub async fn tv_standby(app: tauri::AppHandle) -> tv::Result<TvStatus> {
         Ok(()) => {
             *state.error.lock().unwrap() = None;
             // The TV may immediately disconnect; acceptance is not physical-screen confirmation.
-            *state.message.lock().unwrap() = Some("The TV accepted the standby command.".into());
+            *state.message.lock().unwrap() =
+                Some("TV standby requested. Check the TV screen.".into());
         }
         Err(e) => {
             *state.error.lock().unwrap() = Some(e.clone());

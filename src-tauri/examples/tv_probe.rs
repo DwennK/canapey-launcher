@@ -26,6 +26,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )?);
             let v: serde_json::Value = serde_json::from_slice(&bytes)?;
             let tv = tv::Television {
+                protocol: Default::default(),
+                secure: true,
                 name: "Diagnostic TV".into(),
                 ip: tv::local_ip(v["ip"].as_str().ok_or("IP required")?)?,
                 mac: Some(v["mac"].as_str().ok_or("MAC required")?.into()),

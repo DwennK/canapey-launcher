@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Extend local TV discovery and power controls to experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TVs, including compatible TCL/Hisense models. Guide each platform through its own authorization flow; preserve existing Philips pairings and conservative standby defaults. These adapters still require real TV validation. Google TV remote pairing and VIDAA are not included.
+
 ## 0.7.1 — 2026-10-30
 
 The v0.7.0 tag was superseded before publication after Windows CI caught a new Clippy lint. This release includes the fix and the features below.
