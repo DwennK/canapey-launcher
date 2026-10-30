@@ -619,7 +619,6 @@ kbd.pad-key {
 .panel-title h2 { overflow-wrap: anywhere; }
 .panel-heading > .icon-button { background: #ffffff06; border: 1px solid #ffffff0c; }
 .panel-heading > .icon-button:hover { background: #ffffff12; }
-.settings-emblem { display: grid; place-items: center; width: 50px; height: 50px; border: 1px solid #ffffff12; border-radius: 15px; color: var(--cream); }
 .panel-heading .eyebrow {
   font-size: 9px;
   letter-spacing: 2px;
@@ -654,58 +653,6 @@ kbd.pad-key {
   color: #a0a6af;
   font-size: 10px;
 }
-.settings-layout {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 28px;
-  min-height: 400px;
-}
-.settings-nav {
-  display: flex;
-  flex-direction: column;
-  background: #13161c;
-  border-radius: 15px;
-  padding: 10px;
-  gap: 4px;
-  min-height: 0;
-  overflow-y: auto;
-}
-.settings-nav > button {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: left;
-  padding: 13px 12px;
-  font-size: 12px;
-  color: #adb2bc;
-  border-radius: 9px;
-  gap: 12px;
-  flex-shrink: 0;
-  transition: background 0.16s, color 0.16s;
-}
-.settings-nav > button > span { flex: 1; }
-.settings-nav .settings-chevron {
-  opacity: 0;
-}
-.settings-nav > button.active {
-  color: #f4ede1;
-  background: #e9dfce14;
-  box-shadow: inset 3px 0 #d5c6aa;
-}
-.settings-nav > button.active .settings-chevron {
-  opacity: 1;
-}
-.settings-nav > button:hover {
-  background: #ffffff0a;
-}
-.settings-nav > button.settings-power { margin-top: 10px; border-top: 1px solid #ffffff0c; border-radius: 0 0 9px 9px; }
-.settings-nav > small {
-  margin-top: auto;
-  padding: 18px 12px 6px;
-  font-size: 10px;
-  color: #929aa6;
-  line-height: 2;
-}
 .settings-content {
   padding-top: 12px;
   min-width: 0;
@@ -717,13 +664,8 @@ kbd.pad-key {
   max-height: 100%;
   overflow: hidden;
 }
-.settings-panel > .panel-heading,
 .settings-panel > .panel-footer {
   flex-shrink: 0;
-}
-.settings-panel .settings-layout {
-  flex: 1;
-  min-height: 0;
 }
 .settings-panel .settings-content {
   min-height: 0;
@@ -1472,9 +1414,6 @@ textarea {
   .overlay {
     padding: 20px;
   }
-  .settings-layout {
-    min-height: 300px;
-  }
 }
 @media (max-width: 900px) {
   .topbar {
@@ -1518,13 +1457,6 @@ textarea {
   .panel {
     padding: 28px 28px 0;
   }
-  .settings-layout {
-    grid-template-columns: 190px 1fr;
-    gap: 22px;
-  }
-  .settings-nav {
-    padding-right: 15px;
-  }
   .setting-row {
     gap: 12px;
   }
@@ -1536,10 +1468,6 @@ textarea {
   }
   .search-field {
     flex-basis: 100%;
-  }
-  .settings-nav > button {
-    font-size: 11px;
-    padding: 12px 8px;
   }
   .edit-layout {
     gap: 25px;
@@ -1706,41 +1634,9 @@ textarea {
     gap: 10px;
     line-height: 1.6;
   }
-  .settings-layout {
-    display: block;
-  }
-  .settings-panel .settings-layout {
-    display: flex;
-    flex-direction: column;
-  }
-  .settings-panel .settings-nav {
-    flex-shrink: 0;
-  }
   .settings-panel .settings-content {
     flex: 1;
   }
-  .settings-nav {
-    flex-direction: row;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 6px;
-    overflow-x: auto;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-  .settings-nav > button {
-    flex-shrink: 0;
-    font-size: 10px;
-    white-space: nowrap;
-    padding: 10px;
-  }
-  .settings-nav > button svg,
-  .settings-nav > small {
-    display: none;
-  }
-  .settings-nav > button.settings-power { margin-top: 0; border: 0; border-radius: 9px; }
-  .settings-nav > button.active { box-shadow: inset 0 -2px #d5c6aa; }
-  .settings-emblem { width: 42px; height: 42px; border-radius: 12px; }
   .setting-row {
     font-size: 12px;
   }
@@ -1835,17 +1731,10 @@ textarea {
   .panel {
     font-size: calc(15px * var(--ui-scale));
   }
-  .settings-nav > button,
   .setting-row,
   .manage-name,
   .detected-app {
     font-size: calc(14px * var(--ui-scale));
-  }
-  .settings-nav {
-    min-width: 0;
-  }
-  .settings-nav > button {
-    white-space: normal;
   }
   .panel h3 {
     font-size: calc(20px * var(--ui-scale));
@@ -2154,15 +2043,6 @@ textarea {
   }
 }
 
-/* Keep all live signals visible while controller navigation is captured. */
-.settings-panel.controller-test-active > .panel-heading,
-.controller-test-active .settings-nav {
-  display: none;
-}
-.controller-test-active .settings-layout {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 /* Living-room UI: one readable scale for navigation, forms and feedback. */
 .launcher { --text-body: calc(18px * var(--ui-scale)); --text-help: calc(15px * var(--ui-scale)); }
 .topbar nav button { font-size: var(--text-body); min-height: 48px; }
@@ -2170,21 +2050,19 @@ textarea {
 .hero { padding-top: 24px; }
 .hero h1 { font-size: clamp(36px, 4.6vw, 78px); }
 .hero > p { font-size: var(--text-body); max-width: 760px; }
-.section-label, .card-caption, .settings-nav > button, .setting-row, .manage-name, .detected-app { font-size: var(--text-body); }
+.section-label, .card-caption, .setting-row, .manage-name, .detected-app { font-size: var(--text-body); }
 .section-count, .bottom-bar, .hints, .panel-footer, .text-button, .note, .muted, .panel-intro, .setting-row small, .device-line small, .ambiance-choice-hint, .ambiance-choice > span, .manage-name small { font-size: var(--text-help); line-height: 1.6; color: #bbc1cb; }
 .small-button, .primary-button, .panel input:not([type="checkbox"]):not([type="range"]), .panel textarea, .panel select { font-size: calc(16px * var(--ui-scale)); min-height: 44px; }
 .panel h3 { font-size: calc(24px * var(--ui-scale)); }
 .panel h4 { font-size: calc(18px * var(--ui-scale)); }
 .panel { width: min(1280px, 94vw); }
 .panel.settings-panel { height: min(820px, calc(100svh - 56px)); }
-.settings-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 28px; }
-.settings-nav > button { min-height: 60px; padding: 14px 12px; line-height: 1.4; }
 .setting-row { padding: 20px 4px; }
 .setting-row small { margin-top: 8px; }
 .settings-content .settings-subheading { margin-top: 30px; }
-.settings-subnav, .library-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
-.settings-subnav button, .library-filters button { padding: 10px 18px; min-height: 44px; border-radius: 8px; font-size: calc(16px * var(--ui-scale)); color: #c0c6cf; background: #ffffff06; }
-:is(.settings-subnav, .library-filters) button[aria-pressed="true"] { color: #fff4df; background: #e9dfce18; box-shadow: inset 0 -2px var(--cream); }
+.library-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.library-filters button { padding: 10px 18px; min-height: 44px; border-radius: 8px; font-size: calc(16px * var(--ui-scale)); color: #c0c6cf; background: #ffffff06; }
+.library-filters button[aria-pressed="true"] { color: #fff4df; background: #e9dfce18; box-shadow: inset 0 -2px var(--cream); }
 .save-status { color: #c0d9c3; font-size: 14px; display: block; min-height: 22px; }
 .save-status:empty { display: none; }
 .system-actions { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 28px; }
@@ -2216,7 +2094,6 @@ textarea {
 summary { cursor: pointer; padding-block: 12px; }
 summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outline: 2px solid var(--cream); outline-offset: 3px; }
 @media (max-width: 1000px) {
-  .settings-layout { grid-template-columns: 220px minmax(0, 1fr); gap: 20px; }
   .bottom-bar { flex-wrap: wrap; }
   .preview-badge { display: none; }
 }
@@ -2247,10 +2124,6 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
   .quick-hint { display: none; }
   .panel { width: 100%; padding: 20px 18px 0; }
   .panel.settings-panel { height: calc(100svh - 24px); }
-  .settings-panel .settings-layout { display: flex; flex-direction: column; gap: 0; }
-  .settings-nav { display: flex; flex-direction: row; overflow-x: auto; margin-bottom: 12px; }
-  .settings-nav > button { min-height: 48px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
-  .settings-nav > small { display: none; }
   .panel-heading { margin-bottom: 16px; }
   .setting-row { gap: 14px; flex-wrap: wrap; }
   .setting-row > span { flex: 1 1 180px; }
@@ -2258,8 +2131,6 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
   .setting-row input[type=range] { width: 100%; }
   .panel-footer { font-size: 12px; }
   .panel-footer > :last-child { max-width: 65%; text-align: right; }
-  .settings-subnav { gap: 8px; }
-  .settings-subnav button { font-size: 15px; padding: 10px 12px; }
   .manage-app { flex-wrap: wrap; }
   .manage-name { flex-basis: 100%; }
   .panel.quick-panel .power-options button { font-size: 16px; }

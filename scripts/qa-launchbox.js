@@ -15,6 +15,7 @@ async (page) => {
   await page.screenshot({path:'output/playwright/launchbox-desktop.png'});
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Display and ambience',exact:true}).click();
+  await page.getByRole('button',{name:'Ambience',exact:true}).click();
   const arcade=page.getByRole('button',{name:'Arcade',exact:true});
   await arcade.click();
   await page.getByRole('switch',{name:/Per-app background/}).uncheck();
@@ -29,6 +30,7 @@ async (page) => {
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=390),'Mobile overflow');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Display and ambience',exact:true}).click();
+  await page.getByRole('button',{name:'Ambience',exact:true}).click();
   await arcade.scrollIntoViewIfNeeded();
   await page.screenshot({path:'output/playwright/launchbox-ambience-mobile.png'});
   assert(!errors.length, errors.join(';'));

@@ -2,7 +2,7 @@
 
 English is currently the only available language. On the first launch after installation or upgrade, Canapey checks the WebView's system language list, selects a supported language (falling back to English), and saves it in `Settings.locale`. Existing libraries, shortcuts, favorites and other preferences remain unchanged. Subsequent launches keep the saved choice.
 
-The preference is visible in **Settings → Display and ambience → Language**. The selector currently contains only English. The on-screen keyboard uses QWERTY. Physical keyboard shortcut capture continues to use physical key codes and supports other keyboard layouts.
+The preference is visible in **Settings → Display and ambience → Display → Language**. The selector currently contains only English. The on-screen keyboard uses QWERTY. Physical keyboard shortcut capture continues to use physical key codes and supports other keyboard layouts.
 
 ## Adding another language later
 

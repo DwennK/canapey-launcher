@@ -80,7 +80,7 @@
 
 ## Language
 
-The current source uses English throughout. First-launch system-language detection falls back to English, the only available language, and saves the preference. Find it under **Settings → Display and ambience → Language**. Other languages can be added later through the [language catalog](docs/LANGUAGES.md).
+The current source uses English throughout. First-launch system-language detection falls back to English, the only available language, and saves the preference. Find it under **Settings → Display and ambience → Display → Language**. Other languages can be added later through the [language catalog](docs/LANGUAGES.md).
 
 ## What it does
 
@@ -155,7 +155,7 @@ This feature remains experimental: real Windows/iPhone compatibility and wake-fr
 
 Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
 
-Settings now have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. The last section is restored, and automatic saves display their result. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone / TV entries ship in v0.7.1.
+Settings now have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. Settings open on a full-screen category list with the last-used category highlighted. Open a page with OK; Back returns to its parent and restores the previous selection. Up/down moves between rows, left/right adjusts sliders, and OK opens a large option list. Automatic saves display their result. Display, ambience and sound have separate pages. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone / TV entries ship in v0.7.1.
 
 ### Skip 1s / Flirc remote
 

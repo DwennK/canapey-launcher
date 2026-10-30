@@ -249,6 +249,8 @@ impl Config {
             || !["custom", "name", "category"].contains(&s.library.sort.as_str())
             || ![
                 "display",
+                "ambience",
+                "sound",
                 "apps",
                 "controls",
                 "remote",
@@ -356,6 +358,16 @@ mod tests {
             icon: None,
             source: "test".into(),
         }
+    }
+    #[test]
+    fn separate_appearance_pages_are_valid_saved_preferences() {
+        let mut config = Config::default();
+        for page in ["display", "ambience", "sound"] {
+            config.settings.last_settings_tab = page.into();
+            assert!(config.validate().is_ok());
+        }
+        config.settings.last_settings_tab = "unknown-page".into();
+        assert!(config.validate().is_err());
     }
     #[test]
     fn duplicate_paths_but_distinct_pwas() {

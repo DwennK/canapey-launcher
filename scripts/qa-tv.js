@@ -34,7 +34,7 @@ async (page) => {
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Controls',exact:true}).click();
   await page.getByRole('button',{name:'TV',exact:true}).click();
-  await page.getByRole('heading',{name:'Your TV and PC, together'}).waitFor();
+  await page.getByRole('heading',{name:'TV',exact:true}).waitFor();
   await page.waitForFunction(()=>!document.querySelector('.tv-settings .primary-button')?.disabled);
   await page.screenshot({path:'output/playwright/tv-desktop-setup.png'});
   await page.getByRole('button',{name:'Find my TV',exact:true}).click();
@@ -95,6 +95,8 @@ async (page) => {
   await page.evaluate(()=>window.__tvQA.found=[window.__tvQA.tv,{...window.__tvQA.tv,name:'Bedroom TV',ip:'192.168.1.21'}]);
   await page.getByRole('button',{name:'Find my TV',exact:true}).click();
   await page.getByRole('heading',{name:'Choose your TV',exact:true}).waitFor();
+  await page.keyboard.press('ArrowDown');
+  assert(await page.locator(':focus').evaluate(e=>e.classList.contains('tv-result')),'Down from results heading must reach a TV');
   await page.screenshot({path:'output/playwright/tv-desktop-results.png'});
   await page.getByRole('button',{name:/Bedroom TV/}).click();
   await page.getByRole('button',{name:'Show code on TV',exact:true}).click();
@@ -103,8 +105,9 @@ async (page) => {
   assert(await page.getByRole('heading',{name:'Living room TV',exact:true}).isVisible(),'Cancel replacement lost paired TV');
   await resume.check();
   await page.getByRole('button',{name:'Open startup settings',exact:true}).click();
-  await page.getByRole('button',{name:'Controls',exact:true}).click();
-  await page.getByRole('button',{name:'TV',exact:true}).click();
+  await page.getByRole('heading',{name:'Startup and system',exact:true}).waitFor();
+  await page.keyboard.press('Escape');
+  await page.getByRole('heading',{name:'TV',exact:true}).waitFor();
   assert(await resume.isChecked(),'Wake preference lost after remount');
   assert(await off.isChecked(),'Standby preference lost after remount');
   await off.uncheck();

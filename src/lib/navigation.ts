@@ -87,34 +87,48 @@ export function restoreFocus(root: HTMLElement, bookmark: FocusBookmark) {
       items[Math.min(bookmark.index, items.length - 1)],
   );
 }
-// Spatial navigation also covers import lists, forms, confirmations and settings.
-export function focusDirection(
-  root: HTMLElement,
-  direction: Action,
-  candidates = focusableItems(root),
-) {
-  const items = candidates;
+export interface FocusRect { x: number; y: number; width: number; height: number }
+/** Move through the nearest visual row, then choose its closest column. Never wrap. */
+export function directionalTarget(rects: FocusRect[], current: number, direction: Action): number {
+  const r = rects[current];
+  if (!r || !['up', 'down', 'left', 'right'].includes(direction)) return current;
+  const horizontal = direction === 'left' || direction === 'right';
+  const sign = direction === 'left' || direction === 'up' ? -1 : 1;
+  const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+  const candidates = rects.flatMap((b, index) => {
+    if (index === current) return [];
+    const dx = b.x + b.width / 2 - cx, dy = b.y + b.height / 2 - cy;
+    const primary = (horizontal ? dx : dy) * sign;
+    const overlapY = Math.min(r.y + r.height, b.y + b.height) - Math.max(r.y, b.y);
+    if (primary <= 8) return [];
+    // Left/right stays on the same row; up/down cannot drift across that row.
+    if (horizontal ? overlapY <= 0 : overlapY > Math.min(r.height, b.height) / 2) return [];
+    const gap = horizontal
+      ? Math.max(0, sign > 0 ? b.x - r.x - r.width : r.x - b.x - b.width)
+      : Math.max(0, sign > 0 ? b.y - r.y - r.height : r.y - b.y - b.height);
+    return [{ index, gap, primary, cross: Math.abs(horizontal ? dy : dx) }];
+  });
+  const nearest = Math.min(...candidates.map(c => c.gap));
+  return candidates.filter(c => c.gap <= nearest + 8)
+    .sort((a, b) => a.cross - b.cross || a.primary - b.primary)[0]?.index ?? current;
+}
+// Shared by dialogs and keyboards. A scope keeps independent regions isolated.
+export function focusDirection(root: HTMLElement, direction: Action, candidates = focusableItems(root)) {
   const current = document.activeElement as HTMLElement;
-  if (!items.includes(current)) {
-    focusElement(items[0]);
-    return;
+  const scope = current?.closest<HTMLElement>('[data-nav-scope]');
+  const items = scope && root.contains(scope) ? candidates.filter(item => scope.contains(item)) : [...candidates];
+  let index = items.indexOf(current);
+  if (index < 0) {
+    // Async results can announce a focused heading before the next actionable row.
+    if (current !== root && root.contains(current) && current.getClientRects().length) {
+      index = items.push(current) - 1;
+    } else { focusElement(items[0]); return; }
   }
-  const r = current.getBoundingClientRect(),
-    x = r.x + r.width / 2,
-    y = r.y + r.height / 2;
-  const horizontal = direction === "left" || direction === "right",
-    sign = direction === "left" || direction === "up" ? -1 : 1;
-  const next = items
-    .filter((e) => e !== current)
-    .map((e) => {
-      const b = e.getBoundingClientRect();
-      const dx = b.x + b.width / 2 - x,
-        dy = b.y + b.height / 2 - y;
-      const primary = (horizontal ? dx : dy) * sign;
-      const cross = Math.abs(horizontal ? dy : dx);
-      return { e, primary, score: primary + cross * 3 };
-    })
-    .filter((e) => e.primary > 8)
-    .sort((a, b) => a.score - b.score)[0];
-  focusElement(next?.e);
+  const rects = items.map(item => {
+    const row = item.closest<HTMLElement>('.setting-row');
+    // A single-control label is one full-width navigation row.
+    return (row && focusableItems(row).length === 1 ? row : item).getBoundingClientRect();
+  });
+  const next = directionalTarget(rects, index, direction);
+  if (next !== index) focusElement(items[next]);
 }

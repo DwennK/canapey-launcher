@@ -31,6 +31,9 @@ import { isSystemTool } from "./lib/discovery";
 import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
+import SettingsMenu from './components/SettingsMenu.vue';
+import SettingChoice from './components/SettingChoice.vue';
+import { isSettingsPage, settingsParent, type SettingsRoute } from './lib/settings-navigation';
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import { backgroundCandidates, generalAmbiances } from "./lib/ambiance";
@@ -125,9 +128,6 @@ function nativeRemoteAction(event: {binding: RemoteBinding; pressed: boolean; ca
       if (nativeRemoteAccept === binding.button) { nativeRemoteAccept = null; if (event.cancelled) cancelHold(); else releaseAccept('remote-native'); }
       return;
     }
-    // Learning is handled separately; do not execute interface mappings
-    // while the remote editor is open.
-    if (panel.value === 'settings' && settingsTab.value === 'remote') return;
     if (!panel.value && (binding.action === 'options' || !launcherRoot.value?.contains(document.activeElement))) {
       await nextTick(); await focusCard();
     }
@@ -203,6 +203,20 @@ const cardsFocused = ref(false);
 const editingControl = ref<HTMLElement | null>(null);
 const keyboardTarget = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 const screenKeyboard = ref<InstanceType<typeof OnScreenKeyboard>>();
+const choiceTarget = ref<HTMLSelectElement | null>(null);
+const settingChoice = ref<InstanceType<typeof SettingChoice>>();
+async function closeChoice(index?: number) {
+  const target = choiceTarget.value;
+  if (!target) return;
+  if (index !== undefined) {
+    target.selectedIndex = index;
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  choiceTarget.value = null;
+  await nextTick();
+  focusElement(target);
+}
+
 const keyboardEntry = ref({
   value: "",
   get label() { return t('Text entry'); },
@@ -239,7 +253,7 @@ async function closeKeyboard(value?: string, cursor?: number) {
   keyboardTarget.value = null;
   await nextTick();
   focusElement(target);
-  editingControl.value = target;
+  editingControl.value = null;
   if (cursor !== undefined) target.setSelectionRange(cursor, cursor);
 }
 function keyboardFor(selector: string) {
@@ -257,7 +271,7 @@ const panelRoot = ref<HTMLElement>(),
   cardsRoot = ref<HTMLElement>(),
   width = ref(window.innerWidth),
   height = ref(window.innerHeight);
-const settingsTab = ref("display"),
+const lastSettingsPage = ref("display"),
   monitorList = ref<Monitor[]>([]),
   found = ref<AppEntry[]>([]),
   query = ref(""),
@@ -266,14 +280,23 @@ const settingsTab = ref("display"),
   scanBusy = ref(false),
   scanError = ref(""),
   chosen = ref(new Set<string>());
-const settingsSection = computed(() => ['controls', 'remote', 'iphone', 'tv'].includes(settingsTab.value) ? 'devices' : ['updates', 'diagnostic'].includes(settingsTab.value) ? 'help' : settingsTab.value);
-const settingsSections = {
-  display: { get label() { return t('Display and ambience'); }, icon: 'ambiance', page: 'display' },
-  apps: { get label() { return t('Apps'); }, icon: 'grid', page: 'apps' },
-  devices: { get label() { return t('Controls'); }, icon: 'controller', page: 'controls' },
-  system: { get label() { return t('Startup and system'); }, icon: 'monitor', page: 'system' },
-  help: { get label() { return t('Help and updates'); }, icon: 'info', page: 'updates' },
-};
+const settingsRoute = ref<SettingsRoute>('root');
+const settingsMenu = ref<InstanceType<typeof SettingsMenu>>();
+const settingsHistory = ref<SettingsRoute[]>([]);
+const settingsBackRoute = computed(() => settingsHistory.value.at(-1) ?? settingsParent(settingsRoute.value));
+function openSettingsRoute(route: SettingsRoute) {
+  settingsHistory.value.push(settingsRoute.value);
+  settingsRoute.value = route;
+  editingControl.value = null;
+  if (isSettingsPage(route)) lastSettingsPage.value = route;
+}
+function backSettings() {
+  const parent = settingsHistory.value.pop() ?? settingsParent(settingsRoute.value);
+  if (!parent) { void closePanel(); return; }
+  settingsRoute.value = parent;
+  editingControl.value = null;
+  if (isSettingsPage(parent)) lastSettingsPage.value = parent;
+}
 const settingsSaveStatus = ref('');
 const libraryQuery = ref('');
 const libraryFilter = ref<LibraryFilter>('all');
@@ -521,7 +544,7 @@ function beginAccept(source: string) {
     screenKeyboard.value?.handle("accept");
     return;
   }
-  if (source === "controller" && isTextControl(document.activeElement)) {
+  if (source !== "keyboard" && isTextControl(document.activeElement)) {
     openKeyboard(document.activeElement);
     return;
   }
@@ -544,7 +567,7 @@ function releaseAccept(source: string) {
 function keyboardUp(e: KeyboardEvent) {
   if (remoteCapturing.value) return;
   if (remoteAcceptCode === e.code) { remoteAcceptCode = null; releaseAccept("remote"); return; }
-  if (remoteBindingFor(e) && !(panel.value === 'settings' && settingsTab.value === 'remote')) return;
+  if (remoteBindingFor(e)) return;
   if (e.key === "Enter") releaseAccept("keyboard");
 }
 function visibilityChanged() {
@@ -727,6 +750,7 @@ async function openPanel(p: Panel) {
   panel.value = p;
   await nextTick();
   if (panelRoot.value) panelRoot.value.inert = false;
+  if (p === 'settings') { settingsMenu.value?.focusContent(); return; }
   if (panelRoot.value)
     focusElement(
       p === "confirm"
@@ -737,11 +761,7 @@ async function openPanel(p: Panel) {
           ? (panelRoot.value.querySelector<HTMLElement>(
               ".quick-actions button:not(:disabled)",
             ) ?? undefined)
-          : p === "settings"
-            ? (panelRoot.value.querySelector<HTMLElement>(
-                ".settings-nav button.active",
-              ) ?? undefined)
-            : p === 'add'
+          : p === 'add'
               ? panelRoot.value.querySelector<HTMLElement>('input[type=search]') ?? undefined
               : focusableItems(panelRoot.value)[0],
     );
@@ -765,6 +785,7 @@ async function closePanel() {
 function dismissPanels() {
   if (youtubeBusy.value) return;
   keyboardTarget.value = null;
+  choiceTarget.value = null;
   editingControl.value = null;
   panelHistory.length = 0;
   if (panelRoot.value) panelRoot.value.inert = true;
@@ -839,6 +860,10 @@ async function activate(tile = current.value, youtubeChecked = false) {
 }
 function dispatch(action: Action) {
   if (remoteCapturing.value && action !== "home") return;
+  if (choiceTarget.value && action !== 'home') {
+    settingChoice.value?.handle(action === 'accept-down' ? 'accept' : action);
+    return;
+  }
   if (keyboardTarget.value && action !== "home") {
     screenKeyboard.value?.handle(action);
     return;
@@ -903,6 +928,17 @@ function dispatch(action: Action) {
     }
     if (action === "accept") return;
   }
+  // Sliders use the horizontal axis; the vertical axis always leaves the row.
+  if (panel.value && element instanceof HTMLInputElement && element.type === 'range') {
+    editingControl.value = null;
+    if (action === 'left' || action === 'right') {
+      action === 'left' ? element.stepDown() : element.stepUp();
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    if (action === 'accept') return;
+  }
   if (editingControl.value && editingControl.value !== element)
     editingControl.value = null;
   if (editingControl.value) {
@@ -935,23 +971,21 @@ function dispatch(action: Action) {
   }
   if (panel.value) {
     if (action === "back") {
-      void closePanel();
+      if (panel.value === 'settings') backSettings();
+      else void closePanel();
       return;
     }
     if (action === "accept") {
       if (!panelRoot.value?.contains(element) || element.matches(":disabled"))
         return;
-      if (
-        isTextControl(element) ||
-        element instanceof HTMLSelectElement ||
-        (element instanceof HTMLInputElement && element.type === "range")
-      ) {
-        editingControl.value = element;
-      } else element.click();
+      if (element instanceof HTMLSelectElement) choiceTarget.value = element;
+      else if (isTextControl(element)) editingControl.value = element;
+      else element.click();
       return;
     }
     if (panelRoot.value && ["up", "down", "left", "right"].includes(action)) {
-      focusDirection(panelRoot.value, action);
+      if (panel.value === 'settings') settingsMenu.value?.navigate(action);
+      else focusDirection(panelRoot.value, action);
     }
     return;
   }
@@ -1026,10 +1060,9 @@ function keyboard(e: KeyboardEvent) {
     return;
   }
   if (e.isComposing || e.defaultPrevented) return;
-  // Do not remap text editing, select editing, or the configuration interface itself.
+  // Text and native select editing keep their physical keyboard behavior.
   const remoteTarget = e.target as HTMLElement;
-  if (!(panel.value === 'settings' && settingsTab.value === 'remote')
-      && !isTextControl(remoteTarget) && remoteTarget.tagName !== 'SELECT'
+  if (!isTextControl(remoteTarget) && remoteTarget.tagName !== 'SELECT'
       && editingControl.value !== remoteTarget) {
     const binding = remoteBindingFor(e);
     if (binding && (!binding.global || !native.value)) {
@@ -1102,6 +1135,8 @@ function focusChanged() {
     editingControl.value = null;
 }
 async function openSettings() {
+  settingsHistory.value.length = 0;
+  settingsRoute.value = 'root';
   void openPanel("settings");
   try {
     monitorList.value = await api.monitors();
@@ -1330,8 +1365,8 @@ watch(
 watch(panel, async (value) => {
   document.body.classList.toggle("panel-open", !!value);
 });
-watch([panel, settingsTab, showControllerTest], () => {
-  if (panel.value !== "settings" || settingsTab.value !== "controls" || !showControllerTest.value)
+watch([panel, settingsRoute, showControllerTest], () => {
+  if (panel.value !== "settings" || settingsRoute.value !== "controls" || !showControllerTest.value)
     leaveControllerTest();
 });
 watch(selectedSession, (session) => {
@@ -1358,16 +1393,11 @@ watch(
     if (!panel.value) void focusCard();
   },
 );
-watch(settingsTab, async () => {
-  const restoreSubnav = !!document.activeElement?.closest('.settings-subnav');
+watch(lastSettingsPage, () => {
   if (!loaded.value) return;
-  config.value.settings.lastSettingsTab = settingsTab.value;
+  config.value.settings.lastSettingsTab = lastSettingsPage.value;
   settingsSaveStatus.value = '';
   void queueSave(false, false);
-  if (restoreSubnav) {
-    await nextTick();
-    focusElement(panelRoot.value?.querySelector<HTMLElement>('.settings-subnav button[aria-pressed="true"]') ?? undefined);
-  }
 });
 watch(() => tiles.value.map(tile => tile.id), (ids, previous) => {
   const id = previous?.[selected.value];
@@ -1395,7 +1425,7 @@ onMounted(async () => {
     const b = await api.boot();
     startupMark("bootstrapEnd");
     config.value = b.config;
-    settingsTab.value = ['display', 'apps', 'controls', 'remote', 'iphone', 'tv', 'system', 'updates', 'diagnostic'].includes(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
+    lastSettingsPage.value = isSettingsPage(b.config.settings.lastSettingsTab) ? b.config.settings.lastSettingsTab : 'display';
     lastSaved = JSON.parse(JSON.stringify(b.config));
     version.value = b.version;
     native.value = b.native;
@@ -1424,13 +1454,13 @@ onMounted(async () => {
         controller.value = v;
       },
       sessions: async (v) => {
-        const root = panel.value === 'settings' && settingsTab.value === 'diagnostic'
+        const root = panel.value === 'settings' && settingsRoute.value === 'diagnostic'
           ? panelRoot.value : null;
         const bookmark = root ? rememberFocus(root) : null;
         sessions.value = v;
         await nextTick();
         if (root && bookmark && root === panelRoot.value &&
-            panel.value === 'settings' && settingsTab.value === 'diagnostic' &&
+            panel.value === 'settings' && settingsRoute.value === 'diagnostic' &&
             !focusableItems(root).includes(document.activeElement as HTMLElement)) {
           restoreFocus(root, bookmark);
         }
@@ -1528,7 +1558,7 @@ onUnmounted(() => {
       />
       <div class="backdrop-scrim" />
     </div>
-    <header class="topbar" :inert="!!panel || !!keyboardTarget">
+    <header class="topbar" :inert="!!panel || !!keyboardTarget || !!choiceTarget">
       <div class="brand">
         <img class="brand-mark" src="/brand/canapey-mark.svg" width="31" height="31" alt="" /><span
           >canapey<span class="brand-dot">.</span></span
@@ -1589,7 +1619,7 @@ onUnmounted(() => {
     </header>
     <section
       v-if="view === 'carousel'"
-      :inert="!!panel || !!keyboardTarget"
+      :inert="!!panel || !!keyboardTarget || !!choiceTarget"
       class="hero"
       :class="{ 'hero-initial': !animateHero }"
       aria-live="polite"
@@ -1602,7 +1632,7 @@ onUnmounted(() => {
     </section>
     <section
       class="library"
-      :inert="!!panel || !!keyboardTarget"
+      :inert="!!panel || !!keyboardTarget || !!choiceTarget"
       :class="view"
       :aria-label="t('Apps')"
     >
@@ -1663,7 +1693,7 @@ onUnmounted(() => {
         />
       </div>
     </section>
-    <footer class="bottom-bar" :inert="!!panel || !!keyboardTarget">
+    <footer class="bottom-bar" :inert="!!panel || !!keyboardTarget || !!choiceTarget">
       <div class="hints" :data-controller-family="inputLabels.family">
         <span class="controller-status" role="img" :aria-label="inputLabels.device" :title="controller ?? t('Keyboard navigation')">
           <Icon :name="controller ? 'controller' : 'keyboard'" :size="22" /><i v-if="controller" />
@@ -1691,7 +1721,7 @@ onUnmounted(() => {
       <span class="spinner" />{{ working }}
     </div>
     <Transition name="toast"
-      ><div v-if="toast" :inert="!!panel || !!keyboardTarget" class="toast-message" role="status">
+      ><div v-if="toast" :inert="!!panel || !!keyboardTarget || !!choiceTarget" class="toast-message" role="status">
         <Icon name="info" :size="20" /><span>{{ toast }}</span
         ><button
           class="icon-button"
@@ -1704,7 +1734,7 @@ onUnmounted(() => {
     <Transition name="panel">
       <div
         v-if="panel"
-        :inert="!!keyboardTarget"
+        :inert="!!keyboardTarget || !!choiceTarget"
         class="overlay"
         :class="{
           'quick-overlay': panel === 'quick' || panel === 'move',
@@ -1748,11 +1778,10 @@ onUnmounted(() => {
           "
           @keydown.tab="trapFocus"
         >
-          <div class="panel-heading">
+          <div v-if="panel !== 'settings'" class="panel-heading">
             <div class="panel-identity">
               <img v-if="(panel === 'quick' || panel === 'move') && quickApp"
                 class="quick-app-art" :src="api.imageUrl(quickApp.card) || `/art/${quickApp.theme}-card.webp`" alt="" />
-              <span v-else-if="panel === 'settings'" class="settings-emblem"><Icon name="settings" :size="25" /></span>
               <div class="panel-title">
               <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
@@ -1763,9 +1792,7 @@ onUnmounted(() => {
                       ? quickApp?.name
                       : panel === "move"
                         ? t('Move card')
-                        : panel === "settings"
-                          ? t('Settings')
-                          : panel === "add"
+                        : panel === "add"
                             ? t('Add apps')
                             : panel === "edit"
                               ? t('Customize')
@@ -1857,32 +1884,11 @@ onUnmounted(() => {
             </div>
           </template>
           <template v-else-if="panel === 'settings'">
-            <div class="settings-layout">
-              <nav class="settings-nav" :aria-label="t('Settings categories')">
-                <button
-                  v-for="(category, key) in settingsSections"
-                  :key="key"
-                  :data-focus-key="`settings:${key}`"
-                  :class="{ active: settingsSection === key }"
-                  :aria-current="settingsSection === key ? 'page' : undefined"
-                  @click="settingsTab = category.page"
-                >
-                  <Icon class="settings-category-icon" :name="category.icon" :size="19" />
-                  <span>{{ category.label }}</span><Icon class="settings-chevron" name="right" :size="15" /></button
-                ><small>Canapey {{ version }}</small>
-              </nav>
-              <div :key="settingsTab" class="settings-content">
-                <div v-if="settingsSection === 'devices'" class="settings-subnav" role="group" :aria-label="t('Controls')">
-                  <button :aria-pressed="settingsTab === 'controls'" @click="settingsTab = 'controls'">{{ t('Controllers') }}</button>
-                  <button :aria-pressed="settingsTab === 'remote'" @click="settingsTab = 'remote'">{{ t('Remote') }}</button>
-                  <button :aria-pressed="settingsTab === 'iphone'" @click="settingsTab = 'iphone'">iPhone</button>
-                  <button :aria-pressed="settingsTab === 'tv'" @click="settingsTab = 'tv'">{{ t('TV') }}</button>
-                </div>
-                <div v-if="settingsSection === 'help'" class="settings-subnav" role="group" :aria-label="t('Help')"><button :aria-pressed="settingsTab === 'updates'" @click="settingsTab = 'updates'">{{ t('Updates') }}</button><button :aria-pressed="settingsTab === 'diagnostic'" @click="settingsTab = 'diagnostic'">{{ t('Diagnostics') }}</button></div>
-                <TvSettings v-if="settingsTab === 'tv'" :native="native" :autostart="config.settings.autostart" @startup="settingsTab = 'system'" />
-                <AppleRemoteSettings v-if="settingsTab === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
+            <SettingsMenu ref="settingsMenu" :route="settingsRoute" :back-to="settingsBackRoute" :last-page="lastSettingsPage" :save-status="settingsSaveStatus" @open="openSettingsRoute" @back="backSettings" @close="closePanel">
+                <TvSettings v-if="settingsRoute === 'tv'" :native="native" :autostart="config.settings.autostart" @startup="openSettingsRoute('system')" />
+                <AppleRemoteSettings v-if="settingsRoute === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
                 <RemoteHomeSettings
-                  v-if="settingsTab === 'remote'"
+                  v-if="settingsRoute === 'remote'"
                   :native="native"
                   :bindings="config.settings.remoteBindings ?? []"
                   :apps="config.apps"
@@ -1891,7 +1897,7 @@ onUnmounted(() => {
                 >
                   <template #title><h3 id="remote-title">Skip 1s / Flirc</h3></template>
                 </RemoteHomeSettings>
-                <template v-if="settingsTab === 'system'"
+                <template v-if="settingsRoute === 'system'"
                   ><h3>{{ t('Startup and system') }}</h3>
                   <label class="setting-row"
                     ><span>{{ t('Start in full screen') }}</span
@@ -1912,7 +1918,7 @@ onUnmounted(() => {
                       role="switch"
                       @change="persist" /></label
                   ></template>
-                <template v-if="settingsTab === 'display'"><h3>{{ t('Display and ambience') }}</h3><label class="setting-row"><span>{{ t('Language') }}<small>{{ t('English is currently the only available language. Your choice is saved for future launches.') }}</small></span><select v-model="config.settings.locale" :aria-label="t('Language')" @change="setLocale(config.settings.locale as Locale); persist()"><option v-for="language in languageOptions" :key="language.value" :value="language.value">{{ language.label }}</option></select></label><label class="setting-row"
+                <template v-if="settingsRoute === 'display'"><h3>{{ t('Display and ambience') }}</h3><label class="setting-row"><span>{{ t('Language') }}<small>{{ t('English is currently the only available language. Your choice is saved for future launches.') }}</small></span><select v-model="config.settings.locale" :aria-label="t('Language')" @change="setLocale(config.settings.locale as Locale); persist()"><option v-for="language in languageOptions" :key="language.value" :value="language.value">{{ language.label }}</option></select></label><label class="setting-row"
                     ><span
                       >{{ t('Preferred display') }}<small
                         >{{ t('Uses the primary display when the TV is unavailable.') }}</small
@@ -1943,8 +1949,8 @@ onUnmounted(() => {
                       step="0.1"
                       @change="persist" /></label
                 ></template>
-                <div v-if="settingsTab === 'system'" class="system-actions"><button class="small-button" @click="run(t('Return to Windows'), api.desktop)"><Icon name="monitor" :size="20" />{{ t('Return to the Windows desktop') }}</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />{{ t('Power') }}</button></div>
-                <template v-if="settingsTab === 'apps'"
+                <div v-if="settingsRoute === 'system'" class="system-actions"><button class="small-button" @click="run(t('Return to Windows'), api.desktop)"><Icon name="monitor" :size="20" />{{ t('Return to the Windows desktop') }}</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />{{ t('Power') }}</button></div>
+                <template v-if="settingsRoute === 'apps'"
                   ><div class="content-heading">
                     <h3>{{ t('Your apps') }}</h3>
                     <button
@@ -2004,7 +2010,7 @@ onUnmounted(() => {
                       <Icon name="edit" :size="18" />
                     </button></div
                 ></template>
-                <template v-if="settingsTab === 'controls'"
+                <template v-if="settingsRoute === 'controls'"
                   ><h3>{{ t('Controller and navigation') }}</h3>
                   <div class="device-line">
                     <Icon name="controller" :size="28" />
@@ -2065,7 +2071,7 @@ onUnmounted(() => {
                   <ControllerTester v-if="showControllerTest" :snapshot="controllerSnapshot" :controller-name="controller" :testing="controllerTesting" :native="native" :deadzone="config.settings.deadzone" @toggle="toggleControllerTest" @deadzone="setDeadzone" />
                   <button class="disclosure-button" :aria-expanded="controllerHelp" @click="controllerHelp = !controllerHelp">{{ t('Xbox / Steam Input troubleshooting') }}<Icon :name="controllerHelp ? 'up' : 'down'" :size="18" /></button>
                   <div v-if="controllerHelp"><XboxHomeSettings :native="native" /><p class="note"> {{ t('Steam Input may intercept these buttons. Disable its Desktop Layout or choose another combination.') }} </p></div></template>
-                <template v-if="settingsTab === 'display'">
+                <template v-if="settingsRoute === 'ambience'">
                   <h3 class="settings-subheading">{{ t('Ambience') }}</h3>
                   <p class="note">{{ t('Customize Canapey’s appearance and sounds. Changes apply immediately.') }}</p>
                   <div class="ambiance-gallery" role="group" :aria-label="t('General ambiences')">
@@ -2102,7 +2108,10 @@ onUnmounted(() => {
                       type="checkbox"
                       role="switch"
                       @change="persist" /></label
-                  ><label class="setting-row"
+                  >
+                </template>
+                <template v-if="settingsRoute === 'sound'">
+                  <label class="setting-row"
                     ><span>{{ t('Navigation sounds') }}</span
                     ><input
                       v-model="config.settings.sound"
@@ -2116,7 +2125,7 @@ onUnmounted(() => {
                   </label>
                   <button class="small-button ambiance-sound-test" :disabled="!config.settings.sound || config.settings.soundVolume === 0" @click="sound">{{ t('Preview sound') }}</button>
                 </template>
-                <template v-if="settingsTab === 'updates'"
+                <template v-if="settingsRoute === 'updates'"
                   ><div class="version-art">
                     <img src="/brand/canapey-mark.svg" width="48" height="48" alt="" /><span>canapey.</span
                     ><small>Version {{ version }}</small>
@@ -2156,7 +2165,7 @@ onUnmounted(() => {
                   </button></div>
                   <ReleaseNotes v-if="update?.notes" :notes="update.notes" /></template
                 >
-                <template v-if="settingsTab === 'diagnostic'"
+                <template v-if="settingsRoute === 'diagnostic'"
                   ><h3>{{ t('Diagnostics') }}</h3>
                   <dl class="diagnostic">
                     <div>
@@ -2224,8 +2233,7 @@ onUnmounted(() => {
                     "
                   > {{ t('Quit Canapey') }} </button></template
                 >
-              </div>
-            </div>
+            </SettingsMenu>
           </template>
           <template v-else-if="panel === 'add'">
             <p class="panel-intro"> {{ t('Select apps to add to your library.') }} </p>
@@ -2555,7 +2563,7 @@ onUnmounted(() => {
               }}</span
               ><span v-else-if="panel === 'audio'"
                 >{{ t('↑ ↓ Navigate · ← → Volume ·') }} {{ inputLabels.acceptName }} {{ t('Choose') }}</span
-              ><span v-else-if="panel === 'settings' && settingsSaveStatus" class="save-status" role="status">{{ settingsSaveStatus }}</span><span v-else>{{
+              ><span v-else-if="panel === 'settings'">{{ t('↑ ↓ Navigate · ← → Adjust · {0} Choose', [inputLabels.acceptName]) }}</span><span v-else>{{
                 controller
                   ? t('D-pad: navigate · {0}: OK', [inputLabels.acceptName])
                   : t('Arrows: navigate · Enter: OK / edit')
@@ -2565,6 +2573,7 @@ onUnmounted(() => {
         </section>
       </div>
     </Transition>
+    <SettingChoice v-if="choiceTarget" ref="settingChoice" :select="choiceTarget" @done="closeChoice" @cancel="closeChoice()" />
     <OnScreenKeyboard
       v-if="keyboardTarget"
       ref="screenKeyboard"

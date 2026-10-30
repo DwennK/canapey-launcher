@@ -57,3 +57,34 @@ it("normalizes Windows paths but preserves case-sensitive web paths and PWA argu
     targetKey({ ...target, kind: "uri", value: "https://example.com/a" }),
   );
 });
+
+import { directionalTarget, type FocusRect } from '../src/lib/navigation';
+const rect = (x: number, y: number, width = 100, height = 50): FocusRect => ({ x, y, width, height });
+describe('directional menu navigation', () => {
+  it('visits the next row even when its controls are far to the left', () => {
+    const items = [rect(800, 0), rect(0, 80), rect(800, 180)];
+    expect(directionalTarget(items, 0, 'down')).toBe(1);
+    expect(directionalTarget(items, 2, 'up')).toBe(1);
+  });
+  it('keeps horizontal movement in the same row and never wraps at an edge', () => {
+    const items = [rect(0, 0), rect(130, 0), rect(0, 80), rect(130, 80)];
+    expect(directionalTarget(items, 1, 'right')).toBe(1);
+    expect(directionalTarget(items, 0, 'left')).toBe(0);
+    expect(directionalTarget(items, 1, 'down')).toBe(3);
+    expect(directionalTarget(items, 2, 'up')).toBe(0);
+    expect(directionalTarget(items, 3, 'down')).toBe(3);
+  });
+  it('handles uneven keyboard rows and buttons of different heights', () => {
+    const items = [rect(0, 0), rect(130, 0), rect(65, 80, 100, 44), rect(0, 150, 250, 60)];
+    expect(directionalTarget(items, 1, 'down')).toBe(2);
+    expect(directionalTarget(items, 2, 'down')).toBe(3);
+    expect(directionalTarget(items, 0, 'right')).toBe(1);
+    expect(directionalTarget(items, 1, 'right')).toBe(1);
+  });
+  it('does not turn a small vertical offset into a jump within the current row', () => {
+    const items = [rect(0, 10, 100, 40), rect(130, 0, 100, 80), rect(0, 100)];
+    expect(directionalTarget(items, 0, 'down')).toBe(2);
+    expect(directionalTarget(items, 0, 'right')).toBe(1);
+    expect(directionalTarget([], 0, 'down')).toBe(0);
+  });
+});

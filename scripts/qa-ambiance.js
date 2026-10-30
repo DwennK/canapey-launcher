@@ -1,81 +1,41 @@
-// Run in an isolated Chrome session using the Playwright CLI.
+// Playwright CLI, fresh Chrome context. Checks saved appearance/audio preferences.
 async (page) => {
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(() => {
-    window.__soundGains = [];
-    const createGain = AudioContext.prototype.createGain;
-    AudioContext.prototype.createGain = function () {
-      const node = createGain.call(this);
-      const set = node.gain.setValueAtTime.bind(node.gain);
-      node.gain.setValueAtTime = (value, time) => { window.__soundGains.push(value); return set(value, time); };
-      return node;
-    };
-  });
-  await page.evaluate(() => localStorage.removeItem('canapey-ui-preview-v1'));
-  await page.reload();
-  await page.locator('main.ready').waitFor();
-  const button = name => page.getByRole('button', { name, exact: true });
-  const slider = name => page.getByRole('slider', { name: new RegExp(name) });
-  const setRange = async (name, value) => {
-    await slider(name).evaluate((el, value) => {
-      el.value = String(value);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, value);
-  };
-  await page.keyboard.press('ArrowRight');
-  await page.waitForFunction(() => document.querySelector('.backdrop-current').getAttribute('src') === '/art/netflix.webp');
-  await page.keyboard.press('F1');
-  await button('Manettes').click();
-  assert(await page.getByRole('combobox', { name: /Retour global/ }).isVisible(), 'Controller settings missing');
-  assert(await page.getByRole('switch', { name: /Animations|Sons de navigation/ }).count() === 0, 'Ambiance settings still in controller menu');
-  await button('Ambiance').click();
-  const dynamic = page.getByRole('switch', { name: /Fond lié/ });
-  await dynamic.uncheck();
-  await page.waitForFunction(() => document.querySelector('.backdrop-current').getAttribute('src') === '/art/home.webp');
-  await dynamic.check();
-  await page.waitForFunction(() => document.querySelector('.backdrop-current').getAttribute('src') === '/art/netflix.webp');
-  await dynamic.uncheck();
-  await setRange('Luminosité', 0.65);
-  await setRange('Flou', 6);
-  await page.waitForFunction(() => getComputedStyle(document.querySelector('.backdrop-current')).filter === 'brightness(0.65) blur(6px)');
-  assert(await page.locator('.ambiance-preview img').evaluate(el => getComputedStyle(el).filter === 'brightness(0.65) blur(6px)'), 'Preview differs from actual background');
-  await page.getByRole('switch', { name: /Animations/ }).uncheck();
-  assert(await page.locator('main.reduce-motion').count() === 1, 'Animations not disabled');
-  await setRange('Volume des sons', 0.25);
-  await button('Écouter un son').click();
-  assert(await page.evaluate(() => window.__soundGains.at(-1) === 0.009), 'Sound volume not applied');
-  await page.getByRole('switch', { name: 'Sons de navigation', exact: true }).uncheck();
-  assert(await slider('Volume des sons').isDisabled() && await button('Écouter un son').isDisabled(), 'Muted controls should be disabled');
-  await page.getByRole('switch', { name: 'Sons de navigation', exact: true }).check();
-  // Directional editing follows the same route as controller and remote actions.
-  await slider('Flou').focus();
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('Enter');
-  assert(await slider('Flou').inputValue() === '7', 'Directional slider editing failed');
-  await page.waitForFunction(() => JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).settings.backgroundBlur === 7);
-  await page.reload();
-  await page.locator('main.ready').waitFor();
-  await page.keyboard.press('F1');
-  await button('Ambiance').click();
-  assert(await slider('Luminosité').inputValue() === '0.65' && await slider('Flou').inputValue() === '7', 'Visual preferences not persisted');
-  assert(await slider('Volume des sons').inputValue() === '0.25' && !await dynamic.isChecked(), 'Sound/background preferences not persisted');
-  for (const viewport of [{width:1440,height:900}, {width:390,height:844}]) {
-    await page.setViewportSize(viewport);
-    await button('Ambiance').click();
-    await page.locator('.settings-content').evaluate(el => { el.scrollTop = 0; });
-    await page.screenshot({ path: `output/playwright/ambiance-${viewport.width}.png`, animations: 'disabled' });
-    await button('Écouter un son').scrollIntoViewIfNeeded();
-    const bounds = await button('Écouter un son').boundingBox();
-    assert(bounds && bounds.y >= 0 && bounds.y + bounds.height <= viewport.height, 'Last setting inaccessible');
-    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Horizontal overflow');
-    await button('Manettes').click();
-    await page.getByRole('combobox', { name: /Retour global/ }).waitFor();
-  }
-  assert(errors.length === 0, errors.join('\n'));
-  return { result: 'passed', viewports: ['1440×900', '390×844'], errors };
+  const context=await page.context().browser().newContext({viewport:{width:1440,height:900}});
+  page=await context.newPage();
+  try {
+    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const assert=(ok,message)=>{if(!ok)throw Error(message)};
+    await page.addInitScript(()=>{
+      window.__soundGains=[];
+      const createGain=AudioContext.prototype.createGain;
+      AudioContext.prototype.createGain=function(){const node=createGain.call(this),set=node.gain.setValueAtTime.bind(node.gain);node.gain.setValueAtTime=(value,time)=>{window.__soundGains.push(value);return set(value,time)};return node;};
+    });
+    await page.goto('http://127.0.0.1:1420');await page.locator('main.ready').waitFor();
+    const button=name=>page.getByRole('button',{name,exact:true});
+    const slider=name=>page.getByRole('slider',{name:new RegExp(name)});
+    const setRange=async(name,value)=>{await slider(name).fill(String(value));await slider(name).dispatchEvent('change');};
+    const appearance=async()=>{await button('Settings').click();await button('Display and ambience').click();};
+    await appearance();await button('Ambience').click();
+    await button('Arcade').click();await page.getByRole('switch',{name:/Per-app background/}).uncheck();
+    await setRange('Background brightness',.65);await setRange('Background blur',6);
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('.backdrop-current')).filter==='brightness(0.65) blur(6px)');
+    await page.getByRole('switch',{name:/Animations/}).uncheck();
+    assert(await page.locator('main.reduce-motion').count()===1,'Reduced motion not applied');
+    await slider('Background blur').focus();await page.keyboard.press('ArrowRight');
+    assert(await slider('Background blur').inputValue()==='7','Direct slider adjustment failed');
+    await page.keyboard.press('Escape');await button('Sound').click();
+    const sound=page.getByRole('switch',{name:'Navigation sounds',exact:true});await sound.check();
+    await setRange('Sound volume',.25);await button('Preview sound').click();
+    assert(await page.evaluate(()=>window.__soundGains.at(-1)===.009),'Sound volume not applied');
+    await sound.uncheck();assert(await slider('Sound volume').isDisabled()&&await button('Preview sound').isDisabled(),'Muted controls remain active');
+    await sound.focus();await page.keyboard.press('ArrowDown');
+    assert(await sound.evaluate(el=>document.activeElement===el),'Down focused a disabled sound control');
+    await page.waitForFunction(()=>{const s=JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).settings;return s.backgroundBlur===7&&s.soundVolume===.25&&!s.sound;});
+    await page.reload();await appearance();await button('Ambience').click();
+    assert(await slider('Background brightness').inputValue()==='0.65'&&await slider('Background blur').inputValue()==='7','Appearance did not survive reload');
+    await page.keyboard.press('Escape');await button('Sound').click();
+    assert(await slider('Sound volume').inputValue()==='0.25'&&!await sound.isChecked(),'Sound did not survive reload');
+    assert(!errors.length,errors.join('\n'));
+    return {passed:true,checks:['separate ambience and sound pages','background effects','direct sliders','audio gain','disabled controls skipped','saved preferences survive reload'],errors};
+  } finally {await context.close();}
 }

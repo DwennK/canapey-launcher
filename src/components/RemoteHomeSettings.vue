@@ -96,10 +96,12 @@ async function beginCapture() {
 function received(value: RemoteShortcut) {
   if (!listening.value) return;
   key.value = value; error.value = ''; message.value = t('Key received. Choose an action and save.');
-  listening.value = false; emit('capturing', false); clearTimeout(timer); swallowUntil = Date.now() + 500;
-  // Keep native capture leased briefly so held, already-registered buttons cannot exit the editor.
+  listening.value = false; clearTimeout(timer); swallowUntil = Date.now() + 500;
+  // Release the learning lease after the held key settles so navigation can resume.
+  timer = setTimeout(() => { void stopCapture().catch(e => error.value = String(e)); }, 500);
 }
 function keydown(event: KeyboardEvent) {
+  if (Date.now() < swallowUntil) { event.preventDefault(); event.stopImmediatePropagation(); return; }
   if (!listening.value) return;
   event.preventDefault(); event.stopImmediatePropagation();
   try { const value = captureShortcut(event, false); if (value) received(value); }
