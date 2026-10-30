@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-## 0.7.0 — 2026-10-30
+## 0.7.1 — 2026-10-30
+
+The v0.7.0 tag was superseded before publication after Windows CI caught a new Clippy lint. This release includes the fix and the features below.
 
 - Add a LaunchBox card and Arcade ambience with bundled ImageGen artwork. Recognize LaunchBox and Big Box during Windows app import, including common portable folders.
 
