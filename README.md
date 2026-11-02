@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.7.1-experimental-78664E?style=flat-square" alt="Version 0.7.1 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.8.0-experimental-78664E?style=flat-square" alt="Version 0.8.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.7.1"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.8.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -58,7 +58,7 @@
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/settings.png" alt="Canapey settings with five sections, interface scaling and four ambience choices" width="100%">
+      <img src="docs/images/settings.png" alt="Canapey full-screen settings with five categories and a clearly highlighted Controls selection" width="100%">
       <p><strong>Settle into your own setup.</strong><br><sub>Five settings sections bring display, apps, devices, system and help together.</sub></p>
     </td>
     <td width="50%" valign="top">
@@ -68,7 +68,7 @@
   </tr>
 </table>
 
-<sub>Current development browser UI captures at 1440 × 1000, taken on 29 October 2026. The English interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “Install” opens the installation flow. Native Windows actions are unavailable in browser preview. The English interface ships in v0.7.1. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
+<sub>Current development browser UI captures at 1440 × 1000, taken on 2 November 2026. The English interface uses a sample library of web shortcuts; these are not detected Windows installations. The YouTube card marked “Install” opens the installation flow. Native Windows actions are unavailable in browser preview. The redesigned Settings interface ships in v0.8.0. Captures can be reproduced with <code>scripts/capture-readme.js</code>.</sub>
 
 ## Why Canapey
 
@@ -102,7 +102,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.7.1.** Download the Windows installer from [the v0.7.1 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.7.1), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.8.0.** Download the Windows installer from [the v0.8.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.8.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -133,15 +133,15 @@ On first launch, choose **Add apps**: detection starts automatically. Browse for
 
 LaunchBox has a suggested card, a dedicated backdrop and an **Arcade** general ambience with bundled ImageGen artwork. Import **LaunchBox** or **Big Box** through **Add apps → LaunchBox**; Windows discovery checks shortcuts, registered apps and common portable folders. Use **Browse** for a custom location. Big Box remains a separate application and follows LaunchBox's licensing; Canapey does not install games, emulators or a LaunchBox license. The artwork is original Canapey artwork, not a game screenshot or official LaunchBox branding. See [asset provenance and generation prompt](public/art/LAUNCHBOX.md).
 
-### Philips TV power
+### TV power
 
-In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and enter the four-digit code shown on its screen. Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
+In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and follow its connection instructions (Philips PIN, LG/Samsung approval, Sony pre-shared key, or Roku network access). Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
 
-After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and a Philips screen-power command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
+After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and the TV platform’s power-on command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
 
-The published installer supports Philips TVs with jointSPACE v6 PIN pairing. Available from v0.7.1. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
+The installer supports Philips TVs with jointSPACE v6 PIN pairing and adds experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TV adapters in v0.8.0. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
 
-The development version additionally includes experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TV adapters (including compatible TCL/Hisense models). These changes are not in v0.7.1 and have not been physically validated on those TVs. Google TV remote pairing and VIDAA are not included.
+Roku TV support includes compatible TCL, Hisense and Roku-branded TVs. Compatibility depends on the operating system and exposed API, not the brand alone. The new adapters have automated protocol/UI tests but have not been physically validated on those TVs. Google TV remote pairing and VIDAA are not included.
 
 ### iPhone / Apple TV Remote
 

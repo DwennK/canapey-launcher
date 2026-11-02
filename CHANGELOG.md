@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-11-02
+
+- Rebuild Settings as full-screen category lists and focused pages. Directional movement stays in the current page; Back restores the previous selection. Sliders adjust with left/right, and OK opens large option lists. Display, ambience and sound have separate pages.
+- Restore custom remote navigation inside its settings page and release key-learning capture after input settles. Keep controller, iPhone and remote text entry on the shared on-screen keyboard.
+- Refresh compatible npm and Cargo dependencies, including Vitest 5.1.0, vue-tsc 3.3.14, Rollup 4.67.4 and mdns-sd 0.21.7, without changing the project's major-version constraints.
 
 - Extend local TV discovery and power controls to experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TVs, including compatible TCL/Hisense models. Guide each platform through its own authorization flow; preserve existing Philips pairings and conservative standby defaults. These adapters still require real TV validation. Google TV remote pairing and VIDAA are not included.
 

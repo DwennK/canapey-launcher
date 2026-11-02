@@ -1,8 +1,8 @@
 # TV power
 
-Controls → TV connects one compatible TV to the current Windows account. The published v0.7.1 release includes Philips jointSPACE v6. The additional families below are **unreleased, experimental development changes**, not part of the v0.7.1 installer. Physical Windows lifecycle validation is still required.
+Controls → TV connects one compatible TV to the current Windows account. Version **0.8.0** includes Philips jointSPACE v6 and the additional experimental TV families below. Physical Windows lifecycle validation is still required.
 
-## Compatibility in the development version
+## Compatibility in v0.8.0
 
 | Family / brands | Connection | Power and setup |
 | --- | --- | --- |

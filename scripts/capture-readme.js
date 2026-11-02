@@ -37,7 +37,9 @@ async (page) => {
   await page.locator('.app-card').filter({hasText:'Spotify'}).focus();
   await capture('docs/images/ambience.png');
   await page.getByRole('button',{name:"Settings",exact:true}).click();
-  await page.getByRole('heading',{name:"Display and ambience",exact:true}).waitFor();
+  await page.getByRole('heading',{name:"Settings",exact:true}).waitFor();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await capture('docs/images/settings.png');
   await page.getByRole('button',{name:"Controls",exact:true}).click();
   await page.getByRole('button',{name:"Remote",exact:true}).click();
