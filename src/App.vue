@@ -33,7 +33,7 @@ import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
 import SettingsMenu from './components/SettingsMenu.vue';
 import SettingChoice from './components/SettingChoice.vue';
-import { isSettingsPage, settingsParent, type SettingsRoute } from './lib/settings-navigation';
+import { isSettingsPage, type SettingsPage } from './lib/settings-navigation';
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
 import { backgroundCandidates, generalAmbiances } from "./lib/ambiance";
@@ -281,23 +281,28 @@ const lastSettingsPage = ref("display"),
 const discoveredApps = ref<AppEntry[] | null>(null);
 const importQuery = ref('');
 const appPicker = ref<InstanceType<typeof AddApps>>();
-const settingsRoute = ref<SettingsRoute>('root');
+const settingsRoute = ref<SettingsPage>('display');
+const settingsIndex = ref(true);
 const settingsMenu = ref<InstanceType<typeof SettingsMenu>>();
-const settingsHistory = ref<SettingsRoute[]>([]);
-const settingsBackRoute = computed(() => settingsHistory.value.at(-1) ?? settingsParent(settingsRoute.value));
-function openSettingsRoute(route: SettingsRoute) {
-  settingsHistory.value.push(settingsRoute.value);
+const linkedFrom = ref<SettingsPage | null>(null);
+const preferredMonitor = computed(() => monitorList.value.find(monitor => monitor.id === config.value.settings.monitor));
+function openSettingsRoute(route: SettingsPage, linked = false) {
+  linkedFrom.value = linked ? settingsRoute.value : null;
   settingsRoute.value = route;
+  settingsIndex.value = false;
   editingControl.value = null;
-  if (isSettingsPage(route)) lastSettingsPage.value = route;
+  lastSettingsPage.value = route;
 }
 function backSettings() {
   if (settingsMenu.value?.closeSearch()) return;
-  const parent = settingsHistory.value.pop() ?? settingsParent(settingsRoute.value);
-  if (!parent) { void closePanel(); return; }
-  settingsRoute.value = parent;
-  editingControl.value = null;
-  if (isSettingsPage(parent)) lastSettingsPage.value = parent;
+  if (linkedFrom.value && !settingsIndex.value) {
+    openSettingsRoute(linkedFrom.value);
+  } else if (!settingsIndex.value) {
+    settingsIndex.value = true;
+    nextTick(() => settingsMenu.value?.focusRail());
+  } else {
+    void closePanel();
+  }
 }
 const settingsSaveStatus = ref('');
 const libraryQuery = ref('');
@@ -760,7 +765,7 @@ async function openPanel(p: Panel) {
   panel.value = p;
   await nextTick();
   if (panelRoot.value) panelRoot.value.inert = false;
-  if (p === 'settings') { settingsMenu.value?.focusContent(); return; }
+  if (p === 'settings') { settingsMenu.value?.focusRail(); return; }
   if (p === 'add') { appPicker.value?.focusInitial(); return; }
   if (panelRoot.value)
     focusElement(
@@ -1156,8 +1161,9 @@ function focusChanged() {
     editingControl.value = null;
 }
 async function openSettings() {
-  settingsHistory.value.length = 0;
-  settingsRoute.value = 'root';
+  linkedFrom.value = null;
+  settingsIndex.value = true;
+  settingsRoute.value = isSettingsPage(lastSettingsPage.value) ? lastSettingsPage.value : 'display';
   void openPanel("settings");
   try {
     monitorList.value = await api.monitors();
@@ -1963,8 +1969,8 @@ onUnmounted(() => {
             </div>
           </template>
           <template v-else-if="panel === 'settings'">
-            <SettingsMenu ref="settingsMenu" :route="settingsRoute" :back-to="settingsBackRoute" :last-page="lastSettingsPage" :save-status="settingsSaveStatus" @open="openSettingsRoute" @back="backSettings" @close="closePanel">
-                <TvSettings v-if="settingsRoute === 'tv'" :native="native" :autostart="config.settings.autostart" @startup="openSettingsRoute('system')" />
+            <SettingsMenu ref="settingsMenu" :route="settingsRoute" :index="settingsIndex" :linked-from="linkedFrom" @browse="settingsIndex = true" @detail="settingsIndex = false" :save-status="settingsSaveStatus" @open="openSettingsRoute" @back="backSettings" @close="closePanel">
+                <TvSettings v-if="settingsRoute === 'tv'" :native="native" :autostart="config.settings.autostart" @startup="openSettingsRoute('system', true)" />
                 <AppleRemoteSettings v-if="settingsRoute === 'iphone'" :native="native" :settings="config.settings.appleRemote" :save-settings="saveAppleRemote" />
                 <RemoteHomeSettings
                   v-if="settingsRoute === 'remote'"
@@ -1997,37 +2003,35 @@ onUnmounted(() => {
                       role="switch"
                       @change="persist" /></label
                   ></template>
-                <template v-if="settingsRoute === 'display'"><h3>{{ t('Display and ambience') }}</h3><label class="setting-row"><span>{{ t('Language') }}<small>{{ t('English is currently the only available language. Your choice is saved for future launches.') }}</small></span><select v-model="config.settings.locale" :aria-label="t('Language')" @change="setLocale(config.settings.locale as Locale); persist()"><option v-for="language in languageOptions" :key="language.value" :value="language.value">{{ language.label }}</option></select></label><label class="setting-row"
-                    ><span
-                      >{{ t('Preferred display') }}<small
-                        >{{ t('Uses the primary display when the TV is unavailable.') }}</small
-                      ></span
-                    ><select
-                      v-model="config.settings.monitor"
-                      @change="persist"
-                    >
+                <template v-if="settingsRoute === 'display'">
+                  <label class="display-preview">
+                    <img :src="`/art/${config.settings.generalAmbiance}.webp`" alt="" />
+                    <span class="display-caption">
+                      <span class="display-label"><Icon name="monitor" :size="19" />{{ t('Preferred display') }}</span>
+                      <strong>{{ preferredMonitor?.name ?? t('Primary display') }}</strong>
+                      <small>{{ config.settings.monitor && !preferredMonitor ? t('Saved display unavailable') : t('Uses the primary display when the TV is unavailable.') }}</small>
+                    </span>
+                    <span class="display-change">{{ t('Change') }}<Icon name="down" :size="16" /></span>
+                    <select v-model="config.settings.monitor" :aria-label="t('Preferred display')" @change="persist">
                       <option :value="null">{{ t('Primary display') }}</option>
-                      <option
-                        v-for="m in monitorList"
-                        :key="m.id"
-                        :value="m.id"
-                      >
-                        {{ m.name }}
-                      </option>
-                    </select></label
-                  ><label class="setting-row"
-                    ><span
-                      >{{ t('Interface size') }}<small
-                        >{{ Math.round(config.settings.scale * 100) }} %</small
-                      ></span
-                    ><input
-                      v-model.number="config.settings.scale"
-                      type="range"
-                      min="0.8"
-                      max="1.4"
-                      step="0.1"
-                      @change="persist" /></label
-                ></template>
+                      <option v-if="config.settings.monitor && !preferredMonitor" :value="config.settings.monitor">{{ t('Saved display unavailable') }}</option>
+                      <option v-for="m in monitorList" :key="m.id" :value="m.id">{{ m.name }}</option>
+                    </select>
+                  </label>
+                  <div class="display-options">
+                    <label class="setting-row">
+                      <Icon name="grid" /><span>{{ t('Interface size') }}</span>
+                      <input v-model.number="config.settings.scale" :aria-label="t('Interface size')" type="range" min="0.8" max="1.4" step="0.1" @change="persist" />
+                      <output>{{ Math.round(config.settings.scale * 100) }}%</output>
+                    </label>
+                    <label class="setting-row">
+                      <Icon name="globe" /><span>{{ t('Language') }}</span>
+                      <select v-model="config.settings.locale" :aria-label="t('Language')" @change="setLocale(config.settings.locale as Locale); persist()">
+                        <option v-for="language in languageOptions" :key="language.value" :value="language.value">{{ language.label }}</option>
+                      </select>
+                    </label>
+                  </div>
+                </template>
                 <div v-if="settingsRoute === 'system'" class="system-actions"><button class="small-button" @click="run(t('Return to Windows'), api.desktop)"><Icon name="monitor" :size="20" />{{ t('Return to the Windows desktop') }}</button><button class="small-button" @click="openPanel('power')"><Icon name="power" :size="20" />{{ t('Power') }}</button></div>
                 <template v-if="settingsRoute === 'apps'"
                   ><div class="content-heading">
@@ -2540,7 +2544,7 @@ onUnmounted(() => {
               }}</span
               ><span v-else-if="panel === 'audio'"
                 >{{ t('↑ ↓ Navigate · ← → Volume ·') }} {{ inputLabels.acceptName }} {{ t('Choose') }}</span
-              ><span v-else-if="panel === 'settings'">{{ t('↑ ↓ Navigate · ← → Adjust · {0} Choose', [inputLabels.acceptName]) }}</span><span v-else>{{
+              ><span v-else-if="panel === 'settings'">{{ settingsIndex ? t('↑ ↓ Browse · {0} Open', [inputLabels.acceptName]) : t('↑ ↓ Navigate · ← → Adjust · {0} Choose', [inputLabels.acceptName]) }}</span><span v-else>{{
                 controller
                   ? t('D-pad: navigate · {0}: OK', [inputLabels.acceptName])
                   : t('Arrows: navigate · Enter: OK / edit')

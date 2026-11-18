@@ -14,7 +14,6 @@ async (page) => {
   await page.waitForFunction(()=>[...document.images].filter(i=>i.src.includes('/art/launchbox')).every(i=>i.complete && i.naturalWidth>0));
   await page.screenshot({path:'output/playwright/launchbox-desktop.png'});
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Display and ambience',exact:true}).click();
   await page.getByRole('button',{name:'Ambience',exact:true}).click();
   const arcade=page.getByRole('button',{name:'Arcade',exact:true});
   await arcade.click();
@@ -29,7 +28,6 @@ async (page) => {
   await page.screenshot({path:'output/playwright/launchbox-mobile.png'});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=390),'Mobile overflow');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Display and ambience',exact:true}).click();
   await page.getByRole('button',{name:'Ambience',exact:true}).click();
   await arcade.scrollIntoViewIfNeeded();
   await page.screenshot({path:'output/playwright/launchbox-ambience-mobile.png'});

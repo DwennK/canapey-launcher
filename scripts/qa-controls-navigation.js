@@ -37,6 +37,7 @@ async (page) => {
   }, config);
   await page.reload();
   const open = async () => {
+    await page.locator('.overlay').waitFor({state:'hidden'});
     await page.getByRole('button',{name:'Settings',exact:true}).click();
     await page.waitForFunction(() => document.querySelector('.overlay') && getComputedStyle(document.querySelector('.overlay')).opacity === '1');
   };
@@ -55,32 +56,33 @@ async (page) => {
     },{action,source});
   };
   await open();
-  await emit('down'); await emit('up');
-  await page.screenshot({path:'output/playwright/settings-root-desktop.png'});
-  for(const source of ['controller','iphone','remote']) {
-    await page.locator('[data-settings-route=appearance]').focus();
-    await emit('down',source); await page.waitForFunction(()=>document.activeElement?.getAttribute('data-settings-route')==='apps');
-    await emit('down',source); await page.waitForFunction(()=>document.activeElement?.getAttribute('data-settings-route')==='devices');
-    await emit('accept',source); await route('devices');
-    await emit('back',source); await route('root');
-    assert(await activeRoute()==='devices',`${source}: Back lost the category selection`);
+  const pages = ['display','ambience','sound','apps','controls','remote','iphone','tv','system','updates','diagnostic'];
+  assert(await activeRoute()==='display', 'Settings must open with the saved page focused');
+  for (const source of ['controller','iphone','remote']) {
+    await page.locator('[data-settings-route=display]').focus();
+    await emit('down', source);
+    assert(await activeRoute()==='ambience', source+' lost rail focus');
+    await route('display');
+    await emit('right', source); await route('ambience');
+    await emit('back', source);
+    assert(await activeRoute()==='ambience', source+' Back lost the active page');
+    await enter('display');
+    await emit('back', source);
   }
-  checks.push('controller / iPhone / remote event routing and Back restoration');
-  for(let i=0;i<8;i++)await emit('down');
-  assert(await activeRoute()==='help','Down at the last category must stop');
-  await emit('right'); assert(await activeRoute()==='help','Right must not escape a category row');
-  for(let i=0;i<8;i++)await emit('up');
-  assert(await page.getByRole('button',{name:'Find a setting'}).evaluate(el=>el===document.activeElement),'Up should reach settings search');
-  await emit('accept');
+  checks.push('controller, iPhone and remote focus, explicit selection and Back');
+  await page.keyboard.press('Control+f');
   const search=page.getByRole('searchbox',{name:'Search settings'});
+  await search.fill('no-such-setting');
+  await page.getByText('No matching settings.').waitFor();
   await search.fill('HDMI');
-  assert(await page.getByRole('navigation',{name:'Matching settings'}).getByRole('button').count()===1,'HDMI should resolve to TV');
-  await search.press('Enter');
-  await route('tv');
-  await page.getByRole('button',{name:'Go to Apps',exact:true}).click(); await route('apps');
-  await emit('back'); await route('tv'); await emit('back'); await route('root');
-  checks.push('find settings by function, switch sidebar section, return to prior page');
-  await enter('appearance'); await enter('display');
+  assert(await page.locator('[data-settings-route]').count()===1,'HDMI should resolve to TV');
+  await search.press('ArrowDown'); assert(await activeRoute()==='tv','Down should reach the first match');
+  await page.keyboard.press('Enter'); await route('tv');
+  await page.keyboard.press('Control+f'); await search.fill('zoom'); await search.press('Enter'); await route('display');
+  await page.keyboard.press('Control+f'); await search.press('Escape');
+  assert(await page.locator('[data-settings-route]').count()===11,'Cancel should restore the full sidebar');
+  checks.push('settings search with empty results, keyboard navigation, submit and cancel');
+  await enter('display');
   const monitor=page.getByLabel(/Preferred display/);
   await monitor.focus(); await page.keyboard.press('Enter');
   await page.getByRole('dialog',{name:'Preferred display',exact:true}).waitFor();
@@ -99,12 +101,10 @@ async (page) => {
   assert(await slider.inputValue()===adjusted && await monitor.evaluate(el=>document.activeElement===el),'Up changed slider value or failed to leave it');
   await slider.fill('1'); await slider.dispatchEvent('change');
   checks.push('large choice dialog, cancel, focus restoration, direct slider adjustment');
-  await page.keyboard.press('Escape'); await route('appearance');
+  await page.keyboard.press('Escape');
   assert(await activeRoute()==='display','Back did not restore Display');
-  await page.keyboard.press('Escape'); await route('root');
-  const paths=[['appearance','display'],['appearance','ambience'],['appearance','sound'],['apps'],['devices','controls'],['devices','remote'],['devices','iphone'],['devices','tv'],['system'],['help','updates'],['help','diagnostic']];
-  for(const path of paths) {
-    for(const name of path) await enter(name);
+  for(const name of pages) {
+    await enter(name);
     await page.waitForFunction(()=>document.querySelector('.settings-page')?.children.length>0);
     const result=await page.evaluate(async()=>{
       const {focusableItems,focusElement,focusDirection}=await import('/src/lib/navigation.ts');
@@ -116,26 +116,24 @@ async (page) => {
       focusElement(items.at(-1));focusDirection(root,'down');
       return {escaped,count:items.length,inPage:root.contains(document.activeElement)};
     });
-    assert(!result.escaped.length && result.inPage,`${path}: focus escaped the page`);
-    for(let i=0;i<path.length;i++)await page.keyboard.press('Escape');
-    await route('root');
+    assert(!result.escaped.length && result.inPage,`${name}: focus escaped the page`);
+    await emit('back');
   }
   checks.push('all 11 pages keep directional focus in their content');
-  await enter('devices'); await enter('remote');
+  await enter('remote');
   await page.getByRole('button',{name:'Learn key',exact:true}).click();
   await page.waitForFunction(()=>window.__menuQA.capturing);
   await emit('back','remote'); await route('remote');
   await page.evaluate(()=>window.__menuQA.emit('remote-home-captured',{code:'KeyZ',ctrl:false,alt:false,shift:false}));
   await page.waitForFunction(()=>!window.__menuQA.capturing);
-  await emit('back','remote'); await route('devices');
-  await page.keyboard.press('Escape'); await route('root');
+  await emit('back','remote'); assert(await activeRoute()==='remote','Remote capture did not release navigation');
   checks.push('remote editor navigation resumes after key learning');
   await enter('apps');
   await page.getByRole('button',{name:'Add',exact:true}).click();
   await page.getByRole('dialog',{name:'Add apps',exact:true}).waitFor();
   await page.keyboard.press('Escape'); await route('apps');
   assert(await page.locator(':focus').innerText()==='Add','Closing nested dialog lost focus');
-  await page.keyboard.press('Escape'); await enter('devices'); await enter('tv');
+  await enter('tv');
   await page.getByText('My TV is not listed',{exact:true}).click();
   const ip=page.getByLabel('TV IP address',{exact:true}); await ip.focus();
   await emit('accept-down'); await emit('accept-up');
@@ -149,36 +147,48 @@ async (page) => {
   assert(await ip.evaluate(el=>document.activeElement===el),'On-screen keyboard did not restore TV input');
   await page.screenshot({path:'output/playwright/settings-tv-desktop.png'});
   checks.push('nested Add dialog and controller text-entry return focus');
-  // Leave explicit text editing, then return to the root.
-  await page.keyboard.press('Escape');
-  if(await page.locator('[data-settings-page=tv]').count())await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape'); await route('root');
+  await page.getByRole('button',{name:'Close settings'}).click();
   for(const viewport of [{width:390,height:844},{width:1440,height:900}]) {
     await page.setViewportSize(viewport);
-    for(const path of paths) {
-      for(const name of path) await enter(name);
+    await open();
+    for(const name of pages) {
+      await enter(name);
       await page.waitForFunction(()=>document.querySelector('.settings-page')?.children.length>0);
       const overflow=await page.evaluate(()=>{const el=document.querySelector('.settings-content');return el.scrollWidth>el.clientWidth+1 || document.documentElement.scrollWidth>innerWidth;});
-      assert(!overflow,`${path}: horizontal overflow at ${viewport.width}`);
-      if(['controls','ambience','tv'].includes(path.at(-1)))await page.screenshot({path:`output/playwright/settings-${path.at(-1)}-${viewport.width}.png`});
-      for(let i=0;i<path.length;i++)await page.keyboard.press('Escape');
-      await route('root');
+      assert(!overflow,`${name}: horizontal overflow at ${viewport.width}`);
+      assert(await page.locator('.settings-rail [aria-current=page]').getAttribute('data-settings-route')===name,'Sidebar and detail selection disagree');
+      if (['display','ambience','tv'].includes(name)) {
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.screenshot({animations:'disabled',path:`output/playwright/aqua-${name}-${viewport.width}.png`});
+      }
+      await emit('back');
+      assert(await activeRoute()===name,`${name}: Back failed at ${viewport.width}`);
     }
+    await emit('back');
   }
-  checks.push('desktop and mobile layout on every page');
-  await enter('appearance'); await enter('display');
-  await page.getByLabel(/Interface size/).fill('1.4'); await page.getByLabel(/Interface size/).dispatchEvent('change');
-  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
-  await page.setViewportSize({width:1920,height:1080}); await enter('devices'); await enter('controls');
+  checks.push('all eleven pages on desktop and compact layout, Back and overflow');
+  await page.setViewportSize({width:1920,height:1080}); await open(); await enter('display');
+  await slider.fill('1.4'); await slider.dispatchEvent('change');
+  await enter('controls');
   await page.getByRole('button',{name:'Xbox / Steam Input troubleshooting',exact:true}).focus();
   assert(await page.locator(':focus').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'Last controller setting is unreachable at maximum scale');
-  await page.screenshot({path:'output/playwright/settings-controls-tv-scale.png'});
-  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
-  checks.push('1920×1080 TV layout at maximum interface size');
-  await enter('appearance'); await enter('sound');
+  checks.push('1920×1080 TV at maximum scale');
+  await page.setViewportSize({width:1280,height:720});
+  await enter('display'); await emit('back');
+  for (const name of pages.slice(1)) {
+    await emit('down');
+    assert(await activeRoute()===name, 'Scrolled sidebar skipped '+name+' on Down');
+  }
+  for (const name of pages.slice(0,-1).reverse()) {
+    await emit('up');
+    assert(await activeRoute()===name, 'Scrolled sidebar skipped '+name+' on Up');
+  }
+  checks.push('full traversal of the scrolled sidebar at 720p and 140%');
+
+  await enter('sound');
   await page.waitForFunction(()=>window.__menuQA.config.settings.lastSettingsTab==='sound');
-  await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
-  await open(); assert(await activeRoute()==='appearance','Last used category was not highlighted');
+  await emit('back'); await emit('back'); await open(); await route('sound');
+  assert(await activeRoute()==='sound','Last used page was not restored');
   assert(!errors.length,errors.join('\n'));
   return {passed:true,checks,viewports:['1440×900','390×844'],hardware:'simulated events only'};
   } finally { await context.close(); }

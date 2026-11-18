@@ -1,30 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { settingsPages, settingsChildren, settingsParent, settingsBranch, isSettingsPage, type SettingsRoute } from '../src/lib/settings-navigation';
+import { findSettings, isSettingsPage, settingsPages, settingsSections } from '../src/lib/settings-navigation';
 import english from '../src/locales/en.json';
-import { settingsEntry } from '../src/lib/settings-navigation';
-describe('settings hierarchy', () => {
-  it('makes every page reachable with a consistent parent and translated copy', () => {
-    const visited = new Set<SettingsRoute>();
-    const visit = (route: SettingsRoute) => {
-      expect(visited.has(route)).toBe(false);
-      visited.add(route);
-      const entry = settingsEntry(route);
-      expect(english).toHaveProperty(entry.title);
-      expect(english).toHaveProperty(entry.description);
-      for (const child of settingsChildren(route)) {
-        expect(settingsParent(child)).toBe(route);
-        visit(child);
-      }
-    };
-    visit('root');
-    for (const page of Object.keys(settingsPages)) expect(visited.has(page as SettingsRoute)).toBe(true);
-    expect(settingsParent('root')).toBe(null);
+
+describe('settings sidebar', () => {
+  it('lists each page exactly once and localizes section and page names', () => {
+    const pages = settingsSections.flatMap(section => [...section.pages]);
+    expect([...pages].sort()).toEqual(Object.keys(settingsPages).sort());
+    for (const section of settingsSections) expect(english).toHaveProperty(section.title);
+    for (const page of pages) expect(english).toHaveProperty(settingsPages[page].title);
   });
-  it('recovers a remembered category without accepting arbitrary stored routes', () => {
-    expect(settingsBranch('tv')).toBe('devices');
-    expect(settingsBranch('sound')).toBe('appearance');
-    expect(settingsBranch('apps')).toBe('apps');
-    expect(settingsBranch('missing')).toBe('appearance');
+  it('finds pages by task and recognizes only known saved destinations', () => {
+    expect(findSettings('HdMi')).toEqual(['tv']);
+    expect(findSettings('Apple pairing')).toEqual(['iphone']);
+    expect(findSettings('xyz')).toEqual([]);
+    expect(isSettingsPage('sound')).toBe(true);
     expect(isSettingsPage('toString')).toBe(false);
   });
 });

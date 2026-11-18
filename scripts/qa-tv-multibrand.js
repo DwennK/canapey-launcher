@@ -44,7 +44,6 @@ async (page) => {
   await page.reload();
   const assert=(value,msg)=>{if(!value)throw Error(msg)};
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Controls',exact:true}).click();
   await page.getByRole('button',{name:'TV',exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('.tv-settings .primary-button')?.disabled);
   await page.evaluate(()=>window.__tvQA.found=['lgWebos','samsungTizen','sonyBravia','roku'].map((protocol,i)=>({...window.__tvQA.tv,name:['LG living room','Samsung bedroom','Sony cinema','TCL Roku TV'][i],ip:`192.168.1.${30+i}`,protocol,secure:protocol!=='roku'})));

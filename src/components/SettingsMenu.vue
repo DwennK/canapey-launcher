@@ -2,146 +2,163 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { t } from '../lib/i18n';
 import { focusableItems, focusDirection, focusElement, rememberFocus, restoreFocus, type FocusBookmark } from '../lib/navigation';
-import { findSettings, isSettingsPage, settingsBranch, settingsChildren, settingsEntry, settingsParent, type SettingsRoute } from '../lib/settings-navigation';
+import { findSettings, settingsPages, settingsSections, type SettingsPage } from '../lib/settings-navigation';
 import type { Action } from '../lib/types';
 import Icon from './Icon.vue';
-const props = defineProps<{ route: SettingsRoute; backTo: SettingsRoute | null; lastPage: string; saveStatus: string }>();
-const emit = defineEmits<{ open: [route: SettingsRoute]; back: []; close: [] }>();
-const body = ref<HTMLElement>(), header = ref<HTMLElement>();
-const entry = computed(() => settingsEntry(props.route));
-const parent = computed(() => settingsParent(props.route));
-const children = computed(() => settingsChildren(props.route));
-const bookmarks = new Map<string, FocusBookmark>();
-let observer: MutationObserver | undefined, alive = true;
-const rail = ref<HTMLElement>(), searchField = ref<HTMLInputElement>(), searchButton = ref<HTMLButtonElement>();
+
+const props = defineProps<{ route: SettingsPage; index: boolean; linkedFrom: SettingsPage | null; saveStatus: string }>();
+const emit = defineEmits<{ open: [page: SettingsPage]; browse: []; detail: []; back: []; close: [] }>();
+const rail = ref<HTMLElement>(), body = ref<HTMLElement>();
+const searchField = ref<HTMLInputElement>(), searchButton = ref<HTMLButtonElement>();
 const searching = ref(false), query = ref('');
-const results = computed(() => findSettings(query.value));
-const sections = settingsChildren('root');
-const activeBranch = computed(() => isSettingsPage(props.route) ? settingsBranch(props.route) : props.route);
+const matches = computed(() => findSettings(query.value));
+const sections = computed(() => settingsSections.map(section => ({
+  title: section.title, pages: section.pages.filter(page => matches.value.includes(page)),
+})).filter(section => section.pages.length));
+const sectionName = computed(() => settingsSections.find(section => section.pages.some(page => page === props.route))!.title);
+const bookmarks = new Map<SettingsPage, FocusBookmark>();
+const compact = window.matchMedia('(max-width: 840px)');
+let observer: MutationObserver | undefined;
+let alive = true;
+let searchOrigin: HTMLElement | null = null;
 function focusRail() {
-  const target = rail.value?.querySelector<HTMLElement>('[aria-current]') ?? rail.value?.querySelector<HTMLElement>('button');
-  if (target?.getClientRects().length) focusElement(target);
+  const current = rail.value?.querySelector<HTMLElement>('[aria-current="page"]');
+  focusElement(current ?? searchButton.value);
+}
+function focusContent() {
+  if (!body.value || !alive || !body.value.getClientRects().length) return;
+  const saved = bookmarks.get(props.route);
+  if (saved && focusableItems(body.value).length) restoreFocus(body.value, saved);
+  else focusElement(focusableItems(body.value)[0] ?? body.value);
+}
+function remember() {
+  if (!body.value || document.activeElement === body.value) return;
+  emit('detail');
+  bookmarks.set(props.route, rememberFocus(body.value));
 }
 async function openSearch() {
+  if (!searching.value) searchOrigin = document.activeElement as HTMLElement | null;
   searching.value = true;
   await nextTick();
   searchField.value?.focus();
-}
-function openFirstResult(event: KeyboardEvent) {
-  if (event.isComposing || !results.value.length) return;
-  event.preventDefault();
-  event.stopPropagation();
-  openRoute(results.value[0]!);
 }
 function closeSearch() {
   if (!searching.value) return false;
   searching.value = false;
   query.value = '';
-  nextTick(() => searchButton.value?.focus());
+  nextTick(() => {
+    if (searchOrigin?.isConnected && searchOrigin.getClientRects().length) focusElement(searchOrigin);
+    else if (compact.matches && !props.index) focusContent();
+    else searchButton.value?.focus();
+    searchOrigin = null;
+  });
   return true;
 }
-function openRoute(route: SettingsRoute) {
+function openPage(page: SettingsPage) {
   searching.value = false;
   query.value = '';
-  if (route === props.route) {
-    nextTick(focusContent);
-    return;
-  }
-  emit('open', route);
+  emit('open', page);
+  if (page === props.route) nextTick(focusContent);
 }
-function remember() { if (!searching.value && body.value?.contains(document.activeElement)) bookmarks.set(props.route, rememberFocus(body.value)); }
-function focusContent() {
-  if (!body.value || !alive) return;
-  if (searching.value) { searchField.value?.focus(); return; }
-  const items = focusableItems(body.value);
-  if (!items.length) { focusElement(body.value); return; }
-  const saved = bookmarks.get(props.route);
-  if (saved) { restoreFocus(body.value, saved); return; }
-  const preferred = props.route === 'root' ? settingsBranch(props.lastPage) : props.lastPage;
-  const target = body.value.querySelector<HTMLElement>(`[data-settings-route="${preferred}"]`);
-  focusElement(target ?? items[0] ?? body.value);
+function submitSearch(event: KeyboardEvent) {
+  if (event.isComposing) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const page = matches.value[0];
+  if (page) openPage(page);
+}
+function firstMatch() {
+  focusElement(rail.value?.querySelector<HTMLElement>('[data-settings-route]') ?? searchField.value);
 }
 function navigate(action: Action) {
-  if (!body.value || !header.value) return;
-  if (header.value.contains(document.activeElement)) {
+  const active = document.activeElement as HTMLElement;
+  if (rail.value?.contains(active)) {
+    const page = active.dataset.settingsRoute as SettingsPage | undefined;
+    if (page && action === 'right') openPage(page);
+    else if (action === 'up' || action === 'down') {
+      // Pinned search and scrolled rows can overlap geometrically. Follow list order.
+      const items = focusableItems(rail.value).filter(item => !item.classList.contains('end-search'));
+      const index = items.indexOf(active === rail.value.querySelector('.end-search') ? searchField.value! : active);
+      focusElement(items[index + (action === 'up' ? -1 : 1)]);
+    } else focusDirection(rail.value, action);
+    return;
+  }
+  if (active.closest('.settings-heading')) {
     if (action === 'down') focusContent();
-    else focusDirection(header.value, action);
-  } else if (rail.value?.contains(document.activeElement)) {
-    if (action === 'right') focusContent();
-    else {
-      const previous = document.activeElement;
-      focusDirection(rail.value, action);
-      if (action === 'up' && previous === document.activeElement) searchButton.value?.focus();
-    }
-  } else {
-    const previous = document.activeElement;
-    focusDirection(body.value, action);
-    if (previous === document.activeElement) {
-      if (action === 'left' && !searching.value) focusRail();
-      if (action === 'up') searchButton.value?.focus();
-    }
+    else if (action === 'left' && !compact.matches) { emit('browse'); focusRail(); }
+    return;
+  }
+  if (!body.value) return;
+  focusDirection(body.value, action);
+  if (active !== document.activeElement) return;
+  if (action === 'left' && !compact.matches) { emit('browse'); focusRail(); }
+  else if (action === 'up') {
+    const back = body.value.parentElement?.querySelector<HTMLElement>('.settings-heading button');
+    if (back?.getClientRects().length) focusElement(back);
+    else if (!compact.matches) { emit('browse'); focusRail(); }
   }
 }
-watch(() => props.route, async () => { await nextTick(); focusContent(); });
-onMounted(async () => {
+function syncVisibleFocus() {
+  nextTick(() => {
+    if (searching.value) searchField.value?.focus();
+    else if (props.index) focusRail();
+    else focusContent();
+  });
+}
+watch(() => props.route, async () => {
   await nextTick();
-  if (!alive) return;
+  if (body.value) body.value.scrollTop = 0;
   focusContent();
-  // Async settings pages may mount after the route changes. Never steal an existing focus.
+});
+onMounted(() => {
+  compact.addEventListener('change', syncVisibleFocus);
+  // A lazy page may initially have no controls. Hand focus to it once it loads.
   observer = new MutationObserver(() => {
-    const active = document.activeElement;
-    if (body.value === active || (active === document.body && bookmarks.has(props.route))
-        || (active && body.value?.contains(active) && active.matches(':disabled'))) focusContent();
+    if (body.value === document.activeElement || (body.value?.contains(document.activeElement) && document.activeElement?.matches(':disabled'))) focusContent();
   });
   if (body.value) observer.observe(body.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
 });
-onUnmounted(() => { alive = false; observer?.disconnect(); });
-defineExpose({ navigate, focusContent, openSearch, closeSearch });
+onUnmounted(() => { alive = false; observer?.disconnect(); compact.removeEventListener('change', syncVisibleFocus); });
+defineExpose({ navigate, focusRail, openSearch, closeSearch });
 </script>
 
 <template>
-  <div class="settings-shell">
-    <header ref="header" class="settings-header" data-nav-scope="settings-header">
-      <button class="settings-back" :aria-label="searching ? t('Back to {0}', [t(entry.title)]) : backTo ? t('Back to {0}', [t(settingsEntry(backTo).title)]) : t('Back to Home')" @click="closeSearch() || emit('back')"><Icon name="back" :size="25" /></button>
-      <div class="settings-heading">
-        <p v-if="parent && !searching" class="settings-breadcrumb">{{ parent === 'root' ? t('Settings') : `${t('Settings')} / ${t(settingsEntry(parent).title)}` }}</p>
-        <h2 id="settings-page-title">{{ searching ? t('Find a setting') : t(entry.title) }}</h2>
+  <div class="settings-shell" :class="{ 'show-index': index || searching }">
+    <nav ref="rail" class="settings-rail" :aria-label="t('Settings pages')" data-nav-scope="settings-rail">
+      <div class="rail-heading">
+        <div class="rail-brand"><img src="/brand/canapey-mark.svg" alt="" />Canapey</div>
+        <button class="settings-close" :aria-label="t('Close settings')" @click="emit('close')"><Icon name="close" :size="19" /></button>
       </div>
-      <button ref="searchButton" class="settings-find" :aria-label="t('Find a setting')" @click="openSearch"><Icon name="search" :size="21" /><span>{{ t('Find a setting') }}</span></button>
-      <button class="settings-close" :aria-label="t('Close settings')" @click="emit('close')"><Icon name="close" :size="23" /></button>
-    </header>
-    <div class="settings-workspace">
-      <nav v-if="route !== 'root' && !searching" ref="rail" class="settings-rail" data-nav-scope="settings-rail" :aria-label="t('Settings categories')">
-        <button v-for="section in sections" :key="section" :aria-current="activeBranch === section ? 'true' : undefined"
-          :aria-label="t('Go to {0}', [t(settingsEntry(section).title)])" @click="openRoute(section)">
-          <Icon :name="settingsEntry(section).icon" :size="21" /><span>{{ t(settingsEntry(section).title) }}</span>
-        </button>
-      </nav>
-      <div ref="body" class="settings-content" :class="{ 'settings-menu-list': !isSettingsPage(route) }" :data-settings-page="route" data-nav-scope="settings-content" tabindex="-1" @focusin="remember">
-        <div v-if="searching" class="settings-search">
-          <input ref="searchField" v-model="query" type="search" @keydown.enter="openFirstResult" :aria-label="t('Search settings')" :placeholder="t('Search settings')" autocomplete="off" />
-          <nav class="settings-destinations" :aria-label="t('Matching settings')">
-            <button v-for="page in results" :key="page" class="settings-destination" @click="openRoute(page)">
-              <Icon :name="settingsEntry(page).icon" :size="24" /><span><strong>{{ t(settingsEntry(page).title) }}</strong><small>{{ t(settingsEntry(page).description) }}</small></span><Icon name="right" :size="18" />
-            </button>
-          </nav>
-          <p v-if="!results.length" role="status">{{ t('No matching settings.') }}</p>
-        </div>
-        <div v-show="!searching">
-          <template v-if="children.length">
-            <p class="settings-description">{{ t(entry.description) }}</p>
-            <nav :aria-label="t(entry.title)" class="settings-destinations">
-              <button v-for="destination in children" :key="destination" class="settings-destination" :aria-label="t(settingsEntry(destination).title)" :aria-describedby="`settings-description-${destination}`" :data-settings-route="destination" :data-focus-key="`settings:${destination}`" @click="openRoute(destination)">
-                <Icon :name="settingsEntry(destination).icon" :size="30" />
-                <span><strong>{{ t(settingsEntry(destination).title) }}</strong><small :id="`settings-description-${destination}`">{{ t(settingsEntry(destination).description) }}</small></span>
-                <Icon name="right" :size="22" />
-              </button>
-            </nav>
-          </template>
-          <div v-else :key="route" class="settings-page"><slot /></div>
-        </div>
+      <h2>{{ t('Settings') }}</h2>
+      <div class="settings-find">
+        <Icon name="search" :size="18" />
+        <input v-if="searching" ref="searchField" v-model="query" type="search" :aria-label="t('Search settings')" :placeholder="t('Find a setting')" autocomplete="off"
+          @keydown.enter="submitSearch" @keydown.down.prevent.stop="firstMatch" @keydown.esc.prevent.stop="closeSearch" />
+        <button v-if="searching" class="end-search" :aria-label="t('Cancel search')" @click="closeSearch"><Icon name="close" :size="15" /></button>
+        <button v-else ref="searchButton" @click="openSearch">{{ t('Find a setting') }}</button>
       </div>
-    </div>
-    <span class="settings-save" role="status">{{ saveStatus || t('Changes save automatically') }}</span>
+      <div class="settings-sections">
+        <div v-for="section in sections" :key="section.title" class="rail-section" role="group" :aria-label="t(section.title)">
+          <h3>{{ t(section.title) }}</h3>
+          <button v-for="page in section.pages" :key="page" :data-settings-route="page" :data-focus-key="`settings:${page}`"
+            :aria-current="route === page ? 'page' : undefined" @focus="!searching && emit('browse')" @click="openPage(page)">
+            <span class="rail-icon"><Icon :name="settingsPages[page].icon" :size="19" /></span>
+            {{ t(settingsPages[page].title) }}
+          </button>
+        </div>
+        <p v-if="!sections.length" role="status">{{ t('No matching settings.') }}</p>
+      </div>
+    </nav>
+    <section class="settings-detail" aria-labelledby="settings-page-title">
+      <header class="settings-heading">
+        <button v-if="linkedFrom" class="settings-back" @click="emit('back')"><Icon name="back" :size="18" />{{ t('Back to {0}', [t(settingsPages[linkedFrom].title)]) }}</button>
+        <button v-else class="settings-back compact-back" :aria-label="t('Back to settings')" @click="emit('back')"><Icon name="back" :size="18" />{{ t('Settings') }}</button>
+        <p>{{ t(sectionName) }}</p><h2 id="settings-page-title">{{ t(settingsPages[route].title) }}</h2>
+      </header>
+      <div ref="body" class="settings-content" :data-settings-page="route" data-nav-scope="settings-content" tabindex="-1" @focusin="remember">
+        <div :key="route" class="settings-page"><slot /></div>
+      </div>
+      <div class="settings-save" role="status"><Icon v-if="!saveStatus || saveStatus === t('Saved')" name="check" :size="16" />{{ saveStatus || t('Changes save automatically') }}</div>
+    </section>
   </div>
 </template>

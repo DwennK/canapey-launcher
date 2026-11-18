@@ -20,6 +20,7 @@ async (page) => {
   verify(await page.evaluate(()=>JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).settings.locale)==='en','Language must be persisted');
   verify(await page.getByText('Mon cinéma',{exact:true}).count()>0,'Saved app name must remain unchanged');
   await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('button',{name:'Display',exact:true}).click();
   const language=page.getByRole('combobox',{name:'Language',exact:true});
   verify(await language.inputValue()==='en','Saved language selection');
   verify(JSON.stringify(await language.locator('option').allTextContents())===JSON.stringify(['English']),'Only English offered');
@@ -29,15 +30,15 @@ async (page) => {
   await page.screenshot({path:'output/playwright/language-mobile.png'});
   verify(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile settings overflow');
   await page.setViewportSize({width:1440,height:1000});
-  await page.getByRole('navigation',{name:'Settings categories'}).getByRole('button',{name:'Controls',exact:true}).click();
-  await page.getByRole('group',{name:'Controls',exact:true}).getByRole('button',{name:'Remote',exact:true}).click();
+  await page.getByRole('button',{name:'Remote',exact:true}).click();
   // The photo is outside the optional essential-buttons guide.
+  await page.getByRole('button',{name:'Choose on the remote'}).click();
   await page.locator('.remote-hotspot').first().waitFor();
   verify(await page.locator('.remote-hotspot').count()>20,'Remote picture hit areas should remain available');
   const image=page.locator('img[src*="skip"]');
   verify(await image.evaluate(img=>img.complete&&img.naturalWidth>0),'Remote photo must load');
   await page.screenshot({path:'output/playwright/language-remote-photo.png'});
-  await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'Close settings'}).click();
   await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Library',exact:true}).click();
   await page.getByRole('searchbox',{name:'Search the library'}).focus();
   await page.keyboard.press('F2');

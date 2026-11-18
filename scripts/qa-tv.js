@@ -32,7 +32,6 @@ async (page) => {
   await page.reload();
   const assert=(value,msg)=>{if(!value)throw Error(msg)};
   await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Controls',exact:true}).click();
   await page.getByRole('button',{name:'TV',exact:true}).click();
   await page.getByRole('heading',{name:'TV',exact:true}).waitFor();
   await page.waitForFunction(()=>!document.querySelector('.tv-settings .primary-button')?.disabled);

@@ -14,7 +14,7 @@ async (page) => {
     const button=name=>page.getByRole('button',{name,exact:true});
     const slider=name=>page.getByRole('slider',{name:new RegExp(name)});
     const setRange=async(name,value)=>{await slider(name).fill(String(value));await slider(name).dispatchEvent('change');};
-    const appearance=async()=>{await button('Settings').click();await button('Display and ambience').click();};
+    const appearance=async()=>{await button('Settings').click();};
     await appearance();await button('Ambience').click();
     await button('Arcade').click();await page.getByRole('switch',{name:/Per-app background/}).uncheck();
     await setRange('Background brightness',.65);await setRange('Background blur',6);

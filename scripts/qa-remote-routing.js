@@ -50,7 +50,6 @@ async (page) => {
   assert(await count() === before + 1, 'Long OK also launched the application');
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:"Settings",exact:true}).click();
-  await page.getByRole('button',{name:"Controls",exact:true}).click();
   await page.getByRole('button',{name:"Remote",exact:true}).click();
   await page.locator('.remote-inspector').waitFor();
   await page.getByRole('combobox',{name:"Button",exact:true}).selectOption('ok');
