@@ -91,6 +91,26 @@ pub fn start(app: &tauri::AppHandle) {
         });
     }
 }
+fn launcher_is_foreground(app: &tauri::AppHandle) -> bool {
+    #[cfg(windows)]
+    {
+        // WebView2 can own keyboard focus while its top-level launcher is foreground.
+        app.get_webview_window("main")
+            .and_then(|window| window.hwnd().ok())
+            .is_some_and(|hwnd| {
+                !hwnd.0.is_null()
+                    && hwnd.0
+                        == unsafe {
+                            windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow()
+                        }
+            })
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        false
+    }
+}
 #[tauri::command]
 pub fn apple_library_search(
     app: tauri::AppHandle,
@@ -102,9 +122,7 @@ pub fn apple_library_search(
         let focused = state.desired.borrow().enabled
             && field.is_some()
             && state.status.lock().unwrap().running
-            && app
-                .get_webview_window("main")
-                .is_some_and(|w| w.is_focused().unwrap_or(false));
+            && launcher_is_foreground(&app);
         hub.keyboard
             .set_field(field.filter(|_| focused))
             .map_err(|e| e.to_string())?;
@@ -118,10 +136,7 @@ pub fn apple_remote_status(app: tauri::AppHandle) -> Status {
 }
 #[tauri::command]
 pub fn apple_remote_pair(app: tauri::AppHandle) -> Result<(), String> {
-    if !app
-        .get_webview_window("main")
-        .is_some_and(|w| w.is_focused().unwrap_or(false))
-    {
+    if !launcher_is_foreground(&app) {
         return Err("Return to Canapey to pair an iPhone.".into());
     }
     let state = app.state::<AppleRemoteState>();
@@ -232,7 +247,7 @@ async fn supervise(app: tauri::AppHandle) {
                                         while edits.changed().await.is_ok() {
                                             let field = edits.borrow_and_update().clone();
                                             if let Some(webview) = window.get_webview_window("main") {
-                                                if webview.is_focused().unwrap_or(false) {
+                                                if launcher_is_foreground(&window) {
                                                     let _ = webview.emit("apple-library-text", field);
                                                 }
                                             }
@@ -344,10 +359,7 @@ fn action_sink(app: tauri::AppHandle) -> crate::apple_remote::ActionSink {
                 };
                 external.remove(&(event.connection, action));
             }
-            let focused = authorized
-                && app
-                    .get_webview_window("main")
-                    .is_some_and(|w| w.is_focused().unwrap_or(false));
+            let focused = authorized && launcher_is_foreground(&app);
             let result = match event.action {
                 "home" if event.pressed => {
                     let handle = app.clone();

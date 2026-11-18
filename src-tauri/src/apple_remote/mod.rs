@@ -238,6 +238,14 @@ impl Hub {
             .get(&connection)
             .is_some_and(|id| inner.identity.clients.contains_key(id))
     }
+    pub(crate) fn pairing_deadline(&self, ticket: u64) -> Option<Instant> {
+        let inner = self.inner.lock().unwrap();
+        inner
+            .pairing
+            .as_ref()
+            .filter(|p| p.generation == ticket)
+            .map(|p| p.until)
+    }
     pub(crate) fn pin(&self, start: bool, ticket: &mut Option<u64>) -> Result<String> {
         let mut inner = self.inner.lock().unwrap();
         let p = inner

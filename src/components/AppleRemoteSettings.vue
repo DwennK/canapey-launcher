@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { t } from '../lib/i18n';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { appleRemoteStatus, pairAppleRemote, cancelApplePairing, forgetAppleRemote, onAppleRemoteStatus, emptyAppleRemoteStatus, defaultAppleRemote, type AppleRemoteSettings } from '../lib/apple-remote';
+import { appleRemoteStatus, pairAppleRemote, cancelApplePairing, forgetAppleRemote, onAppleRemoteStatus, emptyAppleRemoteStatus, defaultAppleRemote, type AppleRemoteSettings, type AppleRemoteStatus } from '../lib/apple-remote';
 const props = defineProps<{ native: boolean; settings?: AppleRemoteSettings; saveSettings: (settings: AppleRemoteSettings) => Promise<boolean> }>();
 const draft = ref({ ...(props.settings ?? defaultAppleRemote()) });
 const status = ref(emptyAppleRemoteStatus());
-const busy = ref(false), error = ref('');
+const busy = ref(false), error = ref(''), receivedStatus = ref(false);
 let alive = true, timer: ReturnType<typeof setInterval> | undefined, stop: (() => void) | undefined;
 watch(() => props.settings, value => { draft.value = { ...(value ?? defaultAppleRemote()) }; }, { deep: true });
 const enabled = computed(() => props.settings?.enabled ?? false);
 const supported = computed(() => props.native && status.value.available);
-const label = computed(() => !supported.value ? t('Available on Windows') : !enabled.value ? t('Disabled') : status.value.error ? t('Needs attention') : status.value.running ? t('Ready to connect') : t('Starting…'));
-async function refresh() { if (props.native && alive) { try { const result = await appleRemoteStatus(); if (alive) status.value = result; } catch (e) { if (alive) error.value = String(e); } } }
+const checking = computed(() => props.native && !receivedStatus.value);
+const label = computed(() => checking.value ? (error.value ? t('Needs attention') : t('Checking connection…')) : !supported.value ? t('Available on Windows') : !enabled.value ? t('Disabled') : status.value.error ? t('Needs attention') : status.value.running ? t('Ready to connect') : t('Starting…'));
+function showStatus(value: AppleRemoteStatus) { if (alive) { status.value = value; receivedStatus.value = true; } }
+async function refresh() { if (props.native && alive) { try { showStatus(await appleRemoteStatus()); } catch (e) { if (alive) error.value = String(e); } } }
 async function run(action: () => Promise<unknown>) { if (busy.value) return; busy.value = true; error.value = ''; try { await action(); await refresh(); } catch (e) { error.value = String(e); } finally { busy.value = false; } }
 async function save() {
   await run(async () => {
@@ -23,20 +25,20 @@ async function save() {
 async function toggle(event: Event) { draft.value.enabled = (event.target as HTMLInputElement).checked; await save(); }
 onMounted(async () => {
   if (!props.native) return;
-  try { const unsubscribe = await onAppleRemoteStatus(value => { if (alive) status.value = value; }); if (!alive) unsubscribe(); else stop = unsubscribe; } catch (e) { error.value = String(e); }
+  try { const unsubscribe = await onAppleRemoteStatus(showStatus); if (!alive) unsubscribe(); else stop = unsubscribe; } catch (e) { error.value = String(e); }
   if (alive) { await refresh(); timer = setInterval(() => void refresh(), 1000); }
 });
 onUnmounted(() => { alive = false; clearInterval(timer); stop?.(); if (props.native && status.value.pairing.pin) void cancelApplePairing().catch(() => {}); });
 </script>
 
 <template>
-  <section class="apple-remote" aria-labelledby="apple-remote-title">
+  <section class="apple-remote" :aria-busy="checking && !error" aria-labelledby="apple-remote-title">
     <header class="apple-heading">
       <div><span class="apple-eyebrow">{{ t('IPHONE · EXPERIMENTAL') }}</span><h3 id="apple-remote-title">{{ t('Your iPhone, your remote.') }}</h3><p>{{ t('Use Apple TV Remote from Control Center. No app to install.') }}</p></div>
       <span class="apple-state" :class="{ ready: status.running }" role="status">{{ label }}</span>
     </header>
     <label class="setting-row apple-enable"><span>{{ t('Enable iPhone remote') }}<small>{{ t('On the same private local network as your PC.') }}</small></span><input type="checkbox" role="switch" :checked="enabled" :disabled="!supported || busy" @change="toggle" /></label>
-    <p v-if="!supported" class="apple-note">{{ t('iPhone connectivity is available in Canapey on Windows. This preview does not start a network service.') }}</p>
+    <p v-if="!checking && !supported" class="apple-note">{{ t('iPhone connectivity is available in Canapey on Windows. This preview does not start a network service.') }}</p>
     <template v-if="supported && enabled">
       <div class="apple-pair-card">
         <template v-if="status.pairing.pin">
@@ -45,7 +47,7 @@ onUnmounted(() => { alive = false; clearInterval(timer); stop?.(); if (props.nat
           <div class="apple-pair-footer"><span>{{ t('Expires in') }} {{ status.pairing.secondsRemaining }} s</span><button class="small-button" :disabled="busy" @click="run(cancelApplePairing)">{{ t('Cancel pairing') }}</button></div>
         </template>
         <template v-else>
-          <div><h4>{{ t('Pair your iPhone') }}</h4><p>{{ t('Open Apple TV Remote on your iPhone, then choose this PC’s name. The code will appear here.') }}</p></div>
+          <div><h4>{{ t('Pair your iPhone') }}</h4><p>{{ t('Select Pair an iPhone to show a code on this PC. Then open Apple TV Remote in Control Center, choose this PC and enter the code.') }}</p></div>
           <button class="primary-button" :disabled="busy || !status.running" @click="run(pairAppleRemote)">{{ t('Pair an iPhone') }}</button>
           <small>{{ t('Pairing stays open for two minutes.') }}</small>
         </template>

@@ -150,7 +150,7 @@ async fn connection(
     let mut ticket = None;
     let mut changes = hub.changes.subscribe();
     let mut session = Session::new(hub.actions.clone(), id);
-    let started = Instant::now();
+    let handshake_deadline = Instant::now() + Duration::from_secs(30);
     let mut bucket = Instant::now();
     let mut frames = 0;
     loop {
@@ -161,7 +161,13 @@ async fn connection(
             if !hub.allowed(client) {
                 return Err(Error::Auth);
             }
-        } else if started.elapsed() > Duration::from_secs(30) {
+        }
+        // Only an explicitly opened, matching PIN window extends the handshake.
+        let deadline = match (auth.authenticated.is_none(), ticket) {
+            (true, Some(ticket)) => hub.pairing_deadline(ticket).ok_or(Error::Auth)?,
+            _ => handshake_deadline,
+        };
+        if auth.authenticated.is_none() && Instant::now() >= deadline {
             return Err(Error::Auth);
         }
         // read_frame must not be cancelled on an ordinary status update: it may
@@ -172,7 +178,12 @@ async fn connection(
             loop {
                 tokio::select! {
                     _=stop.changed()=>return Ok(()),
-                    _=changes.changed()=>{if auth.authenticated.as_ref().is_some_and(|client|!hub.allowed(client)){return Err(Error::Auth);}},
+                    _=changes.changed()=>{
+                        if auth.authenticated.as_ref().is_some_and(|client| !hub.allowed(client))
+                            || (auth.authenticated.is_none() && ticket.is_some_and(|t| hub.pairing_deadline(t).is_none())) {
+                            return Err(Error::Auth);
+                        }
+                    },
                     _=focus.changed(), if keyboard_subscribed => {
                         if !hub.connection_allowed(id) { return Err(Error::Auth); }
                         let content = hub.keyboard.content()?;
@@ -181,7 +192,7 @@ async fn connection(
                         write_frame(&mut writer, 8, &message, &mut cipher).await?;
                     }
                     result=&mut read=>break result?,
-                    _=tokio::time::sleep_until(tokio::time::Instant::from_std(started+Duration::from_secs(30))),if auth.authenticated.is_none()=>return Err(Error::Auth)
+                    _=tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)),if auth.authenticated.is_none()=>return Err(Error::Auth)
                 }
             }
         };

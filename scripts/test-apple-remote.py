@@ -40,6 +40,9 @@ async def main():
         pairing = await pyatv.pair(config(), Protocol.Companion, asyncio.get_running_loop())
         try:
             await pairing.begin()
+            if not wrong:
+                # The two-minute PIN must still work after the initial handshake timeout.
+                await asyncio.sleep(32)
             pin = state["pin"]
             pairing.pin(f"{(int(pin)+1)%10000:04d}" if wrong else pin)
             await pairing.finish()
@@ -120,7 +123,7 @@ async def main():
         else:
             other.close()
             raise AssertionError("revoked identity accepted")
-        print("PASS: wrong PIN rejected, pairing, encrypted keyboard focus/read/append/replace/clear, commands, reconnect, revocation")
+        print("PASS: wrong PIN rejected, delayed PIN entry, encrypted keyboard focus/read/append/replace/clear, commands, reconnect, revocation")
     finally:
         await send("quit")
         await asyncio.wait_for(proc.wait(), 10)
