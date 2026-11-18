@@ -1170,6 +1170,8 @@ pub fn run() {
             crate::tv_desktop::tv_pair_finish,
             crate::tv_desktop::tv_cancel_pairing,
             crate::tv_desktop::tv_preferences,
+            crate::tv_desktop::tv_hdmi_ports,
+            crate::tv_desktop::tv_set_hdmi,
             crate::tv_desktop::tv_forget,
             crate::tv_desktop::tv_wake,
             crate::tv_desktop::tv_standby,

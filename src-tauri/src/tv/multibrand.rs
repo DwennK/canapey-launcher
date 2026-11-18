@@ -135,9 +135,13 @@ impl Client {
         key: Option<&str>,
     ) -> Result<Value> {
         let scheme = if secure { "https" } else { "http" };
+        let service = match method {
+            "getCurrentExternalInputsStatus" | "setPlayContent" => "avContent",
+            _ => "system",
+        };
         let v = self
             .json(
-                &format!("{scheme}://{ip}/sony/system"),
+                &format!("{scheme}://{ip}/sony/{service}"),
                 Some(&json!({"method":method,"params":params,"id":1,"version":"1.0"})),
                 key,
             )
@@ -282,6 +286,7 @@ impl Client {
             credentials,
             auto_wake: true,
             auto_standby: false,
+            hdmi_port: None,
         };
         paired.validate()?;
         Ok(paired)
@@ -362,11 +367,121 @@ impl Client {
             }
         }
     }
+    pub async fn hdmi_ports(&self, tv: &PairedTv) -> Result<Vec<u8>> {
+        let mut ports = Vec::new();
+        match tv.tv.protocol {
+            TvProtocol::Philips => return self.philips.hdmi_ports(tv).await,
+            TvProtocol::LgWebos => {
+                let data = tokio::time::timeout(
+                    Duration::from_secs(8),
+                    websocket::lg_payload(tv, "tv/getExternalInputList", json!({})),
+                )
+                .await
+                .map_err(|_| "The TV did not return its HDMI inputs.")??;
+                for device in data["devices"].as_array().into_iter().flatten() {
+                    ports.extend(port_number(device["id"].as_str(), "HDMI_"));
+                }
+            }
+            TvProtocol::SonyBravia => {
+                let data = self
+                    .sony(
+                        tv.tv.ip,
+                        tv.tv.secure,
+                        "getCurrentExternalInputsStatus",
+                        json!([]),
+                        Some(&tv.credentials.password),
+                    )
+                    .await?;
+                for input in data["result"][0].as_array().into_iter().flatten() {
+                    ports.extend(port_number(input["uri"].as_str(), "extInput:hdmi?port="));
+                }
+            }
+            TvProtocol::Roku => {
+                #[derive(Deserialize)]
+                struct Apps {
+                    #[serde(default)]
+                    app: Vec<RokuApp>,
+                }
+                #[derive(Deserialize)]
+                struct RokuApp {
+                    #[serde(rename = "@id")]
+                    id: String,
+                }
+                let xml = self
+                    .text(
+                        &format!("http://{}:8060/query/apps", tv.tv.ip),
+                        None,
+                        None,
+                        false,
+                    )
+                    .await?;
+                let apps: Apps = quick_xml::de::from_str(&xml)
+                    .map_err(|_| "The TV did not return its HDMI inputs.")?;
+                for app in apps.app {
+                    ports.extend(
+                        port_number(Some(&app.id), "tvinput.hdmi").filter(|port| *port <= 4),
+                    );
+                }
+            }
+            _ => return Ok(ports),
+        }
+        ports.sort_unstable();
+        ports.dedup();
+        Ok(ports)
+    }
+    pub(super) async fn switch_hdmi(&self, tv: &PairedTv, port: u8) -> Result<()> {
+        match tv.tv.protocol {
+            TvProtocol::Philips => return self.philips.switch_hdmi(tv, port).await,
+            TvProtocol::LgWebos => {
+                let reply = tokio::time::timeout(
+                    Duration::from_secs(8),
+                    websocket::lg_payload(
+                        tv,
+                        "tv/switchInput",
+                        json!({"inputId":format!("HDMI_{port}")}),
+                    ),
+                )
+                .await
+                .map_err(|_| "The TV did not confirm the HDMI command.")??;
+                if reply["returnValue"] != true {
+                    return Err("This HDMI input is unavailable.".into());
+                }
+            }
+            TvProtocol::SonyBravia => {
+                self.sony(
+                    tv.tv.ip,
+                    tv.tv.secure,
+                    "setPlayContent",
+                    json!([{"uri":format!("extInput:hdmi?port={port}")}]),
+                    Some(&tv.credentials.password),
+                )
+                .await?;
+            }
+            TvProtocol::Roku if port <= 4 => {
+                self.text(
+                    &format!("http://{}:8060/keypress/InputHDMI{port}", tv.tv.ip),
+                    None,
+                    None,
+                    true,
+                )
+                .await?;
+            }
+            _ => return Err("This HDMI input is unavailable.".into()),
+        }
+        Ok(())
+    }
     pub async fn turn_on(&self, tv: &PairedTv) -> Result<()> {
         self.set_power(tv, true).await
     }
     pub async fn turn_off(&self, tv: &PairedTv) -> Result<()> {
         self.set_power(tv, false).await
+    }
+}
+fn port_number(id: Option<&str>, prefix: &str) -> Option<u8> {
+    let digits = id?.strip_prefix(prefix)?;
+    match digits.as_bytes() {
+        [digit @ b'1'..=b'8'] => Some(digit - b'0'),
+        _ => None,
     }
 }
 fn valid_mac_value(value: Option<&str>) -> Option<String> {

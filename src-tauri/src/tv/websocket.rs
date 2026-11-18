@@ -124,8 +124,12 @@ async fn receive(socket: &mut Socket) -> Result<Value> {
     }
     Err(ERROR.into())
 }
-fn lg_registration(key: Option<&str>) -> Value {
-    let mut payload = json!({"forcePairing":false,"pairingType":"PROMPT","manifest":{"manifestVersion":1,"appVersion":"1.0","permissions":["CONTROL_POWER","CONTROL_TV_SCREEN","READ_POWER_STATE"]}});
+fn lg_registration(key: Option<&str>, inputs: bool) -> Value {
+    let mut permissions = vec!["CONTROL_POWER", "CONTROL_TV_SCREEN", "READ_POWER_STATE"];
+    if inputs {
+        permissions.extend(["CONTROL_INPUT_TV", "READ_INPUT_DEVICE_LIST"]);
+    }
+    let mut payload = json!({"forcePairing":false,"pairingType":"PROMPT","manifest":{"manifestVersion":1,"appVersion":"1.0","permissions":permissions}});
     if let Some(key) = key {
         payload["client-key"] = json!(key);
     }
@@ -158,17 +162,18 @@ fn samsung_key(v: &Value, saved: Option<&str>) -> Result<Option<String>> {
         _ => Ok(None),
     }
 }
-async fn authorized(tv: &Television, key: Option<&str>) -> Result<(Socket, String)> {
+async fn authorized(tv: &Television, key: Option<&str>, inputs: bool) -> Result<(Socket, String)> {
     let socket = connect(tv, key).await?;
-    register(socket, tv.protocol, key).await
+    register(socket, tv.protocol, key, inputs).await
 }
 async fn register(
     mut socket: Socket,
     protocol: TvProtocol,
     key: Option<&str>,
+    inputs: bool,
 ) -> Result<(Socket, String)> {
     if protocol == TvProtocol::LgWebos {
-        send(&mut socket, lg_registration(key)).await?;
+        send(&mut socket, lg_registration(key, inputs)).await?;
     }
     // Do not silently show a new permission prompt when an existing token is rejected.
     loop {
@@ -190,9 +195,10 @@ async fn register(
     }
 }
 pub(super) async fn pair(tv: &Television) -> Result<Credentials> {
-    let (mut socket, key) = tokio::time::timeout(Duration::from_secs(55), authorized(tv, None))
-        .await
-        .map_err(|_| "Pairing timed out. Allow Canapey on the TV, then connect again.")??;
+    let (mut socket, key) =
+        tokio::time::timeout(Duration::from_secs(55), authorized(tv, None, true))
+            .await
+            .map_err(|_| "Pairing timed out. Allow Canapey on the TV, then connect again.")??;
     let _ = socket.close(None).await;
     Ok(Credentials {
         username: "Canapey".into(),
@@ -200,8 +206,12 @@ pub(super) async fn pair(tv: &Television) -> Result<Credentials> {
     })
 }
 async fn lg_request(tv: &PairedTv, endpoint: &str) -> Result<Value> {
-    let (mut socket, _) = authorized(&tv.tv, Some(&tv.credentials.password)).await?;
-    send(&mut socket, json!({"id":"canapey-command","type":"request","uri":format!("ssap://{endpoint}"),"payload":{}})).await?;
+    lg_payload(tv, endpoint, json!({})).await
+}
+pub(super) async fn lg_payload(tv: &PairedTv, endpoint: &str, payload: Value) -> Result<Value> {
+    let inputs = matches!(endpoint, "tv/getExternalInputList" | "tv/switchInput");
+    let (mut socket, _) = authorized(&tv.tv, Some(&tv.credentials.password), inputs).await?;
+    send(&mut socket, json!({"id":"canapey-command","type":"request","uri":format!("ssap://{endpoint}"),"payload":payload})).await?;
     if endpoint == "system/turnOff" {
         // webOS can disconnect immediately after accepting standby.
         return Ok(json!({"returnValue":true}));
@@ -269,7 +279,7 @@ pub(super) async fn set_power(tv: &PairedTv, on: bool) -> Result<()> {
                 }
             }
         } else {
-            let (mut socket, _) = authorized(&tv.tv, Some(&tv.credentials.password)).await?;
+            let (mut socket, _) = authorized(&tv.tv, Some(&tv.credentials.password), false).await?;
             send(&mut socket, samsung_command(on)).await?;
             // Samsung does not acknowledge keys. Delivery is not confirmation of physical power.
             let _ = socket.close(None).await;
@@ -307,7 +317,7 @@ mod tests {
             .unwrap();
         let (_, key) = tokio::time::timeout(
             Duration::from_secs(2),
-            register(socket, TvProtocol::LgWebos, None),
+            register(socket, TvProtocol::LgWebos, None, true),
         )
         .await
         .unwrap()
@@ -335,7 +345,7 @@ mod tests {
             .unwrap();
         let result = tokio::time::timeout(
             Duration::from_secs(2),
-            register(socket, TvProtocol::SamsungTizen, Some("revoked")),
+            register(socket, TvProtocol::SamsungTizen, Some("revoked"), false),
         )
         .await
         .unwrap();
@@ -376,7 +386,7 @@ mod tests {
                 .as_deref(),
             Some("saved")
         );
-        assert!(lg_registration(None)["payload"]["client-key"].is_null());
+        assert!(lg_registration(None, true)["payload"]["client-key"].is_null());
     }
     #[test]
     fn power_is_absolute_and_unknown_or_blank_screen_is_not_success() {

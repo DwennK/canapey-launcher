@@ -29,6 +29,12 @@ If discovery finds nothing, **My TV is not listed** accepts the TV's private IPv
 
 Browser and non-Windows previews disable network pairing. Only detected, recognized API families appear in the results. Unsupported brands or protocol versions are not advertised as compatible. User-defined TV names are displayed unchanged.
 
+## PC HDMI input (v0.9.0)
+
+With the paired TV on, open **Settings → Controls → TV → Find HDMI inputs**, then choose the port connected to the PC. **Keep current input** is the default for new and existing pairings. The saved preference applies to the manual wake button and to automatic wake when enabled. The source command follows confirmation of the TV power state. Check the picture on the TV to confirm the switch.
+
+LG webOS lists SSAP external inputs, Sony BRAVIA lists HDMI URIs from its AV Content API, and Roku TVs list configured HDMI tiles. Philips jointSPACE v6 models advertising activity intents offer four candidate MediaTek passthrough ports. Philips firmware and physical port counts vary. Samsung Tizen currently supports power only. On LG, the TV may require renewed permission for input control.
+
 ## Behavior and storage
 
 - Discovery uses bounded SSDP and Chromecast mDNS queries on local IPv4 interfaces, followed by fixed Philips, Samsung, Sony and Roku API probes. LG uses an unauthenticated SSDP XML description restricted to the packet source’s literal IP, then verifies its SSAP socket. Manual LG IP lookup can also identify an unauthenticated SSAP system-info response without opening a pairing prompt. Cross-host URLs, embedded credentials and redirects are rejected; responses are capped at 64 KiB. Manual input accepts only literal private/link-local IPv4 addresses.

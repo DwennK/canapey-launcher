@@ -19,6 +19,7 @@ pub struct TvStatus {
     tv: Option<Television>,
     auto_wake: bool,
     auto_standby: bool,
+    hdmi_port: Option<u8>,
     waking: bool,
     resume_available: bool,
     message: Option<String>,
@@ -76,6 +77,7 @@ impl TvState {
             tv: paired.as_ref().map(|p| p.tv.clone()),
             auto_wake: paired.as_ref().is_some_and(|p| p.auto_wake),
             auto_standby: paired.as_ref().is_some_and(|p| p.auto_standby),
+            hdmi_port: paired.as_ref().and_then(|p| p.hdmi_port),
             waking: self.waking.load(Ordering::SeqCst),
             resume_available: self.resume_available.load(Ordering::SeqCst),
             message: self.message.lock().unwrap().clone(),
@@ -216,6 +218,52 @@ pub async fn tv_pair_finish(
     }
 }
 #[tauri::command]
+pub async fn tv_hdmi_ports(state: tauri::State<'_, TvState>) -> tv::Result<Vec<u8>> {
+    supported()?;
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| "Another TV operation is in progress.")?;
+    let paired = state
+        .paired
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("Pair a TV first.")?;
+    if tv::resolve_mac(paired.tv.ip).await != paired.tv.mac {
+        return Err("The TV's network identity changed. Search again.".into());
+    }
+    Client::new()?.hdmi_ports(&paired).await
+}
+
+#[tauri::command]
+pub async fn tv_set_hdmi(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, TvState>,
+    mac: String,
+    port: Option<u8>,
+) -> tv::Result<TvStatus> {
+    supported()?;
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| "Another TV operation is in progress.")?;
+    let mut paired = state
+        .paired
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("Pair a TV first.")?;
+    if paired.tv.mac.as_deref() != Some(&mac) {
+        return Err("The TV's network identity changed. Search again.".into());
+    }
+    paired.hdmi_port = port;
+    state.save(&paired)?;
+    emit(&app);
+    Ok(state.status())
+}
+
+#[tauri::command]
 pub async fn tv_preferences(
     app: tauri::AppHandle,
     state: tauri::State<'_, TvState>,
@@ -308,8 +356,14 @@ async fn wake(app: &tauri::AppHandle, automatic_request: bool) -> tv::Result<TvS
     state.waking.store(false, Ordering::SeqCst);
     match &result {
         Ok(()) => {
-            *state.message.lock().unwrap() =
-                Some("The TV reports that it is on. Check the picture on its screen.".into());
+            *state.message.lock().unwrap() = Some(
+                if paired.hdmi_port.is_some() {
+                    "The TV is on. The HDMI input command was sent."
+                } else {
+                    "The TV reports that it is on. Check the picture on its screen."
+                }
+                .into(),
+            );
         }
         Err(e) => {
             *state.message.lock().unwrap() = None;

@@ -76,10 +76,22 @@ pub struct PairedTv {
     pub auto_wake: bool,
     #[serde(default)]
     pub auto_standby: bool,
+    #[serde(default)]
+    pub hdmi_port: Option<u8>,
 }
 impl PairedTv {
     pub fn validate(&self) -> Result<()> {
         self.tv.validate()?;
+        if let Some(port) = self.hdmi_port {
+            let max = match self.tv.protocol {
+                TvProtocol::SamsungTizen => 0,
+                TvProtocol::Philips | TvProtocol::Roku => 4,
+                TvProtocol::LgWebos | TvProtocol::SonyBravia => 8,
+            };
+            if !(1..=max).contains(&port) {
+                return Err("This HDMI input is unavailable.".into());
+            }
+        }
         parse_mac(
             self.tv
                 .mac
@@ -172,7 +184,12 @@ pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> 
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         if resolve_mac(paired.tv.ip).await.as_deref() == Some(&mac) {
             match client.power(paired).await {
-                Ok(power) if power.confirms_on(paired.tv.protocol) => return Ok(power),
+                Ok(power) if power.confirms_on(paired.tv.protocol) => {
+                    if let Some(port) = paired.hdmi_port {
+                        client.switch_hdmi(paired, port).await.map_err(|_| "The TV is on, but the HDMI switch failed. Check the input and TV permissions.")?;
+                    }
+                    return Ok(power);
+                }
                 Ok(_) => {
                     if let Err(e) = client.turn_on(paired).await {
                         if e.contains("rejected this pairing") {
@@ -212,8 +229,27 @@ mod tests {
         paired.validate().unwrap();
         assert!(paired.auto_wake);
         assert!(!paired.auto_standby);
+        assert_eq!(paired.hdmi_port, None);
         assert_eq!(paired.tv.protocol, TvProtocol::Philips);
         assert!(paired.tv.secure);
+    }
+    #[test]
+    fn saved_hdmi_port_is_scoped_to_the_paired_family() {
+        let mut paired: PairedTv = serde_json::from_value(serde_json::json!({
+            "tv":{"name":"TV","ip":"192.168.1.20","mac":"02:11:22:33:44:55","protocol":"roku"},
+            "credentials":{"username":"test","password":"test"}, "autoWake":false, "hdmiPort":2
+        }))
+        .unwrap();
+        paired.validate().unwrap();
+        assert_eq!(serde_json::to_value(&paired).unwrap()["hdmiPort"], 2);
+        paired.hdmi_port = Some(5);
+        assert!(paired.validate().is_err());
+        paired.tv.protocol = TvProtocol::SonyBravia;
+        paired.validate().unwrap();
+        paired.tv.protocol = TvProtocol::SamsungTizen;
+        assert!(paired.validate().is_err());
+        paired.hdmi_port = None;
+        paired.validate().unwrap();
     }
     #[test]
     fn validates_local_targets_and_wol_bytes() {

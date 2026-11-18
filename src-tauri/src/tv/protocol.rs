@@ -212,7 +212,39 @@ impl Client {
             credentials: pending.credentials.clone(),
             auto_wake: true,
             auto_standby: false,
+            hdmi_port: None,
         })
+    }
+    pub(super) async fn hdmi_ports(&self, tv: &PairedTv) -> Result<Vec<u8>> {
+        let system = self.system(tv.tv.ip).await?;
+        let intents = system["featuring"]["jsonfeatures"]["activities"].as_array();
+        Ok(
+            if intents.is_some_and(|items| items.iter().any(|item| item == "intent")) {
+                vec![1, 2, 3, 4]
+            } else {
+                vec![]
+            },
+        )
+    }
+    pub(super) async fn switch_hdmi(&self, tv: &PairedTv, port: u8) -> Result<()> {
+        // jointSPACE v6 Android passthrough mapping used by ha-philipsjs.
+        let uri = format!("content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW{}", 4 + port);
+        let intent = json!({"intent":{
+            "extras":{"uri":uri}, "action":"org.droidtv.playtv.SELECTURI",
+            "component":{"packageName":"org.droidtv.playtv","className":"org.droidtv.playtv.PlayTvActivity"}
+        }});
+        let reply = self
+            .request(
+                tv.tv.ip,
+                "activities/launch",
+                Some(intent),
+                Some(&tv.credentials),
+            )
+            .await?;
+        if reply.get("error_id").is_some_and(|v| v != "SUCCESS") {
+            return Err("This HDMI input is unavailable.".into());
+        }
+        Ok(())
     }
     pub async fn power(&self, tv: &PairedTv) -> Result<PowerState> {
         let power = self

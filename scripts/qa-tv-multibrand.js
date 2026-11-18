@@ -23,6 +23,8 @@ async (page) => {
       if(cmd==='tv_pair'){q.selected=args.tv;return {secondsRemaining:120,name:args.tv.name};}
       if(cmd==='tv_cancel_pairing'){q.reject?.('Pairing cancelled.');q.reject=null;return null;}
       if(cmd==='tv_pair_finish'){if(q.waitApproval)await new Promise((resolve,reject)=>{q.approve=resolve;q.reject=reject;});if(q.failPin)throw 'The TV rejected the code. Check it or request a new code.';q.state.tv=q.selected;q.state.autoWake=true;q.state.autoStandby=false;q.state.message='TV paired. Test the wake sequence before relying on automatic wake.';return structuredClone(q.state);}
+      if(cmd==='tv_hdmi_ports')return [1,2,4];
+      if(cmd==='tv_set_hdmi'){if(q.failSave)throw 'Could not save the TV pairing.';q.state.hdmiPort=args.port;return structuredClone(q.state);}
       if(cmd==='tv_preferences'){if(q.failSave)throw 'Could not save the TV pairing.';q.state.autoWake=args.autoWake;q.state.autoStandby=args.autoStandby;return structuredClone(q.state);}
       if(cmd==='tv_standby'){q.state.message='TV standby requested. Check the TV screen.';return structuredClone(q.state);}
       if(cmd==='tv_wake'){if(q.failWake)throw 'The TV did not confirm it was on. Check the TV\'s network wake setting and try again.';q.state.message='The TV reports that it is on. Check the picture on its screen.';return structuredClone(q.state);}
@@ -73,6 +75,22 @@ async (page) => {
     assert(await page.getByRole('switch',{name:/Turn on the TV automatically/}).isChecked(),'Wake default lost');
     assert(!await page.getByRole('switch',{name:/Turn off the TV automatically/}).isChecked(),'Standby implicitly enabled');
     assert(await page.getByRole('heading',{name,exact:true}).isVisible(),'Wrong paired TV');
+    const scan = page.getByRole('button',{name:'Find HDMI inputs'});
+    if(index === 1) {
+      assert(await scan.count()===0,'Samsung has no discrete HDMI adapter');
+    } else {
+      await scan.click();
+      const select = page.getByRole('combobox',{name:/PC HDMI input/});
+      await select.selectOption('2');
+      await page.getByRole('button',{name:'Wake TV and switch to HDMI 2'}).click();
+      await page.evaluate(()=>window.__tvQA.failSave=true);
+      await select.selectOption('4');
+      await page.getByRole('alert').filter({hasText:'Could not save'}).waitFor();
+      assert(await select.inputValue()==='2','Failed save lost the previous HDMI preference');
+      await page.evaluate(()=>window.__tvQA.failSave=false);
+      await select.selectOption('0');
+      await page.getByRole('button',{name:'Test TV wake',exact:true}).waitFor();
+    }
   }
   await page.screenshot({path:'output/playwright/tv-multibrand-mobile-paired.png'});
   assert(!errors.length,errors.join('; '));

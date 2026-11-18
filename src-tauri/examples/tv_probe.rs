@@ -40,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 auto_wake: false,
                 auto_standby: false,
+                hdmi_port: None,
             };
             if args[1] == "wake" {
                 let power = tokio::time::timeout(

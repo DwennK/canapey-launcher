@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { t } from '../lib/i18n';
 import Icon from './Icon.vue';
-import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, standbyTv, tvFamily, tvPairMode, type Television } from '../lib/tv';
+import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, standbyTv, listHdmiPorts, setHdmiPort, tvFamily, tvPairMode, type Television } from '../lib/tv';
 const props = defineProps<{ native: boolean; autostart: boolean }>();
 const emit = defineEmits<{ startup: [] }>();
 const status = ref(emptyTvStatus()), busy = ref(''), error = ref('');
@@ -78,6 +78,24 @@ async function preference(key: 'autoWake' | 'autoStandby', event: Event) {
     if (alive) status.value = value;
   });
 }
+const ports = ref<number[]>([]);
+const scanned = ref(false);
+watch(() => status.value.tv?.mac, () => { ports.value = []; scanned.value = false; });
+const portChoices = computed(() => [...new Set([...ports.value, ...(status.value.hdmiPort ? [status.value.hdmiPort] : [])])].sort((a,b) => a-b));
+async function scanInputs() {
+  await run('inputs', async () => {
+    const mac = status.value.tv?.mac;
+    const found = await listHdmiPorts();
+    if (alive && status.value.tv?.mac === mac) { ports.value = found; scanned.value = true; }
+  });
+}
+async function choosePort(event: Event) {
+  const select = event.target as HTMLSelectElement;
+  const port = Number(select.value) || null;
+  select.value = String(status.value.hdmiPort ?? 0);
+  const mac = status.value.tv?.mac;
+  if (mac) await run('input', async () => { const value = await setHdmiPort(mac, port); if (alive) status.value = value; });
+}
 async function testStandby() { await run('standby', async () => { const value = await standbyTv(); if (alive) status.value = value; }); }
 async function testWake() { await run('wake', async () => { const value = await wakeTv(); if (alive) status.value = value; }); }
 async function remove() { await run('forget', async () => { const value = await forgetTv(); if (alive) { status.value = value; removing.value = false; searched.value = false; results.value = []; } }); }
@@ -141,7 +159,15 @@ onUnmounted(() => {
       </div>
       <p v-if="(status.autoWake || status.autoStandby) && !status.resumeAvailable" class="tv-note">{{ t('Windows sleep notifications are not available. Restart Canapey to enable automatic TV power.') }}</p>
       <div v-if="status.autoWake && !autostart" class="tv-startup"><p>{{ t('To wake the TV when Windows starts, also enable Canapey’s launch at startup.') }}</p><button class="small-button" @click="emit('startup')">{{ t('Open startup settings') }}</button></div>
-      <div class="tv-test"><div class="tv-actions"><button class="primary-button" :disabled="working" @click="testWake"><Icon name="power" :size="20" />{{ working && (busy === 'wake' || status.waking) ? t('Waking the TV…') : t('Test TV wake') }}</button><button class="small-button" :disabled="working" @click="testStandby">{{ busy === 'standby' ? t('Turning off the TV…') : t('Turn off TV now') }}</button></div><small>{{ t('Put the TV in standby first to test wake. Allow up to 70 seconds.') }}</small></div>
+      <div v-if="status.tv.protocol !== 'samsungTizen'" class="tv-inputs">
+        <label v-if="scanned || status.hdmiPort" class="setting-row"><span>{{ t('PC HDMI input') }}<small>{{ t('Switch to this input after manual or automatic TV wake.') }}</small></span>
+          <select :value="status.hdmiPort ?? 0" :disabled="working" @change="choosePort"><option :value="0">{{ t('Keep current input') }}</option><option v-for="port in portChoices" :key="port" :value="port">{{ t('HDMI {0}', [port]) }}</option></select>
+        </label>
+        <button class="small-button" :disabled="working" @click="scanInputs">{{ t('Find HDMI inputs') }}</button>
+        <small v-if="scanned && ports.length && (!status.tv.protocol || status.tv.protocol === 'philips')">{{ t('Philips provides possible ports. Choose the HDMI number printed on your TV and test it.') }}</small>
+        <small v-if="scanned && !ports.length">{{ t('The TV reported no HDMI inputs.') }}</small>
+      </div>
+      <div class="tv-test"><div class="tv-actions"><button class="primary-button" :disabled="working" @click="testWake"><Icon name="power" :size="20" />{{ working && (busy === 'wake' || status.waking) ? t('Waking the TV…') : status.hdmiPort ? t('Wake TV and switch to HDMI {0}', [status.hdmiPort]) : t('Test TV wake') }}</button><button class="small-button" :disabled="working" @click="testStandby">{{ busy === 'standby' ? t('Turning off the TV…') : t('Turn off TV now') }}</button></div><small>{{ status.hdmiPort ? t('You can also switch inputs while the TV is on.') : t('Put the TV in standby first to test wake. Allow up to 70 seconds.') }}</small></div>
       <details class="tv-manual"><summary>{{ t('Connection details and troubleshooting') }}</summary><dl><dt>{{ t('IP address') }}</dt><dd>{{ status.tv.ip }}</dd><dt>{{ t('MAC address') }}</dt><dd>{{ status.tv.mac }}</dd></dl><p>{{ t('Enable network wake on the TV: WoWLAN / Wake on LAN (Philips), TV On With Mobile (LG), Power On with Mobile (Samsung), Remote start (Sony), or Fast TV Start (Roku TV). Names vary by model. Keep the TV powered and on the same network.') }}</p><p>{{ t('If your router changes the TV’s IP address, Canapey tries to find it again. If that fails, turn the TV on and use Change TV to reconnect.') }}</p><p>{{ t('Forgetting disconnects this PC. To revoke access on the TV, check its allowed apps or network control settings.') }}</p><button v-if="!removing" class="small-button" :disabled="working" @click="removing = true">{{ t('Forget this TV') }}</button><div v-else class="tv-actions"><span>{{ t('Remove this pairing and disable automatic TV power?') }}</span><button class="small-button" :disabled="working" @click="remove">{{ t('Forget TV') }}</button><button class="small-button" @click="removing = false">{{ t('Cancel') }}</button></div></details>
     </template>
     <p v-if="error || status.error" class="tv-error" role="alert">{{ t(error || status.error || '') }}</p>
@@ -150,5 +176,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.tv-inputs { display: grid; gap: 12px; }
+.tv-inputs button { justify-self: start; }
+.tv-inputs small { color: var(--muted); }
+.tv-inputs select { max-width: 100%; }
+@media(max-width:650px) { .tv-inputs .setting-row { flex-wrap: wrap; } }
 .tv-settings{max-width:880px;display:grid;gap:20px}.tv-heading{display:flex;gap:18px;align-items:flex-start}.tv-heading>svg{margin-top:8px;color:var(--cream)}.tv-heading h3{font-size:26px;margin:0 0 10px;letter-spacing:-.6px}.tv-settings p{margin:0;font-size:15px;line-height:1.65;color:#b6b8c0;max-width:660px}.tv-settings h4{font-size:19px;margin:0 0 8px}.tv-settings button{min-height:46px}.tv-settings button:disabled{opacity:.45;cursor:not-allowed}.tv-settings input{max-width:100%;min-width:0}.tv-steps{display:flex;gap:26px;list-style:none;padding:20px 0;margin:0;border-block:1px solid #ffffff18}.tv-steps li{display:flex;gap:10px;align-items:center;font-size:13px;color:#8c8e96}.tv-steps li[aria-current]{color:var(--cream)}.tv-steps li>span{display:grid;place-items:center;border:1px solid #ffffff25;border-radius:50%;width:28px;height:28px;font-variant-numeric:tabular-nums}.tv-steps li[aria-current]>span{background:var(--cream);color:#17191e;border-color:transparent}.tv-setup,.tv-code,.tv-results,.tv-mac{display:grid;gap:18px}.tv-setup>.primary-button,.tv-test>.primary-button{justify-self:start}.tv-results h4:focus,.tv-connected h4:focus{outline:2px solid var(--cream);outline-offset:5px}.tv-result{display:flex;align-items:center;gap:16px;text-align:left;border-block-end:1px solid #ffffff18;padding:18px 4px;width:100%;border-radius:0}.tv-result>span{display:grid;gap:6px;flex:1;min-width:0}.tv-result strong{font-size:18px;overflow-wrap:anywhere}.tv-result small,.tv-selected span,.tv-connected span{font-size:13px;color:#a8aab2}.tv-selected,.tv-connected{display:flex;gap:16px;align-items:center}.tv-selected>div,.tv-connected>div{flex:1;min-width:0;overflow-wrap:anywhere}.tv-connected{padding:0 0 20px;border-bottom:1px solid #ffffff18}.tv-connected span{color:#b8d4b1}.tv-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}.tv-manual{font-size:14px}.tv-manual summary{cursor:pointer;padding:8px 0;min-height:44px;align-content:center}.tv-manual p{font-size:13px;margin:10px 0 16px}.tv-manual form,.tv-mac{display:grid;gap:10px}.tv-form-row{display:flex;gap:12px}.tv-form-row input{flex:1}.tv-manual dl{display:grid;grid-template-columns:auto 1fr;gap:10px;font-size:13px}.tv-manual dd{margin:0;font-family:monospace;overflow-wrap:anywhere}.tv-code label,.tv-mac label{font-size:14px}.tv-code .tv-pin{width:240px;font-size:36px;letter-spacing:12px;text-align:center;font-variant-numeric:tabular-nums;padding:14px}.tv-options .setting-row{padding-block:12px;gap:20px}.tv-startup{display:flex;align-items:center;gap:20px}.tv-startup p{font-size:13px}.tv-startup button{flex-shrink:0}.tv-test{display:grid;gap:14px;padding-block:4px}.tv-test small{font-size:12px;color:#989ba4}.tv-settings .tv-note{font-size:13px}.tv-error{color:#f1b5a9!important;border-left:2px solid #e49b88;padding-left:14px}.tv-message{color:#c5ddbd!important;border-left:2px solid #b8d4b1;padding-left:14px}@media(max-width:650px){.tv-settings{gap:20px}.tv-heading{gap:12px}.tv-heading h3{font-size:22px}.tv-heading>svg{flex-shrink:0}.tv-steps{gap:10px;justify-content:space-between}.tv-steps li{font-size:11px;gap:6px}.tv-steps li>span{width:23px;height:23px}.tv-form-row,.tv-startup{flex-direction:column;align-items:stretch}.tv-connected{flex-wrap:wrap}.tv-settings p{font-size:14px}.tv-connected .small-button{margin-left:44px}.tv-settings .tv-pin{font-size:30px;width:210px}}
 </style>

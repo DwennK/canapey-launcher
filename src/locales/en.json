@@ -726,5 +726,19 @@
   "↑ ↓ Navigate · OK Choose · Back Cancel": "↑ ↓ Navigate · OK Choose · Back Cancel",
   "↑ ↓ Navigate · ← → Adjust · {0} Choose": "↑ ↓ Navigate · ← → Adjust · {0} Choose",
   "Preferences, devices and system.": "Preferences, devices and system.",
-  "Adjust the display, backgrounds and sounds.": "Adjust the display, backgrounds and sounds."
+  "Adjust the display, backgrounds and sounds.": "Adjust the display, backgrounds and sounds.",
+  "PC HDMI input": "PC HDMI input",
+  "Switch to this input after manual or automatic TV wake.": "Switch to this input after manual or automatic TV wake.",
+  "Keep current input": "Keep current input",
+  "HDMI {0}": "HDMI {0}",
+  "Find HDMI inputs": "Find HDMI inputs",
+  "The TV reported no HDMI inputs.": "The TV reported no HDMI inputs.",
+  "Wake TV and switch to HDMI {0}": "Wake TV and switch to HDMI {0}",
+  "The TV is on. The HDMI input command was sent.": "The TV is on. The HDMI input command was sent.",
+  "The TV is on, but the HDMI switch failed. Check the input and TV permissions.": "The TV is on, but the HDMI switch failed. Check the input and TV permissions.",
+  "This HDMI input is unavailable.": "This HDMI input is unavailable.",
+  "The TV did not return its HDMI inputs.": "The TV did not return its HDMI inputs.",
+  "The TV did not confirm the HDMI command.": "The TV did not confirm the HDMI command.",
+  "Philips provides possible ports. Choose the HDMI number printed on your TV and test it.": "Philips provides possible ports. Choose the HDMI number printed on your TV and test it.",
+  "You can also switch inputs while the TV is on.": "You can also switch inputs while the TV is on."
 }

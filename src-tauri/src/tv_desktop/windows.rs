@@ -229,6 +229,7 @@ mod tests {
             },
             auto_wake: true,
             auto_standby: false,
+            hdmi_port: None,
         };
         save(&path, &paired).unwrap();
         let bytes = std::fs::read(&path).unwrap();

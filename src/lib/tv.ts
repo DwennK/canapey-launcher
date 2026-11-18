@@ -10,7 +10,7 @@ export function tvPairMode(tv: Television | null): TvPairMode {
 }
 export interface TvStatus {
   available: boolean; tv: Television | null; autoWake: boolean; autoStandby: boolean;
-  waking: boolean; resumeAvailable: boolean; message: string | null; error: string | null;
+  hdmiPort?: number | null; waking: boolean; resumeAvailable: boolean; message: string | null; error: string | null;
 }
 export interface TvPairStarted { secondsRemaining: number; name: string; mode?: TvPairMode }
 export const emptyTvStatus = (): TvStatus => ({ available: false, tv: null, autoWake: false, autoStandby: false, waking: false, resumeAvailable: false, message: null, error: null });
@@ -21,6 +21,8 @@ export const pairTv = (tv: Television) => invoke<TvPairStarted>('tv_pair', { tv 
 export const finishTvPairing = (pin: string) => invoke<TvStatus>('tv_pair_finish', { pin });
 export const cancelTvPairing = () => invoke<void>('tv_cancel_pairing');
 export const saveTvPreferences = (autoWake: boolean, autoStandby: boolean) => invoke<TvStatus>('tv_preferences', { autoWake, autoStandby });
+export const listHdmiPorts = () => invoke<number[]>('tv_hdmi_ports');
+export const setHdmiPort = (mac: string, port: number | null) => invoke<TvStatus>('tv_set_hdmi', { mac, port });
 export const forgetTv = () => invoke<TvStatus>('tv_forget');
 export const wakeTv = () => invoke<TvStatus>('tv_wake');
 export const standbyTv = () => invoke<TvStatus>('tv_standby');
