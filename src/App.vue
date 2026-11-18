@@ -27,7 +27,7 @@ async function openYouTube(app: AppEntry) {
   const entry = config.value.apps.find(isVacuumTube)!;
   await activate({id:entry.id,name:entry.name,theme:entry.theme,entry}, true);
 }
-import { isSystemTool } from "./lib/discovery";
+import AddApps from "./components/AddApps.vue";
 import { controllerLabels } from "./lib/controller-labels";
 import { CardHold } from "./lib/hold";
 import Icon from "./components/Icon.vue";
@@ -277,14 +277,10 @@ const panelRoot = ref<HTMLElement>(),
   width = ref(window.innerWidth),
   height = ref(window.innerHeight);
 const lastSettingsPage = ref("display"),
-  monitorList = ref<Monitor[]>([]),
-  found = ref<AppEntry[]>([]),
-  query = ref(""),
-  showSystemTools = ref(false),
-  scanned = ref(false),
-  scanBusy = ref(false),
-  scanError = ref(""),
-  chosen = ref(new Set<string>());
+  monitorList = ref<Monitor[]>([]);
+const discoveredApps = ref<AppEntry[] | null>(null);
+const importQuery = ref('');
+const appPicker = ref<InstanceType<typeof AddApps>>();
 const settingsRoute = ref<SettingsRoute>('root');
 const settingsMenu = ref<InstanceType<typeof SettingsMenu>>();
 const settingsHistory = ref<SettingsRoute[]>([]);
@@ -360,9 +356,8 @@ async function clearLibraryQuery() {
 }
 function showLibrary() { resetLibrary(); view.value = 'grid'; void focusCard(); }
 async function openAdd(search = '') {
-  query.value = search;
+  importQuery.value = search;
   await openPanel('add');
-  if (native.value && !scanned.value) void scan();
 }
 const controllerTesting = ref(false);
 const controllerSnapshot = ref<ControllerSnapshot | null>(null);
@@ -477,29 +472,6 @@ const date = computed(() =>
     month: "long",
   }),
 );
-const filtered = computed(() =>
-  found.value.filter(
-    (a) =>
-      (showSystemTools.value || !isSystemTool(a)) &&
-      a.name.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()),
-  ),
-);
-const addedTargets = computed(() =>
-  new Set(config.value.apps.map((a) => targetKey(a.target))),
-);
-const isAlreadyAdded = (app: AppEntry) =>
-  addedTargets.value.has(targetKey(app.target));
-const selectedImports = computed(() =>
-  found.value.filter((a) => chosen.value.has(a.id) && !isAlreadyAdded(a)),
-);
-watch(showSystemTools, (show) => {
-  if (!show)
-    chosen.value = new Set(
-      found.value
-        .filter((a) => chosen.value.has(a.id) && !isSystemTool(a))
-        .map((a) => a.id),
-    );
-});
 const heroTitle = computed(() =>
   current.value.special === "add"
     ? t('Add apps')
@@ -789,6 +761,7 @@ async function openPanel(p: Panel) {
   await nextTick();
   if (panelRoot.value) panelRoot.value.inert = false;
   if (p === 'settings') { settingsMenu.value?.focusContent(); return; }
+  if (p === 'add') { appPicker.value?.focusInitial(); return; }
   if (panelRoot.value)
     focusElement(
       p === 'repair' ? panelRoot.value.querySelector<HTMLElement>('.repair-location .primary-button') ?? undefined : p === "confirm"
@@ -799,9 +772,7 @@ async function openPanel(p: Panel) {
           ? (panelRoot.value.querySelector<HTMLElement>(
               ".quick-actions button:not(:disabled)",
             ) ?? undefined)
-          : p === 'add'
-              ? panelRoot.value.querySelector<HTMLElement>('input[type=search]') ?? undefined
-              : focusableItems(panelRoot.value)[0],
+          : focusableItems(panelRoot.value)[0],
     );
 }
 async function closePanel() {
@@ -939,6 +910,7 @@ function dispatch(action: Action) {
     return;
   }
   if (working.value) return;
+  if (panel.value === 'add' && appPicker.value?.navigate(action)) return;
   const element = document.activeElement as HTMLElement;
   if (element.matches('.release-notes') && (action === 'up' || action === 'down')) {
     const scroller = element.closest('.settings-content');
@@ -1193,45 +1165,26 @@ async function openSettings() {
     notify(e);
   }
 }
-async function scan() {
-  if (scanBusy.value) return;
-  const root = panelRoot.value;
-  const bookmark = root ? rememberFocus(root) : null;
-  scanBusy.value = true;
-  scanError.value = "";
-  try {
-    found.value = await api.scan();
-    scanned.value = true;
-    chosen.value = new Set();
-  } catch (e) {
-    scanError.value = String(e instanceof Error ? e.message : e);
-  } finally {
-    scanBusy.value = false;
-    await nextTick();
-    if (
-      panel.value === "add" &&
-      root &&
-      bookmark &&
-      !focusableItems(root).includes(document.activeElement as HTMLElement)
-    )
-      restoreFocus(root, bookmark);
-  }
-}
-function toggleChoice(id: string) {
-  const app = found.value.find((a) => a.id === id);
-  if (!app || isAlreadyAdded(app)) return;
-  const set = new Set(chosen.value);
-  set.has(id) ? set.delete(id) : set.add(id);
-  chosen.value = set;
-}
 async function addEntries(entries: AppEntry[]) {
   const keys = new Set(config.value.apps.map((a) => targetKey(a.target)));
-  const fresh = entries.filter((a) => !keys.has(targetKey(a.target)));
+  const ids = new Set(config.value.apps.map(app => app.id));
+  const fresh: AppEntry[] = [];
+  for (const entry of entries) {
+    const key = targetKey(entry.target);
+    if (keys.has(key)) continue;
+    const app = ids.has(entry.id) ? { ...entry, id: crypto.randomUUID() } : entry;
+    keys.add(key);
+    ids.add(app.id);
+    fresh.push(app);
+  }
+  const origin = appPicker.value;
+  const originPanel = panel.value;
   config.value.apps.push(...fresh);
+  if (fresh[0]) config.value.selectedId = fresh[0].id;
+  if (!(await persist())) return false;
+  if (originPanel !== panel.value || origin !== appPicker.value) return true;
   resetLibrary();
   view.value = "grid";
-  if (fresh[0]) config.value.selectedId = fresh[0].id;
-  if (!(await persist())) return;
   await nextTick();
   selected.value = reconcileSelection(tiles.value.map(tile => tile.id), fresh[0]?.id ?? null);
   dismissPanels();
@@ -1241,17 +1194,7 @@ async function addEntries(entries: AppEntry[]) {
       ? (fresh.length === 1 ? t('1 app added.') : t('{0} apps added.', [fresh.length]))
       : t('Already in your library.'),
   );
-}
-async function manual() {
-  await run(t('Choosing an app'), async () => {
-    const app = await api.pickTarget();
-    if (app) {
-      editing.value = app;
-      editingCategory.value = "auto";
-      argumentsText.value = app.target.args.join("\n");
-      void openPanel("edit");
-    }
-  });
+  return true;
 }
 const repairId = ref('');
 const replacement = ref<AppEntry | null>(null);
@@ -1868,6 +1811,7 @@ onUnmounted(() => {
             compact: ['power', 'confirm', 'session', 'repair'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
+            'picker-panel': panel === 'add',
             'controller-test-active': controllerTesting,
             'quick-panel': panel === 'quick' || panel === 'move',
           }"
@@ -1897,7 +1841,7 @@ onUnmounted(() => {
           "
           @keydown.tab="trapFocus"
         >
-          <div v-if="panel !== 'settings'" class="panel-heading">
+          <div v-if="panel !== 'settings' && panel !== 'add'" class="panel-heading">
             <div class="panel-identity">
               <img v-if="(panel === 'quick' || panel === 'move') && quickApp"
                 class="quick-app-art" :src="api.imageUrl(quickApp.card) || `/art/${quickApp.theme}-card.webp`" alt="" />
@@ -1911,9 +1855,7 @@ onUnmounted(() => {
                       ? quickApp?.name
                       : panel === "move"
                         ? t('Move card')
-                        : panel === "add"
-                            ? t('Add apps')
-                            : panel === "edit"
+                        : panel === "edit"
                               ? t('Customize')
                               : panel === "power"
                                 ? t('Power')
@@ -2372,112 +2314,10 @@ onUnmounted(() => {
                 >
             </SettingsMenu>
           </template>
-          <template v-else-if="panel === 'add'">
-            <p class="panel-intro"> {{ t('Select apps to add to your library.') }} </p>
-            <div class="import-toolbar">
-              <label class="search-field"
-                ><Icon name="search" :size="19" /><input
-                  v-model="query"
-                  type="search"
-                  :placeholder="t('Search for an app')"
-                  :aria-label="t('Search for an app')" /></label
-              ><button
-                class="small-button"
-                :aria-label="t('Search keyboard')"
-                @click="keyboardFor('input[type=search]')"
-              > {{ t('Keyboard') }}</button
-              ><button
-                class="small-button"
-                :disabled="scanBusy || !native"
-                @click="scan"
-              >
-                <Icon name="refresh" :size="18" />{{
-                  scanBusy
-                    ? t('Searching…')
-                    : scanned
-                      ? t('Refresh')
-                      : t('Detect my apps')
-                }}</button
-              ><button class="small-button" :disabled="!native" @click="manual">
-                <Icon name="folder" :size="18" />{{ t('Browse') }} </button>
-            </div>
-            <div class="import-filters">
-              <div class="quick-search" :aria-label="t('Quick searches')">
-                <button
-                  v-for="name in [
-                    'YouTube',
-                    'Netflix',
-                    'Spotify',
-                    'Plezy',
-                    'LaunchBox',
-                    'Steam',
-                    'Silo',
-                  ]"
-                  :key="name"
-                  :class="{ active: query === name }"
-                  @click="query = query === name ? '' : name"
-                >
-                  {{ name }}
-                </button>
-              </div>
-              <label class="system-filter">
-                <input v-model="showSystemTools" type="checkbox" /> {{ t('Show system tools') }} </label>
-            </div>
-            <p v-if="/launchbox|big\s?box/i.test(query)" class="note">{{ t('LaunchBox and Big Box share an installation. Use Browse if your portable folder is not detected.') }}</p>
-            <div class="detected-list">
-              <div v-if="scanBusy" class="empty-search">
-                <span class="spinner" />{{ t('Searching the Start menu, desktop and registered apps…') }} </div>
-              <p v-else-if="scanError" class="inline-error">{{ scanError }}</p>
-              <div v-else-if="!native" class="empty-search">
-                <Icon name="monitor" :size="32" />
-                <p> {{ t('App discovery and import are available on Windows.') }} </p>
-              </div>
-              <div v-else-if="!scanned" class="empty-search">
-                <Icon name="search" :size="30" />{{ t('Start a scan to find your apps.') }} </div>
-              <div v-else-if="!filtered.length" class="empty-search"> {{ t('No apps found') }}{{
-                  query ? t('for “{0}”', [query]) : ""
-                }}. {{
-                  showSystemTools
-                    ? t('Try adding the app manually.')
-                    : t('Try showing system tools or use Browse.')
-                }}
-              </div>
-              <button
-                v-for="a in filtered"
-                :key="a.id"
-                class="detected-app"
-                :class="{
-                  chosen: chosen.has(a.id),
-                  'already-added': isAlreadyAdded(a),
-                }"
-                :aria-pressed="chosen.has(a.id) || isAlreadyAdded(a)"
-                :disabled="isAlreadyAdded(a)"
-                @click="toggleChoice(a.id)"
-              >
-                <span class="checkbox"
-                  ><Icon
-                    v-if="chosen.has(a.id) || isAlreadyAdded(a)"
-                    name="check"
-                    :size="16" /></span
-                ><img v-if="a.icon" :src="api.imageUrl(a.icon)" alt="" /><span
-                  class="detected-name"
-                  >{{ a.name }}<small>{{ a.source }}</small></span
-                >
-                <span v-if="isAlreadyAdded(a)" class="added-label"
-                  >{{ t('Already added') }}</span
-                >
-              </button>
-            </div>
-            <div v-if="selectedImports.length" class="import-action">
-              <span
-                >{{ t('{0} selected', [selectedImports.length]) }}</span
-              ><button
-                class="primary-button"
-                @click="addEntries(selectedImports)"
-              > {{ t('Add') }} {{ selectedImports.length }} {{ t('app') }}{{ selectedImports.length > 1 ? 's' : '' }}<Icon name="plus" :size="18" />
-              </button>
-            </div>
-          </template>
+          <AddApps v-else-if="panel === 'add'" ref="appPicker"
+            :native="native" :initial-query="importQuery" :library="config.apps" :discovered="discoveredApps"
+            :samples="examples.filter(tile => tile.id !== 'suggest-youtube')" :save="addEntries"
+            @discovered="discoveredApps = $event" @keyboard="openKeyboard" @close="closePanel" />
           <template v-else-if="panel === 'edit' && editing">
             <div class="edit-layout">
               <div class="edit-preview">
@@ -2685,7 +2525,7 @@ onUnmounted(() => {
               </button>
             </div></template
           >
-          <div class="panel-footer" aria-live="polite">
+          <div v-if="panel !== 'add'" class="panel-footer" aria-live="polite">
             <span v-if="controllerTesting"
               >{{ t('Hold') }} {{ inputLabels.backName }} {{ t('1.2 s: stop test · Esc on keyboard') }}</span
             >
