@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.1 — 2026-11-18
+
+- Navigate all eleven Settings pages with the keyboard. Focus stays in the expected row or column and returns to the originating control after closing a picker or search. Enter submits the TV pairing code.
+- Pair an iPhone throughout the two-minute PIN window. Windows now checks whether the launcher is in the foreground, and Settings explains when to open Apple TV Remote and where to enter the code.
+
 ## 0.10.0 — 2026-11-18
 
 - Choose installed apps and portable files in a single picker. Keep selections across searches and refreshes, or try the flow with local sample cards in the browser preview.
