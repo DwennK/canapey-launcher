@@ -764,5 +764,10 @@
   "HDMI input command sent": "HDMI input command sent",
   "Retry HDMI input": "Retry HDMI input",
   "Pending": "Pending",
-  "Unconfirmed": "Unconfirmed"
+  "Unconfirmed": "Unconfirmed",
+  "Find a setting": "Find a setting",
+  "Search settings": "Search settings",
+  "Matching settings": "Matching settings",
+  "No matching settings.": "No matching settings.",
+  "Go to {0}": "Go to {0}"
 }

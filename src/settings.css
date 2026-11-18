@@ -104,3 +104,18 @@
 .settings-panel .remote-photo-column.expanded { position: static; width: 100%; display: flex; margin-bottom: 24px; }
 .settings-panel .remote-field select { min-height: 52px; }
 .settings-panel .remote-inspector { max-width: none; }
+
+.settings-workspace { display: flex; flex: 1; min-height: 0; gap: clamp(16px, 2.5vw, 40px); }
+.settings-workspace > .settings-content { min-width: 0; }
+.settings-find { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border: 1px solid #ffffff24; border-radius: 12px; font-size: 16px; }
+.settings-rail { display: flex; flex: 0 0 clamp(205px, 21vw, 270px); flex-direction: column; align-self: stretch; gap: 4px; padding: 12px; overflow: auto; background: #ffffff06; border: 1px solid #ffffff10; border-radius: 16px; }
+.settings-rail button { display: flex; gap: 12px; align-items: center; min-height: 54px; padding: 10px 12px; text-align: left; font-size: calc(17px * var(--ui-scale)); border-radius: 9px; }
+.settings-rail svg { flex-shrink: 0; color: #d3c5ab; }
+.settings-rail [aria-current] { background: #ffffff12; }
+.settings-search input { width: 100%; margin-bottom: 16px; }
+.settings-destinations { overflow: hidden; background: #ffffff04; border: 1px solid #ffffff14; border-radius: 16px; }
+.settings-destination:last-child { border-bottom: 0; }
+.settings-destination { border-radius: 8px; }
+@media(max-width:900px) { .settings-rail { display: none; } .settings-workspace { gap: 0; } }
+@media(max-width:700px) { .settings-find { padding: 11px; } .settings-find span { display: none; } }
+.settings-panel.controller-test-active .settings-rail { display: none; }

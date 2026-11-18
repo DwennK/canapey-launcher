@@ -296,6 +296,7 @@ function openSettingsRoute(route: SettingsRoute) {
   if (isSettingsPage(route)) lastSettingsPage.value = route;
 }
 function backSettings() {
+  if (settingsMenu.value?.closeSearch()) return;
   const parent = settingsHistory.value.pop() ?? settingsParent(settingsRoute.value);
   if (!parent) { void closePanel(); return; }
   settingsRoute.value = parent;
@@ -615,6 +616,12 @@ async function openQuick(index: number) {
     ?.getBoundingClientRect();
   quickAnchor.value = { left: rect?.left ?? 16, top: rect?.top ?? 32 };
   await openPanel("quick");
+}
+async function openQuickApp() {
+  const tile = tiles.value.find(item => item.id === quickId.value);
+  if (!tile) return;
+  await closePanel();
+  await activate(tile);
 }
 function removeQuick() {
   if (!quickApp.value) return;
@@ -1097,6 +1104,11 @@ function keyboard(e: KeyboardEvent) {
     return;
   }
   if (e.isComposing || e.defaultPrevented) return;
+  if (panel.value === 'settings' && !choiceTarget.value && (e.metaKey || e.ctrlKey) && e.code === 'KeyF') {
+    e.preventDefault();
+    void settingsMenu.value?.openSearch();
+    return;
+  }
   // Text and native select editing keep their physical keyboard behavior.
   const remoteTarget = e.target as HTMLElement;
   if (!isTextControl(remoteTarget) && remoteTarget.tagName !== 'SELECT'
@@ -1949,6 +1961,7 @@ onUnmounted(() => {
           />
           <template v-else-if="panel === 'quick' && quickApp">
             <div class="quick-actions power-options">
+              <button v-if="!quickSession" @click="openQuickApp"><Icon name="play" /><span>{{ t('Open') }}</span></button>
               <template v-if="quickSession">
                 <button
                   :disabled="quickSession.status === 'untracked'"
@@ -1973,7 +1986,7 @@ onUnmounted(() => {
               </template>
               <p v-if="quickSession?.status === 'untracked'" class="note"> {{ t('Shared or unidentified window: switch to it with Alt + Tab.') }} </p>
               <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? t('Remove from favorites') : t('Add to favorites') }}</span></button>
-              <button :class="{ 'action-group-start': !!quickSession }" @click="edit(quickApp)">
+              <button class="action-group-start" @click="edit(quickApp)">
                 <Icon name="edit" /><span>{{ t('Edit') }}</span>
               </button>
               <button v-if="native && !quickSession && ['executable', 'shortcut'].includes(quickApp.target.kind)" @click="startRepair(quickApp)">

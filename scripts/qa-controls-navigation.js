@@ -1,6 +1,7 @@
 // Playwright CLI run-code, isolated system Chrome. Simulated IPC verifies routing,
 // not physical controller hardware, TV commands or Windows power transitions.
 async (page) => {
+  const origin = page.url();
   const context = await page.context().browser().newContext({viewport:{width:1440,height:900}});
   page = await context.newPage();
   try {
@@ -8,7 +9,7 @@ async (page) => {
   page.on('pageerror', error => errors.push(error.message));
   const assert = (value, message) => { if (!value) throw Error(message); };
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('http://127.0.0.1:1420');
+  await page.goto(origin);
   const config = await page.evaluate(async () => (await import('/src/lib/types.ts')).defaults());
   await page.addInitScript(config => {
     const callbacks = new Map(), events = new Map(); let id = 0;
@@ -69,7 +70,16 @@ async (page) => {
   assert(await activeRoute()==='help','Down at the last category must stop');
   await emit('right'); assert(await activeRoute()==='help','Right must not escape a category row');
   for(let i=0;i<8;i++)await emit('up');
-  assert(await activeRoute()==='appearance','Up at the first category must stop');
+  assert(await page.getByRole('button',{name:'Find a setting'}).evaluate(el=>el===document.activeElement),'Up should reach settings search');
+  await emit('accept');
+  const search=page.getByRole('searchbox',{name:'Search settings'});
+  await search.fill('HDMI');
+  assert(await page.getByRole('navigation',{name:'Matching settings'}).getByRole('button').count()===1,'HDMI should resolve to TV');
+  await search.press('Enter');
+  await route('tv');
+  await page.getByRole('button',{name:'Go to Apps',exact:true}).click(); await route('apps');
+  await emit('back'); await route('tv'); await emit('back'); await route('root');
+  checks.push('find settings by function, switch sidebar section, return to prior page');
   await enter('appearance'); await enter('display');
   const monitor=page.getByLabel(/Preferred display/);
   await monitor.focus(); await page.keyboard.press('Enter');

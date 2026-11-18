@@ -33,3 +33,20 @@ export function settingsBranch(page: string): SettingsRoute {
   if (!isSettingsPage(page)) return 'appearance';
   return settingsPages[page].parent === 'root' ? page : settingsPages[page].parent;
 }
+
+const searchTerms: Record<SettingsPage, string> = {
+  display: 'monitor screen zoom scaling language', ambience: 'wallpaper artwork brightness blur motion',
+  sound: 'volume audio navigation mute', apps: 'library favorites cards shortcuts import remove',
+  controls: 'gamepad controller Xbox PlayStation deadzone', remote: 'Flirc Skip buttons bindings',
+  iphone: 'Apple iOS keyboard pairing', tv: 'HDMI input wake standby pairing television',
+  system: 'sleep shutdown login autostart desktop', updates: 'download release version install',
+  diagnostic: 'sessions logs running windows',
+};
+export function findSettings(query: string): SettingsPage[] {
+  const words = query.trim().toLowerCase().split(/\s+/);
+  return (Object.keys(settingsPages) as SettingsPage[]).filter(page => {
+    const { title, description } = settingsPages[page];
+    const text = [title, description, searchTerms[page]].join(' ').toLowerCase();
+    return words.every(word => text.includes(word));
+  });
+}
