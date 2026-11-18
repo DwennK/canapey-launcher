@@ -1187,6 +1187,7 @@ pub fn run() {
             crate::tv_desktop::tv_set_hdmi,
             crate::tv_desktop::tv_forget,
             crate::tv_desktop::tv_wake,
+            crate::tv_desktop::tv_retry_input,
             crate::tv_desktop::tv_standby,
             run_remote_action,
             crate::apple_remote_desktop::apple_remote_status,

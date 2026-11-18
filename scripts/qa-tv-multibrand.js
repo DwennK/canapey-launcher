@@ -27,7 +27,16 @@ async (page) => {
       if(cmd==='tv_set_hdmi'){if(q.failSave)throw 'Could not save the TV pairing.';q.state.hdmiPort=args.port;return structuredClone(q.state);}
       if(cmd==='tv_preferences'){if(q.failSave)throw 'Could not save the TV pairing.';q.state.autoWake=args.autoWake;q.state.autoStandby=args.autoStandby;return structuredClone(q.state);}
       if(cmd==='tv_standby'){q.state.message='TV standby requested. Check the TV screen.';return structuredClone(q.state);}
-      if(cmd==='tv_wake'){if(q.failWake)throw 'The TV did not confirm it was on. Check the TV\'s network wake setting and try again.';q.state.message='The TV reports that it is on. Check the picture on its screen.';return structuredClone(q.state);}
+      if(cmd==='tv_retry_input'){
+        if(args.mac!==q.state.tv.mac || args.port!==q.state.hdmiPort)throw 'Wrong TV or port';
+        Object.assign(q.state.wakeProgress,{inputSent:true,retryInput:false}); q.state.error=null;
+        return structuredClone(q.state);
+      }
+      if(cmd==='tv_wake'){if(q.failHdmi){
+        q.state.wakeProgress={packetSent:true,reachable:true,powerConfirmed:true,inputSent:false,retryInput:true};
+        q.state.error='The TV is on, but the HDMI switch failed. Check the input and TV permissions.';
+        throw q.state.error;
+      }if(q.failWake)throw 'The TV did not confirm it was on. Check the TV\'s network wake setting and try again.';q.state.message='The TV reports that it is on. Check the picture on its screen.';return structuredClone(q.state);}
       if(cmd==='tv_forget'){q.state.tv=null;q.state.autoWake=false;q.state.autoStandby=false;q.state.message=null;return structuredClone(q.state);}
       return null;
     }};
@@ -82,7 +91,17 @@ async (page) => {
       await scan.click();
       const select = page.getByRole('combobox',{name:/PC HDMI input/});
       await select.selectOption('2');
+      await page.evaluate(()=>window.__tvQA.failHdmi=true);
       await page.getByRole('button',{name:'Wake TV and switch to HDMI 2'}).click();
+      const progress=page.getByRole('region',{name:'Last wake attempt'});
+      await progress.getByRole('button',{name:'Retry HDMI input'}).waitFor();
+      assert(await progress.getByText('Done',{exact:true}).count()===3,'Incorrect confirmed wake steps');
+      const wakes=await page.evaluate(()=>window.__tvQA.calls.filter(c=>c.cmd==='tv_wake').length);
+      await progress.getByRole('button',{name:'Retry HDMI input'}).click();
+      await page.waitForFunction(()=>!document.querySelector('.wake-progress button'));
+      assert(await progress.getByText('Done',{exact:true}).count()===4,'HDMI retry not confirmed');
+      assert(wakes===await page.evaluate(()=>window.__tvQA.calls.filter(c=>c.cmd==='tv_wake').length),'HDMI retry repeated wake');
+      await page.evaluate(()=>window.__tvQA.failHdmi=false);
       await page.evaluate(()=>window.__tvQA.failSave=true);
       await select.selectOption('4');
       await page.getByRole('alert').filter({hasText:'Could not save'}).waitFor();

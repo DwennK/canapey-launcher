@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if args[1] == "wake" {
                 let power = tokio::time::timeout(
                     std::time::Duration::from_secs(70),
-                    tv::wake(&client, &mut paired),
+                    tv::wake(&client, &mut paired, |_| {}),
                 )
                 .await??;
                 println!("{}", serde_json::to_string(&power)?);

@@ -21,6 +21,7 @@ pub struct TvStatus {
     auto_standby: bool,
     hdmi_port: Option<u8>,
     waking: bool,
+    wake_progress: Option<tv::WakeProgress>,
     resume_available: bool,
     message: Option<String>,
     error: Option<String>,
@@ -32,6 +33,7 @@ pub struct TvState {
     operation: tokio::sync::Mutex<()>,
     generation: AtomicU64,
     waking: AtomicBool,
+    progress: Mutex<Option<tv::WakeProgress>>,
     stopped: AtomicBool,
     resume_available: AtomicBool,
     last_auto: Mutex<Option<Instant>>,
@@ -59,6 +61,7 @@ impl TvState {
             operation: tokio::sync::Mutex::new(()),
             generation: AtomicU64::new(0),
             waking: AtomicBool::new(false),
+            progress: Mutex::new(None),
             stopped: AtomicBool::new(false),
             resume_available: AtomicBool::new(false),
             last_auto: Mutex::new(None),
@@ -79,6 +82,7 @@ impl TvState {
             auto_standby: paired.as_ref().is_some_and(|p| p.auto_standby),
             hdmi_port: paired.as_ref().and_then(|p| p.hdmi_port),
             waking: self.waking.load(Ordering::SeqCst),
+            wake_progress: *self.progress.lock().unwrap(),
             resume_available: self.resume_available.load(Ordering::SeqCst),
             message: self.message.lock().unwrap().clone(),
             error: self.error.lock().unwrap().clone(),
@@ -203,6 +207,7 @@ pub async fn tv_pair_finish(
     match paired {
         Ok(paired) => {
             state.save(&paired)?;
+            *state.progress.lock().unwrap() = None;
             *state.error.lock().unwrap() = None;
             *state.message.lock().unwrap() =
                 Some("TV paired. Test the wake sequence before relying on automatic wake.".into());
@@ -259,6 +264,9 @@ pub async fn tv_set_hdmi(
     }
     paired.hdmi_port = port;
     state.save(&paired)?;
+    *state.progress.lock().unwrap() = None;
+    *state.error.lock().unwrap() = None;
+    *state.message.lock().unwrap() = None;
     emit(&app);
     Ok(state.status())
 }
@@ -301,6 +309,7 @@ pub async fn tv_forget(
         std::fs::remove_file(&state.path).map_err(|_| "Could not remove the saved TV pairing.")?;
     }
     *state.paired.lock().unwrap() = None;
+    *state.progress.lock().unwrap() = None;
     *state.pending.lock().unwrap() = None;
     *state.error.lock().unwrap() = None;
     *state.message.lock().unwrap() = None;
@@ -337,6 +346,7 @@ async fn wake(app: &tauri::AppHandle, automatic_request: bool) -> tv::Result<TvS
         return Ok(state.status());
     }
     let client = Client::new()?;
+    *state.progress.lock().unwrap() = Some(tv::WakeProgress::default());
     state.waking.store(true, Ordering::SeqCst);
     *state.error.lock().unwrap() = None;
     *state.message.lock().unwrap() = Some("Waking the TV…".into());
@@ -348,10 +358,19 @@ async fn wake(app: &tauri::AppHandle, automatic_request: bool) -> tv::Result<TvS
             if state.power_epoch.load(Ordering::SeqCst) != epoch || state.sleeping.load(Ordering::SeqCst) {
                 return Err("TV wake cancelled because the PC is going to sleep.".into());
             }
-            tokio::time::timeout(Duration::from_secs(70), tv::wake(&client, &mut paired)).await
-                .map_err(|_| "The TV did not confirm it was on. Check the TV's network wake setting and try again.".to_owned()).and_then(|r|r)
+            tokio::time::timeout(Duration::from_secs(70), tv::wake(&client, &mut paired, |event| {
+                if let Some(progress) = state.progress.lock().unwrap().as_mut() { progress.record(event); }
+            })).await
+                .map_err(|_| state.progress.lock().unwrap().unwrap_or_default().timeout_message().to_owned()).and_then(|r|r)
         } => result,
     };
+    if let Some(progress) = state.progress.lock().unwrap().as_mut() {
+        progress.retry_input = result.is_err()
+            && progress.power_confirmed
+            && !progress.input_sent
+            && paired.hdmi_port.is_some()
+            && state.power_epoch.load(Ordering::SeqCst) == epoch;
+    }
     let result = result.and_then(|_| state.save(&paired));
     state.waking.store(false, Ordering::SeqCst);
     match &result {
@@ -378,6 +397,63 @@ pub async fn tv_wake(app: tauri::AppHandle) -> tv::Result<TvStatus> {
     supported()?;
     wake(&app, false).await
 }
+#[tauri::command]
+pub async fn tv_retry_input(app: tauri::AppHandle, mac: String, port: u8) -> tv::Result<TvStatus> {
+    supported()?;
+    let state = app.state::<TvState>();
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| "Another TV operation is in progress.")?;
+    let mut paired = state
+        .paired
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("Pair a TV first.")?;
+    let ip = state
+        .progress
+        .lock()
+        .unwrap()
+        .and_then(|p| p.confirmed_ip.filter(|_| p.retry_input))
+        .ok_or("Test TV wake first.")?;
+    if paired.tv.mac.as_ref() != Some(&mac) || paired.hdmi_port != Some(port) {
+        return Err("Test TV wake first.".into());
+    }
+    paired.tv.ip = ip;
+    paired.validate()?;
+    let client = Client::new()?;
+    let cancelled = state.power_changed.notified();
+    tokio::pin!(cancelled);
+    cancelled.as_mut().enable();
+    if state.sleeping.load(Ordering::SeqCst) {
+        return Err("The PC is preparing to sleep or shut down.".into());
+    }
+    let result = tokio::select! {
+        biased;
+        _ = &mut cancelled => Err("TV wake cancelled because the PC is going to sleep.".into()),
+        result = tokio::time::timeout(Duration::from_secs(12), async {
+            if tv::resolve_mac(ip).await.as_ref() != Some(&mac) {
+                return Err("The paired TV is not reachable at its saved address. Turn it on and reconnect it.".into());
+            }
+            client.switch_hdmi(&paired, port).await
+        }) => result.unwrap_or_else(|_| Err("The TV did not confirm the HDMI command.".into())),
+    };
+    if result.is_ok() {
+        if let Some(progress) = state.progress.lock().unwrap().as_mut() {
+            progress.record(tv::WakeEvent::InputSent);
+            progress.retry_input = false;
+        }
+    }
+    let result = result.and_then(|_| state.save(&paired));
+    *state.error.lock().unwrap() = result.as_ref().err().cloned();
+    *state.message.lock().unwrap() = result
+        .as_ref()
+        .ok()
+        .map(|_| "The HDMI input command was sent.".into());
+    emit(&app);
+    result.map(|_| state.status())
+}
 async fn send_standby(paired: &PairedTv) -> tv::Result<()> {
     paired.validate()?;
     // Never send saved credentials to an address now occupied by another device.
@@ -403,6 +479,7 @@ pub async fn tv_standby(app: tauri::AppHandle) -> tv::Result<TvStatus> {
         .unwrap()
         .clone()
         .ok_or("Pair a TV first.")?;
+    *state.progress.lock().unwrap() = None;
     let result = tokio::time::timeout(Duration::from_secs(8), send_standby(&paired))
         .await
         .map_err(|_| "The TV did not respond to the standby command.".to_owned())
@@ -426,6 +503,7 @@ pub async fn tv_standby(app: tauri::AppHandle) -> tv::Result<TvStatus> {
 pub async fn before_pc_power(app: &tauri::AppHandle, budget: Duration) {
     let state = app.state::<TvState>();
     state.sleeping.store(true, Ordering::SeqCst);
+    *state.progress.lock().unwrap() = None;
     *state.last_auto.lock().unwrap() = None;
     state.power_epoch.fetch_add(1, Ordering::SeqCst);
     state.power_changed.notify_waiters();

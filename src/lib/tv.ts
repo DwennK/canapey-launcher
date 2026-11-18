@@ -10,6 +10,7 @@ export function tvPairMode(tv: Television | null): TvPairMode {
 }
 export interface TvStatus {
   available: boolean; tv: Television | null; autoWake: boolean; autoStandby: boolean;
+  wakeProgress?: { packetSent: boolean; reachable: boolean; powerConfirmed: boolean; inputSent: boolean; retryInput: boolean } | null;
   hdmiPort?: number | null; waking: boolean; resumeAvailable: boolean; message: string | null; error: string | null;
 }
 export interface TvPairStarted { secondsRemaining: number; name: string; mode?: TvPairMode }
@@ -25,6 +26,7 @@ export const listHdmiPorts = () => invoke<number[]>('tv_hdmi_ports');
 export const setHdmiPort = (mac: string, port: number | null) => invoke<TvStatus>('tv_set_hdmi', { mac, port });
 export const forgetTv = () => invoke<TvStatus>('tv_forget');
 export const wakeTv = () => invoke<TvStatus>('tv_wake');
+export const retryTvInput = (mac: string, port: number) => invoke<TvStatus>('tv_retry_input', { mac, port });
 export const standbyTv = () => invoke<TvStatus>('tv_standby');
 export function pairingSeconds(deadline: number, now = Date.now()) { return Math.max(0, Math.ceil((deadline - now) / 1000)); }
 export function validTvPin(pin: string) { return /^\d{4}$/.test(pin); }

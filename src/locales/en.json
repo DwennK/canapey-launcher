@@ -752,5 +752,17 @@
   "Application location updated.": "Application location updated.",
   "No matching application found. Choose its file instead.": "No matching application found. Choose its file instead.",
   "The selected file is unavailable. Choose another location.": "The selected file is unavailable. Choose another location.",
-  "Application file not found.": "Application file not found."
+  "Application file not found.": "Application file not found.",
+  "Test TV wake first.": "Test TV wake first.",
+  "The HDMI input command was sent.": "The HDMI input command was sent.",
+  "Wake packet sent. The paired TV did not respond on the local network.": "Wake packet sent. The paired TV did not respond on the local network.",
+  "No wake packet could be sent. Check the PC’s network connection.": "No wake packet could be sent. Check the PC’s network connection.",
+  "Last wake attempt": "Last wake attempt",
+  "Wake packet sent": "Wake packet sent",
+  "Paired TV reachable": "Paired TV reachable",
+  "TV power confirmed": "TV power confirmed",
+  "HDMI input command sent": "HDMI input command sent",
+  "Retry HDMI input": "Retry HDMI input",
+  "Pending": "Pending",
+  "Unconfirmed": "Unconfirmed"
 }

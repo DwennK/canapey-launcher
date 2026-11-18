@@ -169,9 +169,57 @@ impl PowerState {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum WakeEvent {
+    PacketSent,
+    Reachable,
+    PowerConfirmed(Ipv4Addr),
+    InputSent,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WakeProgress {
+    pub packet_sent: bool,
+    pub reachable: bool,
+    pub power_confirmed: bool,
+    pub input_sent: bool,
+    pub retry_input: bool,
+    #[serde(skip)]
+    pub confirmed_ip: Option<Ipv4Addr>,
+}
+impl WakeProgress {
+    pub fn record(&mut self, event: WakeEvent) {
+        match event {
+            WakeEvent::PacketSent => self.packet_sent = true,
+            WakeEvent::Reachable => self.reachable = true,
+            WakeEvent::PowerConfirmed(ip) => {
+                self.power_confirmed = true;
+                self.confirmed_ip = Some(ip);
+            }
+            WakeEvent::InputSent => self.input_sent = true,
+        }
+    }
+    pub fn timeout_message(&self) -> &'static str {
+        if self.power_confirmed {
+            "The TV is on, but the HDMI switch failed. Check the input and TV permissions."
+        } else if self.reachable {
+            "The TV did not confirm it was on. Check the TV's network wake setting and try again."
+        } else if self.packet_sent {
+            "Wake packet sent. The paired TV did not respond on the local network."
+        } else {
+            "No wake packet could be sent. Check the PC’s network connection."
+        }
+    }
+}
+
 /// Wake is bounded by the caller. Repeated power commands are absolute On, never a toggle.
 /// Credentials are sent only after matching the paired MAC (including after DHCP changes).
-pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> {
+pub async fn wake(
+    client: &Client,
+    paired: &mut PairedTv,
+    mut progress: impl FnMut(WakeEvent),
+) -> Result<PowerState> {
     paired.validate()?;
     let mac = paired
         .tv
@@ -180,13 +228,25 @@ pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> 
         .ok_or("Enter the TV's network MAC address.")?;
     let mut attempts = 0;
     loop {
-        let _ = send_wol(&mac).await;
+        if send_wol(&mac).await.is_ok() {
+            progress(WakeEvent::PacketSent);
+        }
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         if resolve_mac(paired.tv.ip).await.as_deref() == Some(&mac) {
-            match client.power(paired).await {
+            let response = client.power(paired).await;
+            if response.is_ok()
+                || response
+                    .as_ref()
+                    .is_err_and(|e| e.contains("rejected this pairing"))
+            {
+                progress(WakeEvent::Reachable);
+            }
+            match response {
                 Ok(power) if power.confirms_on(paired.tv.protocol) => {
+                    progress(WakeEvent::PowerConfirmed(paired.tv.ip));
                     if let Some(port) = paired.hdmi_port {
                         client.switch_hdmi(paired, port).await.map_err(|_| "The TV is on, but the HDMI switch failed. Check the input and TV permissions.")?;
+                        progress(WakeEvent::InputSent);
                     }
                     return Ok(power);
                 }
@@ -219,6 +279,24 @@ pub async fn wake(client: &Client, paired: &mut PairedTv) -> Result<PowerState> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn wake_timeout_explains_the_last_confirmed_step() {
+        let mut progress = WakeProgress::default();
+        assert!(progress.timeout_message().contains("No wake packet"));
+        progress.record(WakeEvent::PacketSent);
+        assert!(progress.timeout_message().contains("did not respond"));
+        progress.record(WakeEvent::Reachable);
+        assert!(progress
+            .timeout_message()
+            .contains("did not confirm it was on"));
+        let ip = Ipv4Addr::new(192, 168, 1, 2);
+        progress.record(WakeEvent::PowerConfirmed(ip));
+        assert_eq!(progress.confirmed_ip, Some(ip));
+        assert!(progress.timeout_message().contains("HDMI"));
+        assert!(!progress.input_sent);
+        progress.record(WakeEvent::InputSent);
+        assert!(progress.input_sent);
+    }
     #[test]
     fn missing_standby_preference_never_enables_automatic_power_off() {
         let value = serde_json::json!({

@@ -429,7 +429,7 @@ impl Client {
         ports.dedup();
         Ok(ports)
     }
-    pub(super) async fn switch_hdmi(&self, tv: &PairedTv, port: u8) -> Result<()> {
+    pub async fn switch_hdmi(&self, tv: &PairedTv, port: u8) -> Result<()> {
         match tv.tv.protocol {
             TvProtocol::Philips => return self.philips.switch_hdmi(tv, port).await,
             TvProtocol::LgWebos => {

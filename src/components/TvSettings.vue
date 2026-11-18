@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { t } from '../lib/i18n';
 import Icon from './Icon.vue';
-import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, standbyTv, listHdmiPorts, setHdmiPort, tvFamily, tvPairMode, type Television } from '../lib/tv';
+import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv, inspectTv, pairTv, pairingSeconds, saveTvPreferences, tvStatus, validTvMac, validTvPin, wakeTv, retryTvInput, standbyTv, listHdmiPorts, setHdmiPort, tvFamily, tvPairMode, type Television } from '../lib/tv';
 const props = defineProps<{ native: boolean; autostart: boolean }>();
 const emit = defineEmits<{ startup: [] }>();
 const status = ref(emptyTvStatus()), busy = ref(''), error = ref('');
@@ -97,11 +97,30 @@ async function choosePort(event: Event) {
   if (mac) await run('input', async () => { const value = await setHdmiPort(mac, port); if (alive) status.value = value; });
 }
 async function testStandby() { await run('standby', async () => { const value = await standbyTv(); if (alive) status.value = value; }); }
-async function testWake() { await run('wake', async () => { const value = await wakeTv(); if (alive) status.value = value; }); }
+async function testWake() {
+  await run('wake', async () => { try { await wakeTv(); } finally { await refresh(); } });
+}
+async function retryInput() {
+  const mac = status.value.tv?.mac, port = status.value.hdmiPort;
+  if (mac && port) await run('input', async () => {
+    try { await retryTvInput(mac, port); } finally { await refresh(); }
+  });
+}
+const wakeSteps = computed(() => {
+  const progress = status.value.wakeProgress;
+  if (!progress) return [];
+  const rows = [
+    { label: 'Wake packet sent', done: progress.packetSent },
+    { label: 'Paired TV reachable', done: progress.reachable },
+    { label: 'TV power confirmed', done: progress.powerConfirmed },
+  ];
+  if (status.value.hdmiPort) rows.push({ label: 'HDMI input command sent', done: progress.inputSent });
+  return rows;
+});
 async function remove() { await run('forget', async () => { const value = await forgetTv(); if (alive) { status.value = value; removing.value = false; searched.value = false; results.value = []; } }); }
 onMounted(async () => {
   await refresh();
-  if (alive) timer = setInterval(() => { seconds.value = pairingSeconds(deadline.value); if (!busy.value) void refresh(); }, 1000);
+  if (alive) timer = setInterval(() => { seconds.value = pairingSeconds(deadline.value); if (!busy.value || busy.value === 'wake') void refresh(); }, 1000);
 });
 onUnmounted(() => {
   alive = false; clearInterval(timer);
@@ -168,6 +187,13 @@ onUnmounted(() => {
         <small v-if="scanned && !ports.length">{{ t('The TV reported no HDMI inputs.') }}</small>
       </div>
       <div class="tv-test"><div class="tv-actions"><button class="primary-button" :disabled="working" @click="testWake"><Icon name="power" :size="20" />{{ working && (busy === 'wake' || status.waking) ? t('Waking the TV…') : status.hdmiPort ? t('Wake TV and switch to HDMI {0}', [status.hdmiPort]) : t('Test TV wake') }}</button><button class="small-button" :disabled="working" @click="testStandby">{{ busy === 'standby' ? t('Turning off the TV…') : t('Turn off TV now') }}</button></div><small>{{ status.hdmiPort ? t('You can also switch inputs while the TV is on.') : t('Put the TV in standby first to test wake. Allow up to 70 seconds.') }}</small></div>
+      <section v-if="wakeSteps.length" class="wake-progress" aria-labelledby="wake-progress-title">
+        <h4 id="wake-progress-title">{{ t('Last wake attempt') }}</h4>
+        <ol><li v-for="step in wakeSteps" :key="step.label">
+          <span>{{ t(step.label) }}</span><strong>{{ step.done ? t('Done') : status.waking ? t('Pending') : t('Unconfirmed') }}</strong>
+        </li></ol>
+        <button v-if="status.wakeProgress?.retryInput" class="small-button" :disabled="working" @click="retryInput">{{ t('Retry HDMI input') }}</button>
+      </section>
       <details class="tv-manual"><summary>{{ t('Connection details and troubleshooting') }}</summary><dl><dt>{{ t('IP address') }}</dt><dd>{{ status.tv.ip }}</dd><dt>{{ t('MAC address') }}</dt><dd>{{ status.tv.mac }}</dd></dl><p>{{ t('Enable network wake on the TV: WoWLAN / Wake on LAN (Philips), TV On With Mobile (LG), Power On with Mobile (Samsung), Remote start (Sony), or Fast TV Start (Roku TV). Names vary by model. Keep the TV powered and on the same network.') }}</p><p>{{ t('If your router changes the TV’s IP address, Canapey tries to find it again. If that fails, turn the TV on and use Change TV to reconnect.') }}</p><p>{{ t('Forgetting disconnects this PC. To revoke access on the TV, check its allowed apps or network control settings.') }}</p><button v-if="!removing" class="small-button" :disabled="working" @click="removing = true">{{ t('Forget this TV') }}</button><div v-else class="tv-actions"><span>{{ t('Remove this pairing and disable automatic TV power?') }}</span><button class="small-button" :disabled="working" @click="remove">{{ t('Forget TV') }}</button><button class="small-button" @click="removing = false">{{ t('Cancel') }}</button></div></details>
     </template>
     <p v-if="error || status.error" class="tv-error" role="alert">{{ t(error || status.error || '') }}</p>
@@ -176,6 +202,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.wake-progress ol { list-style: none; padding: 0; margin: 12px 0; }
+.wake-progress li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid #ffffff19; }
+.wake-progress strong { font-weight: 500; }
+
 .tv-inputs { display: grid; gap: 12px; }
 .tv-inputs button { justify-self: start; }
 .tv-inputs small { color: var(--muted); }
