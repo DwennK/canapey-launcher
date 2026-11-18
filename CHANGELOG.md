@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Locate a moved application from its card, review the new path and keep its artwork, favorites, category and position.
+- Show the last TV wake attempt step by step. Retry just the HDMI command when power has been confirmed and input selection fails.
+- Search Settings by task, switch categories from the sidebar on wide screens and open an app directly from its card menu.
+
 ## 0.9.0 — 2026-11-18
 
 - Remember the PC's HDMI input under **Settings → Controls → TV**. On compatible LG webOS, Sony BRAVIA and Roku TVs, choose a port reported by the TV. Select Philips jointSPACE v6 models offer candidate ports to test. Manual and automatic wake use the saved input, including when the TV is already on. Existing pairings keep the current input until a port is chosen.

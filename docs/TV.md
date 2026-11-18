@@ -35,6 +35,8 @@ With the paired TV on, open **Settings → Controls → TV → Find HDMI inputs*
 
 LG webOS lists SSAP external inputs, Sony BRAVIA lists HDMI URIs from its AV Content API, and Roku TVs list configured HDMI tiles. Philips jointSPACE v6 models advertising activity intents offer four candidate MediaTek passthrough ports. Philips firmware and physical port counts vary. Samsung Tizen currently supports power only. On LG, the TV may require renewed permission for input control.
 
+On the development branch, **Last wake attempt** shows whether a wake packet was sent, the paired TV answered a status request, its power state was confirmed, and the configured HDMI input command was accepted. If only switching the input fails, **Retry HDMI input** checks the TV’s network identity again and sends only the saved input command. Check the picture on the TV to confirm the source.
+
 ## Behavior and storage
 
 - Discovery uses bounded SSDP and Chromecast mDNS queries on local IPv4 interfaces, followed by fixed Philips, Samsung, Sony and Roku API probes. LG uses an unauthenticated SSDP XML description restricted to the packet source’s literal IP, then verifies its SSAP socket. Manual LG IP lookup can also identify an unauthenticated SSAP system-info response without opening a pairing prompt. Cross-host URLs, embedded credentials and redirects are rejected; responses are capped at 64 KiB. Manual input accepts only literal private/link-local IPv4 addresses.
