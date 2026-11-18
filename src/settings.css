@@ -89,7 +89,7 @@
 .settings-find { position: relative; margin: 0 5px 8px; }
 .settings-find > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #b5bac3; pointer-events: none; }
 .settings-find :is(button,input) { width: 100%; min-height: 43px; margin: 0; padding: 9px 12px 9px 40px; font: inherit; font-size: 16px; text-align: left; background: #14171c77; border: 1px solid #ffffff19; border-radius: 10px; color: #d4d8df; }
-.settings-sections { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 0 5px 5px; scroll-padding: 5px; }
+.settings-sections { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 5px 5px; scroll-padding: 5px; }
 .settings-panel .rail-section h3, .settings-heading p { margin: 14px 11px 5px; color: #b0b6c0; font-size: calc(13px * var(--ui-scale)); font-weight: 600; letter-spacing: .02em; }
 .rail-section button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: calc(44px * var(--ui-scale)); padding: 6px 11px; border-radius: 9px; text-align: left; font-size: calc(17px * var(--ui-scale)); line-height: 1.3; font-weight: 510; color: #eceef2; }
 .rail-section button:hover { background: #ffffff0a; }
@@ -107,7 +107,7 @@
 .settings-panel .settings-heading h2 { font-size: clamp(38px,3.3vw,58px); font-weight: 620; letter-spacing: -.045em; line-height: 1.08; margin: 0; }
 .settings-back { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; margin: 0 0 10px -8px; font-size: 16px; color: var(--accent); border-radius: 8px; }
 .compact-back { display: none; }
-.settings-panel .settings-content { flex: 1; min-height: 0; min-width: 0; padding: 6px 5px 16px; overflow-y: auto; scroll-padding-block: 12px; overscroll-behavior: contain; outline: none; mask-image: none; scrollbar-width: thin; }
+.settings-panel .settings-content { flex: 1; min-height: 0; min-width: 0; padding: 6px 5px 16px; overflow-y: auto; scroll-padding-block: 12px; overscroll-behavior: contain; outline: none; mask-image: none; }
 .settings-page { max-width: none; }
 .settings-save { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #b5bac2; min-height: 30px; padding-inline: 5px; }
 .settings-panel > .panel-footer { width: min(100%,1600px); flex-shrink: 0; margin: 0 auto; padding: 13px 10px 16px; border: none; font-size: 13px; }

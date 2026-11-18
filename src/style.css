@@ -77,16 +77,30 @@ svg {
   background: var(--accent);
   color: #101218;
 }
-::-webkit-scrollbar {
-  width: 5px;
-  height: 3px;
-}
-::-webkit-scrollbar-thumb {
-  background: #ffffff24;
-  border-radius: 9px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
+@media (forced-colors: none) {
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #737983;
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #9197a1;
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background-color: #b2b7bf;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    :root { scrollbar-color: #737983 transparent; }
+  }
 }
 .launcher {
   height: 100svh;

@@ -238,7 +238,7 @@ header p { margin: 7px 0 0; color: #bdc0c6; font-size: calc(16px * var(--ui-scal
 .picker-options label, .picker-options button, .picker-message button { display: inline-flex; align-items: center; gap: 8px; min-height: 39px; font-size: 16px; }
 .picker-options input { accent-color: var(--accent); width: 18px; height: 18px; }
 .picker-options button, .picker-message button { color: var(--accent); }
-.picker-list { height: calc(12px + var(--picker-rows) * 55px * var(--ui-scale)); outline: none; min-height: 0; max-height: min(50svh, 470px); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 4px; padding: 3px 14px 9px; scrollbar-width: thin; }
+.picker-list { height: calc(12px + var(--picker-rows) * 55px * var(--ui-scale)); outline: none; min-height: 0; max-height: min(50svh, 470px); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 4px; padding: 3px 14px 9px; }
 .picker-app { display: flex; align-items: center; gap: 15px; width: 100%; min-height: calc(55px * var(--ui-scale)); padding: 7px 14px; position: relative; text-align: left; border-radius: 9px; color: #f0f0f3; }
 .picker-list:has(.picker-message:only-child) { display: grid; place-content: center; }
 .picker-app + .picker-app::before { content: ''; position: absolute; left: 67px; top: 0; right: 13px; height: 1px; background: #ffffff0e; }
