@@ -2,6 +2,7 @@ import { t, resolveLocale, setLocale } from './i18n';
 import { version as appVersion } from "../../package.json";
 export { appVersion };
 import { invoke, convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { resolveSelectorColor } from "./selector-colors";
 import { normalizeLibrary } from "./library";
 import { startupMark, startupTimings } from "./startup";
 import { listen } from "@tauri-apps/api/event";
@@ -51,7 +52,7 @@ export async function boot(): Promise<Boot> {
         c.settings.scale >= 0.8 &&
         c.settings.scale <= 1.4
       )
-        config = { ...c, settings: { ...defaults().settings, ...c.settings, library: normalizeLibrary(c.settings.library) } };
+        config = { ...c, settings: { ...defaults().settings, ...c.settings, selectorColor: resolveSelectorColor(c.settings.selectorColor), library: normalizeLibrary(c.settings.library) } };
     }
   } catch {
     /* preview only */

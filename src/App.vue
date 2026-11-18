@@ -36,6 +36,7 @@ import SettingChoice from './components/SettingChoice.vue';
 import { isSettingsPage, type SettingsPage } from './lib/settings-navigation';
 import AudioControls from "./components/AudioControls.vue";
 import { createAudioControls } from "./lib/audio";
+import { selectorColors, type SelectorColor } from "./lib/selector-colors";
 import { backgroundCandidates, generalAmbiances } from "./lib/ambiance";
 import AppCard from "./components/AppCard.vue";
 import { startupMark } from "./lib/startup";
@@ -182,6 +183,16 @@ const config = ref(defaults()),
   loaded = ref(false),
   native = ref(false),
   version = ref(api.appVersion);
+watch(() => config.value.settings.selectorColor, (color) => {
+  document.documentElement.style.setProperty('--accent', selectorColors[color ?? 'blue'].color);
+}, { immediate: true });
+
+function selectColor(color: SelectorColor) {
+  if (config.value.settings.selectorColor === color) return;
+  config.value.settings.selectorColor = color;
+  void persist();
+}
+
 const audio = createAudioControls(api);
 const {
   state: audioState,
@@ -2156,7 +2167,19 @@ onUnmounted(() => {
                   <div v-if="controllerHelp"><XboxHomeSettings :native="native" /><p class="note"> {{ t('Steam Input may intercept these buttons. Disable its Desktop Layout or choose another combination.') }} </p></div></template>
                 <template v-if="settingsRoute === 'ambience'">
                   <h3 class="settings-subheading">{{ t('Ambience') }}</h3>
-                  <p class="note">{{ t('Customize Canapey’s appearance and sounds. Changes apply immediately.') }}</p>
+                  <section class="selector-palette" aria-labelledby="selector-color-title">
+                    <h4 id="selector-color-title">{{ t('Selector color') }}</h4>
+                    <div class="selector-presets" role="group" aria-labelledby="selector-color-title">
+                      <button v-for="(preset, id) in selectorColors" :key="id"
+                        :aria-pressed="config.settings.selectorColor === id" @click="selectColor(id)">
+                        <span class="selector-swatch" :style="{ backgroundColor: preset.color }" aria-hidden="true">
+                          <Icon v-if="config.settings.selectorColor === id" name="check" :size="18" />
+                        </span>
+                        {{ t(preset.label) }}
+                      </button>
+                    </div>
+                  </section>
+                  <h4 class="ambience-section-title">{{ t('General ambiences') }}</h4>
                   <div class="ambiance-gallery" role="group" :aria-label="t('General ambiences')">
                     <button v-for="ambiance in generalAmbiances" :key="ambiance.id"
                       class="ambiance-choice" :aria-label="ambiance.name" :title="ambiance.description"

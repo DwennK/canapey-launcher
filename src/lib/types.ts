@@ -37,6 +37,7 @@ export interface Settings {
   sound: boolean;
   soundVolume: number;
   dynamicBackground: boolean;
+  selectorColor: import("./selector-colors").SelectorColor;
   generalAmbiance: "home" | "spotify" | "night" | "dusk" | "launchbox";
   backgroundBrightness: number;
   backgroundBlur: number;
@@ -127,6 +128,7 @@ export const defaults = (): Config => ({
     sound: true,
     soundVolume: 0.5,
     dynamicBackground: true,
+    selectorColor: "blue",
     generalAmbiance: "home",
     backgroundBrightness: 1,
     backgroundBlur: 0,

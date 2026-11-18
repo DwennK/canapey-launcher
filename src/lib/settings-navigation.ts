@@ -23,7 +23,7 @@ export function isSettingsPage(route: string): route is SettingsPage {
 }
 
 const searchTerms: Record<SettingsPage, string> = {
-  display: 'monitor screen zoom scaling language', ambience: 'wallpaper artwork brightness blur motion',
+  display: 'monitor screen zoom scaling language', ambience: 'wallpaper artwork brightness blur motion selector color colour accent highlight focus',
   sound: 'volume audio navigation mute', apps: 'library favorites cards shortcuts import remove',
   controls: 'gamepad controller Xbox PlayStation deadzone', remote: 'Flirc Skip buttons bindings',
   iphone: 'Apple iOS keyboard pairing', tv: 'HDMI input wake standby pairing television',

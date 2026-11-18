@@ -1,4 +1,12 @@
 {
+  "Selector color": "Selector color",
+  "Teal": "Teal",
+  "Mint": "Mint",
+  "Amber": "Amber",
+  "Coral": "Coral",
+  "Rose": "Rose",
+  "Lavender": "Lavender",
+  "Silver": "Silver",
   "A library can hold 250 apps. Select fewer apps or remove an existing card.": "A library can hold 250 apps. Select fewer apps or remove an existing card.",
   "Browser preview": "Browser preview",
   "Could not save your apps. Try again.": "Could not save your apps. Try again.",

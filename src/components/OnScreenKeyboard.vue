@@ -227,13 +227,16 @@ defineExpose({ handle });
   padding: 10px;
   font-size: 18px;
 }
-.keyboard-panel button:focus-visible {
-  background: #ffffff24;
-  outline: 2px solid #e9dece;
+.keyboard-panel button:focus-visible,
+:root[data-input-mode=directional] .keyboard-panel button:focus {
+  background: var(--focus-surface);
+  color: white;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 .keyboard-panel button[aria-pressed="true"] {
-  background: #ffffff28;
+  background: var(--selected-surface);
+  color: var(--accent);
 }
 .keyboard-tools,
 .keyboard-bottom {
@@ -248,8 +251,8 @@ defineExpose({ handle });
   flex: 1;
 }
 .keyboard-panel .primary-button {
-  background: #e9dece;
-  color: #1b2028;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .keyboard-panel .note {
   margin: 16px 0 0;

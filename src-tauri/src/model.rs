@@ -51,9 +51,25 @@ impl Default for LibraryPreferences {
         }
     }
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SelectorColor {
+    Teal,
+    Mint,
+    Amber,
+    Coral,
+    Rose,
+    Lavender,
+    Silver,
+    #[default]
+    #[serde(other)]
+    Blue,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub selector_color: SelectorColor,
     pub locale: Option<String>,
     pub library: LibraryPreferences,
     pub last_settings_tab: String,
@@ -89,6 +105,7 @@ impl Default for Settings {
             sound: true,
             sound_volume: 0.5,
             dynamic_background: true,
+            selector_color: SelectorColor::Blue,
             general_ambiance: "home".into(),
             background_brightness: 1.0,
             background_blur: 0.0,

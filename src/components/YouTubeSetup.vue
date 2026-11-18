@@ -88,6 +88,6 @@ onUnmounted(() => { alive = false; stop(); });
 .youtube-intro { font-size:24px;line-height:1.4;margin:0 0 20px; }
 .youtube-details { min-width:0;font-size:18px;line-height:1.6; }
 .youtube-actions { display:flex;gap:12px;flex-wrap:wrap;margin-top:24px; }
-progress { width:100%;height:12px;accent-color:#e9dfce; }
+progress { width:100%;height:12px;accent-color:var(--accent); }
 @media(max-width:700px) { .youtube-setup { grid-template-columns:1fr;gap:20px; }.youtube-intro{font-size:20px;}.youtube-details{font-size:16px;} }
 </style>

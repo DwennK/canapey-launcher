@@ -222,7 +222,7 @@ function adjust(delta: number) {
   position: absolute;
   width: 12px;
   height: 12px;
-  background: #e9dece;
+  background: var(--accent);
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }

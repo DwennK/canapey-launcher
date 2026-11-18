@@ -183,6 +183,7 @@ mod tests {
             "soundVolume",
             "dynamicBackground",
             "generalAmbiance",
+            "selectorColor",
             "backgroundBrightness",
             "backgroundBlur",
         ] {
@@ -200,11 +201,16 @@ mod tests {
         assert_eq!(config.settings.sound_volume, 0.5);
         assert!(config.settings.dynamic_background);
         assert_eq!(config.settings.general_ambiance, "home");
+        assert_eq!(
+            config.settings.selector_color,
+            crate::model::SelectorColor::Blue
+        );
         assert_eq!(config.settings.background_brightness, 1.0);
         assert_eq!(config.settings.background_blur, 0.0);
         config.settings.sound_volume = 0.25;
         config.settings.dynamic_background = false;
         config.settings.general_ambiance = "night".into();
+        config.settings.selector_color = crate::model::SelectorColor::Lavender;
         config.settings.background_brightness = 0.65;
         config.settings.background_blur = 8.0;
         store.save(&config).unwrap();
