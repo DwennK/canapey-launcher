@@ -102,6 +102,8 @@ export const monitors = (): Promise<Monitor[]> =>
   native ? invoke("list_monitors") : Promise.resolve([]);
 export const pickTarget = (): Promise<AppEntry | null> =>
   native ? invoke("pick_application") : unavailable();
+export const checkReplacement = (target: AppEntry['target']): Promise<void> =>
+  native ? invoke("check_replacement", { target }) : unavailable();
 export const pickImage = (
   kind: "card" | "background",
 ): Promise<string | null> =>

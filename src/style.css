@@ -2140,3 +2140,8 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
   .import-action { flex-wrap: wrap; gap: 12px; }
   .import-action .primary-button { white-space: normal; }
 }
+.repair-location { display: grid; gap: 12px; }
+.repair-location h3, .repair-location dl { margin: 0; }
+.repair-location dt { margin-top: 8px; color: var(--muted); }
+.repair-location dd { margin: 4px 0 16px; overflow-wrap: anywhere; }
+.repair-location [data-repair-candidate] { white-space: normal; overflow-wrap: anywhere; text-align: left; }

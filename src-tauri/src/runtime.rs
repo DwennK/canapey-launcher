@@ -378,6 +378,19 @@ fn cancel_vacuumtube_install() {
     crate::vacuumtube::cancel_install();
 }
 #[tauri::command]
+async fn check_replacement(target: Target) -> Result<(), String> {
+    platform::supported()?;
+    target.validate()?;
+    if !matches!(target.kind, TargetKind::Executable | TargetKind::Shortcut)
+        || !tokio::task::spawn_blocking(move || std::path::Path::new(&target.value).is_file())
+            .await
+            .map_err(|e| e.to_string())?
+    {
+        return Err("The selected file is unavailable. Choose another location.".into());
+    }
+    Ok(())
+}
+#[tauri::command]
 async fn pick_application(app: tauri::AppHandle) -> Result<Option<AppEntry>, String> {
     platform::supported()?;
     let window = app.get_webview_window("main").ok_or("Window unavailable")?;
@@ -1200,6 +1213,7 @@ pub fn run() {
             install_vacuumtube,
             cancel_vacuumtube_install,
             pick_application,
+            check_replacement,
             pick_image,
             launch_app,
             resume_app,

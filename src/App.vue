@@ -155,6 +155,7 @@ type Panel =
   | "audio"
   | "settings"
   | "add"
+  | "repair"
   | "edit"
   | "power"
   | "session"
@@ -783,7 +784,7 @@ async function openPanel(p: Panel) {
   if (p === 'settings') { settingsMenu.value?.focusContent(); return; }
   if (panelRoot.value)
     focusElement(
-      p === "confirm"
+      p === 'repair' ? panelRoot.value.querySelector<HTMLElement>('.repair-location .primary-button') ?? undefined : p === "confirm"
         ? (panelRoot.value.querySelector<HTMLElement>(
             ".confirm-actions button",
           ) ?? undefined)
@@ -881,7 +882,13 @@ async function activate(tile = current.value, youtubeChecked = false) {
   await run(t('Launching'), async () => {
     config.value.selectedId = tile.id;
     if (!(await persist())) return;
-    const session = await api.launch(tile.id);
+    let session: Session;
+    try { session = await api.launch(tile.id); }
+    catch (e) {
+      if (String(e) !== 'Application file not found.' || !tile.entry) throw e;
+      await startRepair(tile.entry);
+      return;
+    }
     sessions.value = [
       ...sessions.value.filter((s) => s.appId !== session.appId),
       session,
@@ -1231,6 +1238,60 @@ async function manual() {
       editingCategory.value = "auto";
       argumentsText.value = app.target.args.join("\n");
       void openPanel("edit");
+    }
+  });
+}
+const repairId = ref('');
+const replacement = ref<AppEntry | null>(null);
+const repairApp = computed(() => config.value.apps.find(app => app.id === repairId.value));
+const repairOptions = ref<AppEntry[]>([]);
+const repairSearched = ref(false);
+function startRepair(app: AppEntry) {
+  repairId.value = app.id;
+  replacement.value = null;
+  repairOptions.value = [];
+  repairSearched.value = false;
+  return openPanel('repair');
+}
+async function findReplacement() {
+  const original = repairApp.value;
+  if (!original) return;
+  await run(t('Finding application…'), async () => {
+    const file = (app: AppEntry) => app.target.value.split(/[\\/]/).at(-1)?.toLowerCase();
+    const candidates = await api.scan();
+    if (panel.value !== 'repair' || original.id !== repairId.value) return;
+    repairOptions.value = candidates.filter(app =>
+      ['executable', 'shortcut'].includes(app.target.kind) &&
+      app.target.value.toLowerCase() !== original.target.value.toLowerCase() &&
+      (file(original) === file(app) || app.name.toLowerCase() === original.name.toLowerCase()));
+    repairSearched.value = true;
+    await nextTick();
+    panelRoot.value?.querySelector<HTMLElement>('[data-repair-candidate], [data-repair-browse]')?.focus();
+  });
+}
+async function chooseReplacement(candidate?: AppEntry) {
+  await run(t('Choosing an app'), async () => {
+    const chosen = candidate ?? await api.pickTarget();
+    if (chosen && panel.value === 'repair') {
+      replacement.value = chosen;
+      await nextTick();
+      panelRoot.value?.querySelector<HTMLElement>('[data-repair-save]')?.focus();
+    }
+  });
+}
+async function saveReplacement() {
+  const app = repairApp.value, candidate = replacement.value;
+  if (!app || !candidate) return;
+  await run(t('Saving…'), async () => {
+    const target = { ...candidate.target, args: app.target.args.length ? [...app.target.args] : [...candidate.target.args] };
+    await api.checkReplacement(target);
+    if (config.value.apps.some(other => other.id !== app.id && targetKey(other.target) === targetKey(target)))
+      throw new Error(t('This app is already in your library.'));
+    if (panel.value !== 'repair' || repairApp.value !== app) return;
+    app.target = target;
+    if (await persist()) {
+      await closePanel();
+      notify(t('Application location updated.'));
     }
   });
 }
@@ -1792,7 +1853,7 @@ onUnmounted(() => {
           ref="panelRoot"
           class="panel"
           :class="{
-            compact: ['power', 'confirm', 'session'].includes(panel),
+            compact: ['power', 'confirm', 'session', 'repair'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
             'controller-test-active': controllerTesting,
@@ -1804,7 +1865,7 @@ onUnmounted(() => {
           role="dialog"
           aria-modal="true"
           :aria-label="
-            panel === 'youtube' ? 'YouTube' : panel === 'audio'
+            panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === 'audio'
               ? t('Quick controls')
               : panel === 'quick'
                 ? t('Actions for {0}', [quickApp?.name])
@@ -1832,7 +1893,7 @@ onUnmounted(() => {
               <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
                 {{
-                  panel === 'youtube' ? 'YouTube' : panel === "audio"
+                  panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === "audio"
                     ? t('Quick controls')
                     : panel === "quick"
                       ? quickApp?.name
@@ -1859,6 +1920,20 @@ onUnmounted(() => {
             </button>
           </div>
           <YouTubeSetup v-if="panel === 'youtube'" :native="native" :save-app="saveYouTube" :open-app="openYouTube" @busy="youtubeBusy = $event" @detected="youtubeDetected = $event" />
+          <div v-else-if="panel === 'repair' && repairApp" class="repair-location">
+            <h3>{{ repairApp.name }}</h3>
+            <dl><dt>{{ t('Saved location') }}</dt><dd>{{ repairApp.target.value }}</dd>
+              <template v-if="replacement"><dt>{{ t('New location') }}</dt><dd>{{ replacement.target.value }}</dd></template>
+            </dl>
+            <p v-if="repairSearched && !repairOptions.length" role="status">{{ t('No matching application found. Choose its file instead.') }}</p>
+            <button v-if="replacement" class="primary-button" data-repair-save @click="saveReplacement">{{ t('Use this location') }}</button>
+            <template v-else>
+              <button class="primary-button" @click="findReplacement">{{ t('Find application') }}</button>
+              <button v-for="app in repairOptions" :key="app.id" class="small-button" data-repair-candidate @click="chooseReplacement(app)">{{ app.target.value }}</button>
+            </template>
+            <button class="small-button" data-repair-browse @click="chooseReplacement()">{{ t('Choose a file…') }}</button>
+            <button class="text-button" @click="closePanel">{{ t('Cancel') }}</button>
+          </div>
           <AudioControls
             v-else-if="panel === 'audio'"
             :state="audioState"
@@ -1900,6 +1975,9 @@ onUnmounted(() => {
               <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? t('Remove from favorites') : t('Add to favorites') }}</span></button>
               <button :class="{ 'action-group-start': !!quickSession }" @click="edit(quickApp)">
                 <Icon name="edit" /><span>{{ t('Edit') }}</span>
+              </button>
+              <button v-if="native && !quickSession && ['executable', 'shortcut'].includes(quickApp.target.kind)" @click="startRepair(quickApp)">
+                <Icon name="search" /><span>{{ t('Locate application') }}</span>
               </button>
               <button @click="openPanel('move')">
                 <Icon name="right" /><span>{{ t('Move') }}</span>

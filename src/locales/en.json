@@ -741,5 +741,16 @@
   "The TV did not confirm the HDMI command.": "The TV did not confirm the HDMI command.",
   "Type with your paired iPhone while search is focused.": "Type with your paired iPhone while search is focused.",
   "Philips provides possible ports. Choose the HDMI number printed on your TV and test it.": "Philips provides possible ports. Choose the HDMI number printed on your TV and test it.",
-  "You can also switch inputs while the TV is on.": "You can also switch inputs while the TV is on."
+  "You can also switch inputs while the TV is on.": "You can also switch inputs while the TV is on.",
+  "Locate application": "Locate application",
+  "Saved location": "Saved location",
+  "New location": "New location",
+  "Use this location": "Use this location",
+  "Choose a file…": "Choose a file…",
+  "Find application": "Find application",
+  "Finding application…": "Finding application…",
+  "Application location updated.": "Application location updated.",
+  "No matching application found. Choose its file instead.": "No matching application found. Choose its file instead.",
+  "The selected file is unavailable. Choose another location.": "The selected file is unavailable. Choose another location.",
+  "Application file not found.": "Application file not found."
 }

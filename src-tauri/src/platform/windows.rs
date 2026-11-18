@@ -278,8 +278,12 @@ pub fn launch(app: &AppEntry) -> Result<Option<ProcessKey>, String> {
     let t = &app.target;
     match t.kind {
         TargetKind::Executable => {
-            if !Path::new(&t.value).is_file() {
-                return Err("Executable not found. Edit this app.".into());
+            match std::fs::metadata(&t.value) {
+                Ok(info) if !info.is_file() => return Err("Application file not found.".into()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    return Err("Application file not found.".into());
+                }
+                _ => {}
             }
             let mut cmd = Command::new(&t.value);
             cmd.args(&t.args);
@@ -338,7 +342,11 @@ pub fn launch(app: &AppEntry) -> Result<Option<ProcessKey>, String> {
             info.lpDirectory = dir.as_ref().map_or(null(), |v| v.as_ptr());
             info.nShow = SW_SHOWNORMAL;
             if ShellExecuteExW(&mut info) == 0 {
-                return Err(std::io::Error::last_os_error().to_string());
+                let error = std::io::Error::last_os_error();
+                if t.kind == TargetKind::Shortcut && error.kind() == std::io::ErrorKind::NotFound {
+                    return Err("Application file not found.".into());
+                }
+                return Err(error.to_string());
             }
             let h = Handle(info.hProcess);
             if h.0.is_null() {
