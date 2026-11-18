@@ -175,8 +175,8 @@ impl Hub {
         if inner.identity.clients.len() >= 8 {
             return Err(Error::Limit);
         }
-        use rand::Rng;
-        let pin = format!("{:04}", rand::rngs::OsRng.gen_range(0..10000));
+        use rand::{rand_core::UnwrapErr, rngs::SysRng, RngExt};
+        let pin = format!("{:04}", UnwrapErr(SysRng).random_range(0..10000));
         inner.generation = inner.generation.wrapping_add(1);
         inner.pairing = Some(Pairing {
             pin: zeroize::Zeroizing::new(pin),

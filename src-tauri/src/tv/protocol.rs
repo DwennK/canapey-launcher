@@ -1,6 +1,6 @@
 use super::*;
 use base64::{engine::general_purpose::STANDARD, Engine};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use reqwest::{Client as HttpClient, Method, StatusCode};
 use serde_json::{json, Value};
 use sha1::Sha1;

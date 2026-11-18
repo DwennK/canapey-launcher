@@ -24,25 +24,25 @@ uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
 url = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
-mdns-sd = "0.21"
+mdns-sd = "0.22"
 srp = "0.6"
 num-bigint = "0.4"
 subtle = "2"
 sha2 = "0.10"
-sha1 = "0.10"
-hmac = "0.12"
-base64 = "0.22"
+sha1 = "0.11"
+hmac = "0.13"
+base64 = "0.23"
 digest_auth = "0.3.1"
 quick-xml = { version = "0.42", features = ["serialize"] }
 futures-util = { version = "0.3", features = ["sink"] }
-tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.30", features = ["native-tls"] }
 native-tls = "0.2"
 if-addrs = "0.15"
 hkdf = "0.12"
-chacha20poly1305 = "0.10"
-ed25519-dalek = "2"
-x25519-dalek = { version = "2", features = ["static_secrets"] }
-rand = "0.8"
+chacha20poly1305 = "0.11"
+ed25519-dalek = "3"
+x25519-dalek = { version = "3", features = ["static_secrets"] }
+rand = { version = "0.10", default-features = false, features = ["sys_rng"] }
 zeroize = { version = "1", features = ["derive"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 tauri = { version = "2", features = ["protocol-asset", "tray-icon"], optional = true }
@@ -50,14 +50,14 @@ tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-updater = { version = "2", optional = true }
 tauri-plugin-log = { version = "2", optional = true }
-rfd = { version = "0.15", optional = true }
+rfd = { version = "0.17", optional = true }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"], optional = true }
 log = { version = "0.4", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-global-shortcut = { version = "2", optional = true }
 gilrs = "0.11"
-windows = { version = "0.61", features = ["Win32_Networking_NetworkListManager", "Win32_System_Com", "Win32_UI_Shell", "Win32_Media_Audio_Endpoints", "Win32_Devices_FunctionDiscovery", "Win32_UI_Shell_PropertiesSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Variant"] }
+windows = { version = "0.62", features = ["Win32_Networking_NetworkListManager", "Win32_System_Com", "Win32_UI_Shell", "Win32_Media_Audio_Endpoints", "Win32_Devices_FunctionDiscovery", "Win32_UI_Shell_PropertiesSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Variant"] }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_System_Memory", "Win32_System_Power", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_Graphics_Dwm", "Win32_Security", "Win32_Security_Cryptography", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock", "Win32_System_LibraryLoader", "Win32_UI_Input_XboxController", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [profile.release]

@@ -10,7 +10,7 @@ use chacha20poly1305::{
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use num_bigint::BigUint;
-use rand::{rngs::OsRng, RngCore};
+use rand::{rngs::SysRng, TryRng};
 use sha2::{Digest, Sha512};
 use srp::{client::SrpClient, groups::G_3072, server::SrpServer};
 use subtle::ConstantTimeEq;
@@ -19,7 +19,7 @@ use zeroize::Zeroizing;
 
 pub fn random<const N: usize>() -> [u8; N] {
     let mut b = [0; N];
-    OsRng.fill_bytes(&mut b);
+    SysRng.try_fill_bytes(&mut b).expect("OS randomness");
     b
 }
 pub fn hkdf(salt: &str, info: &str, secret: &[u8]) -> [u8; 32] {
