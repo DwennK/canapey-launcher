@@ -489,6 +489,7 @@ dependencies = [
  "mdns-sd",
  "native-tls",
  "num-bigint",
+ "plist",
  "quick-xml 0.42.0",
  "rand 0.10.4",
  "reqwest",

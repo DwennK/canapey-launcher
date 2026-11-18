@@ -92,6 +92,27 @@ pub fn start(app: &tauri::AppHandle) {
     }
 }
 #[tauri::command]
+pub fn apple_library_search(
+    app: tauri::AppHandle,
+    field: Option<crate::apple_remote::keyboard::SearchField>,
+) -> Result<bool, String> {
+    let state = app.state::<AppleRemoteState>();
+    let hub = state.hub.lock().unwrap().clone();
+    if let Some(hub) = hub {
+        let focused = state.desired.borrow().enabled
+            && field.is_some()
+            && state.status.lock().unwrap().running
+            && app
+                .get_webview_window("main")
+                .is_some_and(|w| w.is_focused().unwrap_or(false));
+        hub.keyboard
+            .set_field(field.filter(|_| focused))
+            .map_err(|e| e.to_string())?;
+        return Ok(focused);
+    }
+    Ok(false)
+}
+#[tauri::command]
 pub fn apple_remote_status(app: tauri::AppHandle) -> Status {
     app.state::<AppleRemoteState>().snapshot()
 }
@@ -205,6 +226,18 @@ async fn supervise(app: tauri::AppHandle) {
                         match loaded {
                             Some((identity, persist)) => {
                                 if let Ok(hub) = Hub::new(identity, persist, action_sink(app.clone())) {
+                                    let mut edits = hub.keyboard.edits.subscribe();
+                                    let window = app.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        while edits.changed().await.is_ok() {
+                                            let field = edits.borrow_and_update().clone();
+                                            if let Some(webview) = window.get_webview_window("main") {
+                                                if webview.is_focused().unwrap_or(false) {
+                                                    let _ = webview.emit("apple-library-text", field);
+                                                }
+                                            }
+                                        }
+                                    });
                                     *state.hub.lock().unwrap() = Some(hub);
                                 }
                             }

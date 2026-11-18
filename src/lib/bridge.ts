@@ -134,8 +134,13 @@ export const imageUrl = (path: string | null | undefined) =>
         ? convertFileSrc(path)
         : ""
     : "";
+export interface LibrarySearchField { id: string; text: string }
+export const setAppleLibrarySearch = (field: LibrarySearchField | null) =>
+  invoke<boolean>('apple_library_search', { field });
 export async function subscribe(handlers: {
   action: (v: Action) => void;
+  libraryText: (field: LibrarySearchField) => void;
+  appleService: (running: boolean) => void;
   appleInput: (v: {action: Action; connection: number}) => void;
   controller: (v: string | null) => void;
   sessions: (v: Session[]) => void;
@@ -148,6 +153,8 @@ export async function subscribe(handlers: {
 }) {
   if (!native) return () => {};
   const stops = await Promise.all([
+    listen<LibrarySearchField>('apple-library-text', e => handlers.libraryText(e.payload)),
+    listen<{running: boolean}>('apple-remote-status', e => handlers.appleService(e.payload.running)),
     listen<{action: Action; connection: number}>("apple-input", e => handlers.appleInput(e.payload)),
     listen<Action>("input", (e) => handlers.action(e.payload)),
     listen<string>("update-status", (e) => handlers.updateStatus(e.payload)),

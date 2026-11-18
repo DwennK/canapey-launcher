@@ -131,7 +131,7 @@ impl Drop for Connected {
     }
 }
 async fn connection(
-    mut stream: TcpStream,
+    stream: TcpStream,
     hub: Arc<Hub>,
     name: String,
     mut stop: watch::Receiver<bool>,
@@ -142,6 +142,9 @@ async fn connection(
         id,
     };
     let port = stream.local_addr()?.port();
+    let (mut reader, mut writer) = stream.into_split();
+    let mut focus = hub.keyboard.focus.subscribe();
+    let mut keyboard_subscribed = false;
     let mut auth = Auth::default();
     let mut cipher = None;
     let mut ticket = None;
@@ -163,13 +166,20 @@ async fn connection(
         }
         // read_frame must not be cancelled on an ordinary status update: it may
         // already have consumed part of a TCP frame. Only terminate on revocation.
-        let (frame, message) = {
-            let read = read_frame(&mut stream, &mut cipher);
+        let (header, mut bytes) = {
+            let read = read_frame(&mut reader);
             tokio::pin!(read);
             loop {
                 tokio::select! {
                     _=stop.changed()=>return Ok(()),
                     _=changes.changed()=>{if auth.authenticated.as_ref().is_some_and(|client|!hub.allowed(client)){return Err(Error::Auth);}},
+                    _=focus.changed(), if keyboard_subscribed => {
+                        if !hub.connection_allowed(id) { return Err(Error::Auth); }
+                        let content = hub.keyboard.content()?;
+                        let event = if content.get("_tiD").is_ok() { "_tiStarted" } else { "_tiStopped" };
+                        let message = dict([("_i", event.into()), ("_x", 0.into()), ("_t", 1.into()), ("_c", content)]);
+                        write_frame(&mut writer, 8, &message, &mut cipher).await?;
+                    }
                     result=&mut read=>break result?,
                     _=tokio::time::sleep_until(tokio::time::Instant::from_std(started+Duration::from_secs(30))),if auth.authenticated.is_none()=>return Err(Error::Auth)
                 }
@@ -182,6 +192,11 @@ async fn connection(
         {
             return Err(Error::Auth);
         }
+        let frame = header[0];
+        if let Some(cipher) = cipher.as_mut() {
+            bytes = cipher.decrypt(&header, &bytes)?;
+        }
+        let message = codec::decode(&bytes)?;
         if bucket.elapsed() >= Duration::from_secs(1) {
             bucket = Instant::now();
             frames = 0;
@@ -208,7 +223,7 @@ async fn connection(
                     if let Some((client, key)) = reply.paired {
                         hub.paired(client, key, ticket)?;
                     }
-                    write_frame(&mut stream, reply.frame, &reply.message, &mut cipher).await?;
+                    write_frame(&mut writer, reply.frame, &reply.message, &mut cipher).await?;
                     if let Some(new) = reply.cipher {
                         cipher = Some(new);
                         hub.connected(id, auth.authenticated.clone());
@@ -225,7 +240,7 @@ async fn connection(
                         Value::Bytes(codec::tlv_encode(&[(6, &[seq]), (7, &[2])])),
                     )]);
                     let _ = write_frame(
-                        &mut stream,
+                        &mut writer,
                         if frame <= 4 { 4 } else { 6 },
                         &message,
                         &mut cipher,
@@ -235,15 +250,45 @@ async fn connection(
                 }
             }
         } else if frame == 8 && auth.authenticated.is_some() {
+            let ident = message.get("_i")?.text()?;
+            match ident {
+                "_tiStart" | "_tiStop" if message.get("_t")?.uint()? == 2 => {
+                    keyboard_subscribed = ident == "_tiStart";
+                    focus.borrow_and_update();
+                    let content = if keyboard_subscribed {
+                        hub.keyboard.content()?
+                    } else {
+                        dict([])
+                    };
+                    let reply = dict([
+                        ("_t", 3.into()),
+                        ("_x", message.get("_x")?.clone()),
+                        ("_c", content),
+                    ]);
+                    write_frame(&mut writer, 8, &reply, &mut cipher).await?;
+                    continue;
+                }
+                "_tiC" => {
+                    if keyboard_subscribed && message.get("_t")?.uint()? == 1 {
+                        hub.keyboard
+                            .edit(message.get("_c")?.get("_tiD")?.bytes()?)?;
+                    }
+                    continue;
+                }
+                "_sessionStop" | "TVRCSessionStop" => keyboard_subscribed = false,
+                _ => {}
+            }
             for response in session.handle(&message, &hub.identity(), &name, port)? {
-                write_frame(&mut stream, 8, &response, &mut cipher).await?;
+                write_frame(&mut writer, 8, &response, &mut cipher).await?;
             }
         } else {
             return Err(Error::Auth);
         }
     }
 }
-async fn read_frame(stream: &mut TcpStream, cipher: &mut Option<Cipher>) -> Result<(u8, Value)> {
+async fn read_frame(
+    stream: &mut (impl tokio::io::AsyncRead + Unpin),
+) -> Result<([u8; 4], Vec<u8>)> {
     let mut header = [0; 4];
     tokio::time::timeout(
         Duration::from_secs(600),
@@ -262,13 +307,10 @@ async fn read_frame(stream: &mut TcpStream, cipher: &mut Option<Cipher>) -> Resu
     tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut bytes))
         .await
         .map_err(|_| Error::Io)??;
-    if let Some(cipher) = cipher {
-        bytes = cipher.decrypt(&header, &bytes)?;
-    }
-    Ok((header[0], codec::decode(&bytes)?))
+    Ok((header, bytes))
 }
 async fn write_frame(
-    stream: &mut TcpStream,
+    stream: &mut (impl tokio::io::AsyncWrite + Unpin),
     frame: u8,
     message: &Value,
     cipher: &mut Option<Cipher>,
@@ -307,8 +349,9 @@ mod tests {
             }
         });
         let (mut stream, _) = listener.accept().await.unwrap();
-        let (frame, value) = read_frame(&mut stream, &mut None).await.unwrap();
-        assert_eq!(frame, 8);
+        let (header, bytes) = read_frame(&mut stream).await.unwrap();
+        let value = codec::decode(&bytes).unwrap();
+        assert_eq!(header[0], 8);
         assert_eq!(value.get("_x").unwrap().uint().unwrap(), 3);
         sender.await.unwrap();
     }

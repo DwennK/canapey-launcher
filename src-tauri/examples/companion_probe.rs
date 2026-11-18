@@ -33,6 +33,19 @@ async fn main() {
                 hub.begin_pairing().unwrap();
                 println!("{}", serde_json::json!({"pairing":hub.status()}));
             }
+            "search" => {
+                hub.keyboard
+                    .set_field(Some(canapey_lib::apple_remote::keyboard::SearchField {
+                        id: uuid::Uuid::new_v4(),
+                        text: "Pl".into(),
+                    }))
+                    .unwrap();
+                println!("{}", serde_json::json!({"focused":true}));
+            }
+            "blur" => {
+                hub.keyboard.set_field(None).unwrap();
+                println!("{}", serde_json::json!({"focused":false}));
+            }
             "cancel" => hub.cancel_pairing(),
             "revoke" => {
                 for d in hub.status().devices {

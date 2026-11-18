@@ -1,6 +1,7 @@
 //! Native Apple Companion receiver. No Python is shipped. See docs/APPLE_REMOTE.md.
 mod auth;
 pub mod codec;
+pub mod keyboard;
 pub mod server;
 mod session;
 use serde::{Deserialize, Serialize};
@@ -146,6 +147,7 @@ struct Inner {
 pub type Persist = Arc<dyn Fn(&Identity) -> Result<()> + Send + Sync>;
 pub type ActionSink = Arc<dyn Fn(Action) + Send + Sync>;
 pub struct Hub {
+    pub keyboard: keyboard::Keyboard,
     inner: Mutex<Inner>,
     persist: Persist,
     pub(crate) actions: ActionSink,
@@ -156,6 +158,7 @@ impl Hub {
         identity.validate()?;
         let (changes, _) = watch::channel(0);
         Ok(Arc::new(Self {
+            keyboard: keyboard::Keyboard::default(),
             inner: Mutex::new(Inner {
                 identity,
                 pairing: None,

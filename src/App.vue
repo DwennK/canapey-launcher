@@ -78,6 +78,10 @@ async function saveAppleRemote(settings: import("./lib/apple-remote").AppleRemot
 let appleAccept: number | null = null;
 function appleInput(event: {action: Action; connection: number}) {
   if (event.action === "accept-cancel") { if (event.connection === 0 || appleAccept === event.connection) { appleAccept = null; cancelHold(); } return; }
+  if (event.action === "accept-down" && phoneSearchId.value && document.activeElement === searchInput.value) {
+    syncPhoneSearch();
+    return;
+  }
   if (event.action === "accept-down") { if (remoteCapturing.value || appleAccept !== null) return; appleAccept = event.connection; beginAccept("iphone"); return; }
   if (event.action === "accept-up") { if (appleAccept === event.connection) { appleAccept = null; releaseAccept("iphone"); } return; }
   dispatch(event.action);
@@ -299,6 +303,32 @@ function backSettings() {
 }
 const settingsSaveStatus = ref('');
 const libraryQuery = ref('');
+const searchInput = ref<HTMLInputElement | null>(null);
+const phoneSearchId = ref<string | null>(null);
+let searchSync = Promise.resolve();
+let appleServiceRunning = false;
+function closePhoneSearch() {
+  if (!phoneSearchId.value) return;
+  phoneSearchId.value = null;
+  searchSync = searchSync.then(async () => { await api.setAppleLibrarySearch(null); }).catch(() => {});
+}
+function syncPhoneSearch() {
+  const input = searchInput.value;
+  if (!native.value || !config.value.settings.appleRemote?.enabled || !input || document.activeElement !== input ||
+      !document.hasFocus() || panel.value || keyboardTarget.value || choiceTarget.value || view.value !== 'grid') {
+    closePhoneSearch();
+    return;
+  }
+  const field = { id: crypto.randomUUID(), text: input.value };
+  phoneSearchId.value = field.id;
+  searchSync = searchSync.then(async () => {
+    if (phoneSearchId.value !== field.id) return;
+    const active = await api.setAppleLibrarySearch(field);
+    if (!active && phoneSearchId.value === field.id) phoneSearchId.value = null;
+  }).catch(() => { if (phoneSearchId.value === field.id) phoneSearchId.value = null; });
+}
+watch([searchInput, panel, keyboardTarget, choiceTarget, view], syncPhoneSearch, {flush:'post'});
+
 const libraryFilter = ref<LibraryFilter>('all');
 const libraryFilters = computed(() => ({ all: t('All'), favorites: t('Favorites'), ...categories }));
 const libraryFiltered = computed(() => !!libraryQuery.value.trim() || libraryFilter.value !== 'all');
@@ -1408,6 +1438,8 @@ onMounted(async () => {
   document.addEventListener("keydown", keyboard);
   document.addEventListener("keyup", keyboardUp);
   window.addEventListener("blur", cancelHold);
+  window.addEventListener("blur", closePhoneSearch);
+  window.addEventListener("focus", syncPhoneSearch);
   document.addEventListener("visibilitychange", visibilityChanged);
   document.addEventListener("pointerdown", pointerInput);
   document.addEventListener("focusin", focusChanged);
@@ -1440,6 +1472,16 @@ onMounted(async () => {
     startupMark("subscribeStart");
     stopNative = await api.subscribe({
       appleInput,
+      libraryText: field => {
+        if (phoneSearchId.value === field.id && document.hasFocus() && document.activeElement === searchInput.value && !panel.value && !keyboardTarget.value && !choiceTarget.value) {
+          libraryQuery.value = field.text;
+        }
+      },
+      appleService: running => {
+        if (running && !appleServiceRunning) syncPhoneSearch();
+        if (!running && appleServiceRunning) closePhoneSearch();
+        appleServiceRunning = running;
+      },
       action: (action) => {
         if (!controllerTesting.value) dispatch(action);
       },
@@ -1514,6 +1556,9 @@ onUnmounted(() => {
   document.removeEventListener("keydown", keyboard);
   document.removeEventListener("keyup", keyboardUp);
   window.removeEventListener("blur", cancelHold);
+  window.removeEventListener("blur", closePhoneSearch);
+  window.removeEventListener("focus", syncPhoneSearch);
+  closePhoneSearch();
   document.removeEventListener("visibilitychange", visibilityChanged);
   document.removeEventListener("pointerdown", pointerInput);
   document.removeEventListener("focusin", focusChanged);
@@ -1653,8 +1698,9 @@ onUnmounted(() => {
         <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />{{ t('Add') }}</button>
       </div>
       <div v-if="view === 'grid' && !empty" class="library-tools">
-        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input v-model="libraryQuery" type="search" :aria-label="t('Search the library')" :placeholder="t('Search for an app')" /></label><button v-if="libraryQuery" class="small-button" :aria-label="t('Clear search')" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" :aria-label="t('Library keyboard')" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
+        <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input ref="searchInput" v-model="libraryQuery" @focus="syncPhoneSearch" @blur="closePhoneSearch" @input="syncPhoneSearch" type="search" :aria-label="t('Search the library')" :placeholder="t('Search for an app')" /></label><button v-if="libraryQuery" class="small-button" :aria-label="t('Clear search')" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" :aria-label="t('Library keyboard')" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
         <label class="library-sort">{{ t('Sort') }}<select v-model="config.settings.library.sort" @change="persist"><option value="custom">{{ t('My order') }}</option><option value="name">{{ t('Name A–Z') }}</option><option value="category">{{ t('Category') }}</option></select></label>
+        <small v-if="phoneSearchId" class="phone-search-hint">{{ t('Type with your paired iPhone while search is focused.') }}</small>
         <div class="library-filters" role="group" :aria-label="t('Filter the library')"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="t('{0} app{1}', [filterCounts[key], filterCounts[key] === 1 ? '' : 's'])" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
       </div>
       <div v-if="view === 'grid' && !empty && !tiles.length" class="library-empty"><h2>{{ t('No apps found') }}</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? t('Add favorites from a card’s Actions menu.') : libraryQuery.trim() ? t('No results for “{0}”{1}.', [libraryQuery.trim(), libraryFilter === 'all' ? '' : t(' in {0}', [libraryFilters[libraryFilter]])]) : t('No apps in {0}. Change a card’s category from its actions.', [libraryFilters[libraryFilter]]) }}</p><button class="small-button" @click="resetLibrary">{{ t('Clear filters') }}</button></div>

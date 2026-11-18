@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pyatv
 from pyatv.conf import AppleTV, ManualService
-from pyatv.const import Protocol
+from pyatv.const import KeyboardFocusState, Protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,6 +62,26 @@ async def main():
             await writer.wait_closed()
         credentials = await pair()
         atv = await pyatv.connect(config(credentials), asyncio.get_running_loop())
+        assert await atv.keyboard.text_get() is None
+        async def wait_for_focus(expected):
+            async with asyncio.timeout(3):
+                while atv.keyboard.text_focus_state != expected:
+                    await asyncio.sleep(0.02)
+        await send("search")
+        assert await receive("focused")
+        await wait_for_focus(KeyboardFocusState.Focused)
+        assert await atv.keyboard.text_get() == "Pl"
+        await atv.keyboard.text_append("ex")
+        assert await atv.keyboard.text_get() == "Plex"
+        await atv.keyboard.text_set("Cinéma 📺")
+        assert await atv.keyboard.text_get() == "Cinéma 📺"
+        await atv.keyboard.text_clear()
+        assert await atv.keyboard.text_get() == ""
+        await send("blur")
+        assert not await receive("focused")
+        await wait_for_focus(KeyboardFocusState.Unfocused)
+        await atv.keyboard.text_append("ignored")
+        assert await atv.keyboard.text_get() is None
         await atv.remote_control.up()
         await atv.remote_control.select()
         await atv.remote_control.home()
@@ -100,7 +120,7 @@ async def main():
         else:
             other.close()
             raise AssertionError("revoked identity accepted")
-        print("PASS: wrong PIN rejected, pairing, encrypted verification, commands, reconnect, revocation")
+        print("PASS: wrong PIN rejected, pairing, encrypted keyboard focus/read/append/replace/clear, commands, reconnect, revocation")
     finally:
         await send("quit")
         await asyncio.wait_for(proc.wait(), 10)
