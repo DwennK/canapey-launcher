@@ -1128,6 +1128,11 @@ function keyboard(e: KeyboardEvent) {
     return;
   }
   const text = isTextControl(target);
+  // Let the browser validate and submit single-line forms, including TV PIN entry.
+  if (target instanceof HTMLInputElement && text && target.form && e.key === "Enter") {
+    if (e.repeat) e.preventDefault();
+    return;
+  }
   if (text && editingControl.value === target) {
     // Backspace deletes text here; it never navigates back while typing.
     if (e.key !== "Escape" && e.key !== "Enter" && e.key !== "F1") return;
@@ -1137,7 +1142,7 @@ function keyboard(e: KeyboardEvent) {
       target instanceof HTMLTextAreaElement
     )
       return;
-  } else if (text && e.key.length === 1) {
+  } else if (text && (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete")) {
     editingControl.value = target;
     return;
   }

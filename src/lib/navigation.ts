@@ -37,7 +37,7 @@ export function focusableItems(root: HTMLElement) {
     ),
   ].filter(
     (e) =>
-      e.getClientRects().length > 0 &&
+      e.getClientRects().length > 0 && e.checkVisibility() &&
       !e.closest("[inert], [hidden]") &&
       !e.matches(":disabled"),
   );
@@ -108,8 +108,10 @@ export function directionalTarget(rects: FocusRect[], current: number, direction
       : Math.max(0, sign > 0 ? b.y - r.y - r.height : r.y - b.y - b.height);
     return [{ index, gap, primary, cross: Math.abs(horizontal ? dy : dx) }];
   });
-  const nearest = Math.min(...candidates.map(c => c.gap));
-  return candidates.filter(c => c.gap <= nearest + 8)
+  if (!candidates.length) return current;
+  const nearest = candidates.reduce((a, b) => a.gap < b.gap || (a.gap === b.gap && a.primary < b.primary) ? a : b);
+  // A tall card label and the smaller action buttons centered beside it are one row.
+  return candidates.filter(c => c.gap <= nearest.gap + 8 || Math.abs(c.primary - nearest.primary) <= 3)
     .sort((a, b) => a.cross - b.cross || a.primary - b.primary)[0]?.index ?? current;
 }
 // Shared by dialogs and keyboards. A scope keeps independent regions isolated.

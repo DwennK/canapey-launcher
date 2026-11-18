@@ -6,9 +6,11 @@ import { cancelTvPairing, discoverTvs, emptyTvStatus, finishTvPairing, forgetTv,
 const props = defineProps<{ native: boolean; autostart: boolean }>();
 const emit = defineEmits<{ startup: [] }>();
 const status = ref(emptyTvStatus()), busy = ref(''), error = ref('');
+const loadingStatus = ref(props.native);
 const results = ref<Television[]>([]), searched = ref(false), selected = ref<Television | null>(null);
 const changing = ref(false), removing = ref(false), manualIp = ref(''), manualMac = ref('');
 const pin = ref(''), deadline = ref(0), seconds = ref(0), pinInput = ref<HTMLInputElement>();
+const connectButton = ref<HTMLButtonElement>(), pairButton = ref<HTMLButtonElement>(), macInput = ref<HTMLInputElement>();
 const resultsHeading = ref<HTMLElement>(), connectedHeading = ref<HTMLElement>();
 const supported = computed(() => props.native && status.value.available);
 const working = computed(() => !!busy.value || status.value.waking);
@@ -44,17 +46,26 @@ async function search() {
   });
 }
 async function manual() {
-  await run('inspect', async () => { const tv = await inspectTv(manualIp.value.trim()); if (alive) choose(tv); });
+  let found: Television | undefined;
+  await run('inspect', async () => { found = await inspectTv(manualIp.value.trim()); });
+  if (alive && found) await choose(found);
 }
-function choose(tv: Television) { selected.value = tv; manualMac.value = tv.mac ?? ''; error.value = ''; }
+async function choose(tv: Television) {
+  selected.value = tv;
+  manualMac.value = tv.mac ?? '';
+  error.value = '';
+  await nextTick();
+  (macInput.value ?? pairButton.value)?.focus();
+}
 async function beginPairing() {
   if (!selected.value) return;
   await run('pair', async () => {
     const result = await pairTv({ ...selected.value!, mac: manualMac.value.trim().replaceAll('-', ':').toUpperCase() });
     if (!alive) { await cancelTvPairing(); return; }
     deadline.value = Date.now() + result.secondsRemaining * 1000; seconds.value = pairingSeconds(deadline.value); pin.value = '';
-    await nextTick(); pinInput.value?.focus();
   });
+  await nextTick();
+  if (deadline.value) (pinInput.value ?? connectButton.value)?.focus();
 }
 async function finish() {
   if (!validCode.value || seconds.value === 0) return;
@@ -120,6 +131,7 @@ const wakeSteps = computed(() => {
 async function remove() { await run('forget', async () => { const value = await forgetTv(); if (alive) { status.value = value; removing.value = false; searched.value = false; results.value = []; } }); }
 onMounted(async () => {
   await refresh();
+  loadingStatus.value = false;
   if (alive) timer = setInterval(() => { seconds.value = pairingSeconds(deadline.value); if (!busy.value || busy.value === 'wake') void refresh(); }, 1000);
 });
 onUnmounted(() => {
@@ -129,7 +141,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="tv-settings" aria-labelledby="tv-title">
+  <section class="tv-settings" :aria-busy="loadingStatus" aria-labelledby="tv-title">
     <header class="tv-heading"><Icon name="monitor" :size="30" /><div><h3 id="tv-title">{{ t('Your TV and PC, together') }}</h3><p>{{ t('Find your TV, connect it, and choose when it turns on or off.') }}</p></div></header>
     <details class="tv-manual"><summary>{{ t('TV compatibility') }}</summary><p>{{ t('Philips PIN pairing, LG webOS, Samsung Tizen, Sony BRAVIA IP control, and Roku TVs from TCL, Hisense or Roku. New brand support is experimental; Google TV remote pairing and VIDAA are not included.') }}</p></details>
     <p v-if="!supported" class="tv-note">{{ t('TV pairing and automatic wake are available in Canapey on Windows. Network discovery is disabled in this preview.') }}</p>
@@ -148,9 +160,9 @@ onUnmounted(() => {
         <template v-else>
           <div class="tv-selected"><Icon name="monitor" :size="28" /><div><h4>{{ selected.name }}</h4><span>{{ selected.ip }}</span></div></div>
           <p>{{ t(pairingHelp) }}</p>
-          <div v-if="!selected.mac" class="tv-mac"><label for="tv-mac">{{ t('TV network MAC address') }}</label><p>{{ t('We could not read it automatically. Copy the MAC address of the active Wi-Fi or Ethernet connection from the TV’s network settings.') }}</p><input id="tv-mac" v-model="manualMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off" :disabled="working" /></div>
+          <div v-if="!selected.mac" class="tv-mac"><label for="tv-mac">{{ t('TV network MAC address') }}</label><p>{{ t('We could not read it automatically. Copy the MAC address of the active Wi-Fi or Ethernet connection from the TV’s network settings.') }}</p><input id="tv-mac" ref="macInput" v-model="manualMac" placeholder="AA:BB:CC:DD:EE:FF" maxlength="17" autocomplete="off" :disabled="working" /></div>
           <p class="tv-note">{{ t('Automatic wake is enabled after pairing. Automatic standby stays off until you enable it.') }}</p>
-          <div class="tv-actions"><button class="primary-button" :disabled="working || !validTvMac(manualMac)" @click="beginPairing">{{ busy === 'pair' ? t('Connecting…') : mode === 'pin' ? t('Show code on TV') : t('Continue') }}</button><button class="small-button" :disabled="working" @click="selected = null">{{ t('Back') }}</button></div>
+          <div class="tv-actions"><button ref="pairButton" class="primary-button" :disabled="working || !validTvMac(manualMac)" @click="beginPairing">{{ busy === 'pair' ? t('Connecting…') : mode === 'pin' ? t('Show code on TV') : t('Continue') }}</button><button class="small-button" :disabled="working" @click="selected = null">{{ t('Back') }}</button></div>
         </template>
       </div>
       <form v-else class="tv-code" @submit.prevent="finish">
@@ -166,7 +178,7 @@ onUnmounted(() => {
         <p v-else>{{ t(pairingHelp) }}</p>
         <p v-if="busy === 'finish' && mode === 'approval'" role="status">{{ t('Waiting for permission on the TV…') }}</p>
         <p id="tv-expiry" role="status">{{ seconds > 0 ? (mode === 'pin' ? t('Code expires in {0} seconds.', [seconds]) : t('Connection request expires in {0} seconds.', [seconds])) : t('The request expired. Start again.') }}</p>
-        <div class="tv-actions"><button v-if="seconds > 0" class="primary-button" :disabled="working || !validCode" type="submit">{{ busy === 'finish' ? t('Connecting…') : t('Connect TV') }}</button><button v-else class="primary-button" type="button" :disabled="working" @click="beginPairing">{{ mode === 'pin' ? t('Request a new code') : t('Try again') }}</button><button class="small-button" type="button" :disabled="working && busy !== 'finish'" @click="cancel">{{ t('Cancel pairing') }}</button></div>
+        <div class="tv-actions"><button v-if="seconds > 0" ref="connectButton" class="primary-button" :disabled="working || !validCode" type="submit">{{ busy === 'finish' ? t('Connecting…') : t('Connect TV') }}</button><button v-else class="primary-button" type="button" :disabled="working" @click="beginPairing">{{ mode === 'pin' ? t('Request a new code') : t('Try again') }}</button><button class="small-button" type="button" :disabled="working && busy !== 'finish'" @click="cancel">{{ t('Cancel pairing') }}</button></div>
       </form>
       <button v-if="changing && !deadline" class="small-button" :disabled="working" @click="changing = false; selected = null; error = ''">{{ t('Keep current TV') }}</button>
     </template>

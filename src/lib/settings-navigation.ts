@@ -31,8 +31,12 @@ const searchTerms: Record<SettingsPage, string> = {
   diagnostic: 'sessions logs running windows',
 };
 export function findSettings(query: string): SettingsPage[] {
-  const words = query.trim().toLowerCase().split(/\s+/);
-  return (Object.keys(settingsPages) as SettingsPage[]).filter(page => {
+  const term = query.trim().toLowerCase();
+  const pages = Object.keys(settingsPages) as SettingsPage[];
+  const exact = pages.find(page => settingsPages[page].title.toLowerCase() === term);
+  const words = term.split(/\s+/);
+  const ordered = exact ? [exact, ...pages.filter(page => page !== exact)] : pages;
+  return ordered.filter(page => {
     const { title, description } = settingsPages[page];
     const text = [title, description, searchTerms[page]].join(' ').toLowerCase();
     return words.every(word => text.includes(word));

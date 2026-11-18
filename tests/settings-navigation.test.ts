@@ -10,6 +10,7 @@ describe('settings sidebar', () => {
     for (const page of pages) expect(english).toHaveProperty(settingsPages[page].title);
   });
   it('finds pages by task and recognizes only known saved destinations', () => {
+    expect(findSettings(' TV ')).toEqual(['tv', 'iphone']);
     expect(findSettings('HdMi')).toEqual(['tv']);
     expect(findSettings('Apple pairing')).toEqual(['iphone']);
     expect(findSettings('xyz')).toEqual([]);

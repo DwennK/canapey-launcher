@@ -66,6 +66,10 @@ describe('directional menu navigation', () => {
     expect(directionalTarget(items, 0, 'down')).toBe(1);
     expect(directionalTarget(items, 2, 'up')).toBe(1);
   });
+  it('keeps the action column when an adjacent label is taller', () => {
+    const items = [rect(400, 10, 48, 48), rect(0, 95, 350, 68), rect(400, 105, 48, 48)];
+    expect(directionalTarget(items, 0, 'down')).toBe(2);
+  });
   it('keeps horizontal movement in the same row and never wraps at an edge', () => {
     const items = [rect(0, 0), rect(130, 0), rect(0, 80), rect(130, 80)];
     expect(directionalTarget(items, 1, 'right')).toBe(1);

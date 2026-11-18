@@ -17,7 +17,7 @@ const options = Array.from(props.select.options).map((option, index) => ({
 function handle(action: Action) {
   if (action === 'back') { emit('cancel'); return; }
   if (!root.value) return;
-  const items = focusableItems(root.value).filter(item => item.hasAttribute('data-choice'));
+  const items = focusableItems(root.value);
   const current = items.indexOf(document.activeElement as HTMLElement);
   if (action === 'up' || action === 'down') {
     focusElement(items[Math.max(0, Math.min(items.length - 1, current + (action === 'up' ? -1 : 1)))]);

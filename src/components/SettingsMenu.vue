@@ -13,13 +13,15 @@ const searchField = ref<HTMLInputElement>(), searchButton = ref<HTMLButtonElemen
 const searching = ref(false), query = ref('');
 const matches = computed(() => findSettings(query.value));
 const sections = computed(() => settingsSections.map(section => ({
-  title: section.title, pages: section.pages.filter(page => matches.value.includes(page)),
-})).filter(section => section.pages.length));
+  title: section.title, pages: matches.value.filter(page => section.pages.some(entry => entry === page)),
+})).filter(section => section.pages.length)
+  .sort((a, b) => matches.value.indexOf(a.pages[0]!) - matches.value.indexOf(b.pages[0]!)));
 const sectionName = computed(() => settingsSections.find(section => section.pages.some(page => page === props.route))!.title);
 const bookmarks = new Map<SettingsPage, FocusBookmark>();
 const compact = window.matchMedia('(max-width: 840px)');
 let observer: MutationObserver | undefined;
 let alive = true;
+let hadContentFocus = false;
 let searchOrigin: HTMLElement | null = null;
 function focusRail() {
   const current = rail.value?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -27,14 +29,19 @@ function focusRail() {
 }
 function focusContent() {
   if (!body.value || !alive || !body.value.getClientRects().length) return;
+  if (body.value.querySelector('[aria-busy="true"]')) { focusElement(body.value); return; }
   const saved = bookmarks.get(props.route);
   if (saved && focusableItems(body.value).length) restoreFocus(body.value, saved);
   else focusElement(focusableItems(body.value)[0] ?? body.value);
 }
 function remember() {
+  hadContentFocus = true;
   if (!body.value || document.activeElement === body.value) return;
   emit('detail');
   bookmarks.set(props.route, rememberFocus(body.value));
+}
+function leaveContent(event: FocusEvent) {
+  if (event.relatedTarget) hadContentFocus = false;
 }
 async function openSearch() {
   if (!searching.value) searchOrigin = document.activeElement as HTMLElement | null;
@@ -114,9 +121,12 @@ onMounted(() => {
   compact.addEventListener('change', syncVisibleFocus);
   // A lazy page may initially have no controls. Hand focus to it once it loads.
   observer = new MutationObserver(() => {
-    if (body.value === document.activeElement || (body.value?.contains(document.activeElement) && document.activeElement?.matches(':disabled'))) focusContent();
+    if (!alive || props.index || searching.value || body.value?.closest('[inert]')) return;
+    const active = document.activeElement;
+    if (active === body.value || (hadContentFocus && active === document.body) ||
+        (body.value?.contains(active) && active?.matches(':disabled'))) focusContent();
   });
-  if (body.value) observer.observe(body.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+  if (body.value) observer.observe(body.value, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'aria-busy'] });
 });
 onUnmounted(() => { alive = false; observer?.disconnect(); compact.removeEventListener('change', syncVisibleFocus); });
 defineExpose({ navigate, focusRail, openSearch, closeSearch });
@@ -155,7 +165,7 @@ defineExpose({ navigate, focusRail, openSearch, closeSearch });
         <button v-else class="settings-back compact-back" :aria-label="t('Back to settings')" @click="emit('back')"><Icon name="back" :size="18" />{{ t('Settings') }}</button>
         <p>{{ t(sectionName) }}</p><h2 id="settings-page-title">{{ t(settingsPages[route].title) }}</h2>
       </header>
-      <div ref="body" class="settings-content" :data-settings-page="route" data-nav-scope="settings-content" tabindex="-1" @focusin="remember">
+      <div ref="body" class="settings-content" :data-settings-page="route" data-nav-scope="settings-content" tabindex="-1" @focusin="remember" @focusout="leaveContent">
         <div :key="route" class="settings-page"><slot /></div>
       </div>
       <div class="settings-save" role="status"><Icon v-if="!saveStatus || saveStatus === t('Saved')" name="check" :size="16" />{{ saveStatus || t('Changes save automatically') }}</div>
