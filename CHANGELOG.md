@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 — 2026-11-18
 
+- Choose installed apps and portable files in a single picker. Keep selections across searches and refreshes, or try the flow with local sample cards in the browser preview.
 - Locate a moved application from its card, review the new path and keep its artwork, favorites, category and position.
 - Show the last TV wake attempt step by step. Retry just the HDMI command when power has been confirmed and input selection fails.
-- Search Settings by task, switch categories from the sidebar on wide screens and open an app directly from its card menu.
+- Open an app directly from its card menu.
+- Browse all eleven Settings pages in a dark sidebar with task search, saved page selection and directional focus. Select the display preview to choose a screen. Narrow layouts show one pane at a time.
+- Choose from eight selector colors under **Settings → Ambience**. The accent applies immediately to cards, focus rings and controls, and is restored at startup.
+- Use slim graphite scrollbars on transparent tracks in the library, settings and pickers. High-contrast mode uses system scrollbars.
 
 ## 0.9.0 — 2026-11-18
 

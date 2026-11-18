@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.9.0-experimental-78664E?style=flat-square" alt="Version 0.9.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.10.0-experimental-78664E?style=flat-square" alt="Version 0.10.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.9.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.10.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -80,7 +80,7 @@
 
 ## Language
 
-The current source uses English throughout. First-launch system-language detection falls back to English, the only available language, and saves the preference. Find it under **Settings → Display and ambience → Display → Language**. Other languages can be added later through the [language catalog](docs/LANGUAGES.md).
+The current source uses English throughout. First-launch system-language detection falls back to English, the only available language, and saves the preference. Find it under **Settings → Display → Language**. Other languages can be added later through the [language catalog](docs/LANGUAGES.md).
 
 ## What it does
 
@@ -102,7 +102,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.9.0.** Download the Windows installer from [the v0.9.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.9.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.10.0.** Download the Windows installer from [the v0.10.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.10.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -112,7 +112,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 WebView2 is required and is usually present on Windows 11. The bundled bootstrapper needs internet access if it must install WebView2. Once installed, Canapey's home screen works offline.
 
-On first launch, choose **Add apps**: detection starts automatically. Browse for an executable or Windows shortcut if needed. Select the apps you want, then choose **Add**. System tools are hidden by default; enable **Show system tools** to include them. Apps already in your library are marked and cannot be selected again. Previously saved web shortcuts remain available in your library.
+In **Add apps**, Windows finds installed apps automatically. Select one or more, then choose **Add**. **Choose file…** includes a portable executable or a Windows shortcut in the same selection. **Discovery options** lets you refresh the list or show detected system tools. With a remote, press Right on a selected row to reach Add. The browser preview offers sample cards saved only in that browser.
 
 ## Controls
 
@@ -125,17 +125,17 @@ On first launch, choose **Add apps**: detection starts automatically. Browse for
 | Return to the carousel from the first grid row | <kbd>↑</kbd> | Up |
 | Open card actions | Hold <kbd>Enter</kbd> for 600 ms | Hold A / Cross for 600 ms, or X / Square |
 | Open settings | <kbd>F1</kbd> | Start / Options, on release |
-| Return globally without closing the running app | Configurable in **Settings → Controls → Remote** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
+| Return globally without closing the running app | Configurable in **Settings → Remote** | Xbox button; hold Start + Back for 1.2 seconds as fallback |
 | Ask to quit Canapey | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd> | — |
 | Windows fallback to close Canapey | <kbd>Alt</kbd> + <kbd>F4</kbd> | — |
 
 ### LaunchBox and Arcade
 
-LaunchBox has a suggested card, a dedicated backdrop and an **Arcade** general ambience with bundled ImageGen artwork. Import **LaunchBox** or **Big Box** through **Add apps → LaunchBox**; Windows discovery checks shortcuts, registered apps and common portable folders. Use **Browse** for a custom location. Big Box remains a separate application and follows LaunchBox's licensing; Canapey does not install games, emulators or a LaunchBox license. The artwork is original Canapey artwork, not a game screenshot or official LaunchBox branding. See [asset provenance and generation prompt](public/art/LAUNCHBOX.md).
+LaunchBox has a suggested card, a dedicated backdrop and an **Arcade** general ambience with bundled ImageGen artwork. Import **LaunchBox** or **Big Box** by searching for **LaunchBox** in **Add apps**; Windows discovery checks shortcuts, registered apps and common portable folders. Use **Choose file…** for a custom location. Big Box remains a separate application and follows LaunchBox's licensing; Canapey does not install games, emulators or a LaunchBox license. The artwork is original Canapey artwork, not a game screenshot or official LaunchBox branding. See [asset provenance and generation prompt](public/art/LAUNCHBOX.md).
 
 ### TV power
 
-In **Settings → Controls → TV**, choose **Find my TV**, select the TV by name and follow its connection instructions (Philips PIN, LG/Samsung approval, Sony pre-shared key, or Roku network access). Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
+In **Settings → TV**, choose **Find my TV**, select the TV by name and follow its connection instructions (Philips PIN, LG/Samsung approval, Sony pre-shared key, or Roku network access). Turn the TV on for setup and connect both devices to the same local network. If discovery cannot find it, use **My TV is not listed** to enter its IP address.
 
 After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and the TV platform’s power-on command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
 
@@ -147,7 +147,7 @@ Roku TV support includes compatible TCL, Hisense and Roku-branded TVs. Compatibi
 
 ### iPhone / Apple TV Remote
 
-In **Settings → Controls → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
+In **Settings → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
 
 Swipe to navigate, tap to select and use TV to return to Canapey. Focus **Library → Search the library** to type a search from the paired iPhone. Leaving the field closes the keyboard session. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
 
@@ -157,13 +157,13 @@ This feature remains experimental: real Windows/iPhone compatibility and wake-fr
 
 Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
 
-On the development branch, **Locate application** repairs a missing executable or Windows shortcut. Choose a matching installed app or browse for its file, then confirm **Use this location**. **Find a setting** accepts terms such as HDMI or volume (Ctrl+F in Settings). Wide screens also offer a category sidebar.
+**Locate application** repairs a missing executable or Windows shortcut. Choose a matching installed app or browse for its file, then confirm **Use this location**. **Find a setting** filters the sidebar by page or task, including HDMI, volume and pairing. Press Ctrl+F to search.
 
-Settings have five sections: **Display and ambience**, **Apps**, **Controls**, **Startup and system**, and **Help and updates**. Settings open on a full-screen category list with the last-used category highlighted. Open a page with OK; Back returns to its parent and restores the previous selection. Up/down moves between rows, left/right adjusts sliders, and OK opens a large option list. Automatic saves display their result. Display, ambience and sound have separate pages. Existing configurations receive empty favorites and automatic categories without losing apps, bindings or settings. The five-section layout was introduced in v0.6.0; English labels and direct Controllers / Remote / iPhone / TV entries ship in v0.7.1.
+Settings opens on the last-used page. The sidebar offers direct access to all eleven pages, grouped under **Preferences**, **Devices** and **System**. On smaller screens, the list and page appear one at a time. Use up/down to browse, then OK or right to open a page. Back returns to its sidebar entry before closing Settings. In **Display**, select the screen preview to change the preferred display. Sliders adjust with left/right, and OK opens a large option list. Choose one of eight selector colors under **Settings → Ambience**. The accent applies throughout Canapey and is saved automatically.
 
 ### Skip 1s / Flirc remote
 
-In **Settings → Controls → Remote**, choose **Set up essential buttons** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Save**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Colors** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
+In **Settings → Remote**, choose **Set up essential buttons** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Save**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Colors** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
 Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Enable throughout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. OK, arrows and Back target the active app; only Home returns to Canapey. Launcher-only panels stay inactive while another app has focus. The same physical keyboard keys are affected and may lose their usual behavior in other apps. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
 
@@ -175,7 +175,7 @@ On added app cards, a short Enter / A / Cross press activates on release. A runn
 
 New configurations default to **Xbox button + Start/Back fallback**. Existing saved choices are preserved. You can also choose **Start + Back**, **LB + RB + Start** (L1 + R1 + Options on PlayStation), or disable the shortcut. Hold duration applies to combinations; the Xbox button needs one press. Other controller input is ignored while Canapey is in the background. Release the shortcut before resuming navigation.
 
-In **Settings → Controls → Controllers → Xbox / Steam Input troubleshooting**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
+In **Settings → Controllers → Xbox / Steam Input troubleshooting**, test Xbox-button detection without returning home. If Game Bar also opens, use the Windows Settings button and turn off the option allowing the controller to open Game Bar; Canapey does not change that preference automatically. Detection requires a compatible XInput controller and remains experimental until tested on the target PC. See [Xbox return implementation and hardware checks](docs/XBOX_HOME.md).
 
 <details>
 <summary><strong>Field editing, focus and controller compatibility</strong></summary>
@@ -189,7 +189,7 @@ In **Settings → Controls → Controllers → Xbox / Steam Input troubleshootin
 
 </details>
 
-In **Settings → Controls → Controllers → Test controller**, choose **Start test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Stop test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
+In **Settings → Controllers → Test controller**, choose **Start test** to view received buttons, both sticks, triggers and the left stick’s navigation direction. Normal controller navigation is suspended during capture. Hold **B / Circle for 1.2 seconds**, press **Esc**, or choose **Stop test** to leave capture. Stop the test to adjust the deadzone with the − / + buttons; changes are saved. Disconnecting clears the displayed signals. Losing foreground or returning home stops capture. Values come from the Windows controller backend before Canapey’s navigation filter; drivers and Steam Input may already transform them. No hardware input is simulated in the browser preview.
 
 ## Quick start
 
@@ -285,7 +285,7 @@ Windows data directory: `%APPDATA%\com.canapey.launcher\`.
 | `art/` | Imported images converted to WebP: 640 × 360 cards, 1920 × 1080 backgrounds; source limit 20 MB / 8,192 px, storage quota 128 MB |
 | `icons/` | Extracted icon cache, capped at 64 MB |
 
-Rotating logs are available under **Settings → Help and updates → Diagnostics → Open logs**. They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
+Rotating logs are available under **Settings → Diagnostics → Open logs**. They record native errors and timing measurements, with no updater secrets. Do not delete custom artwork while it is referenced. Removing a card never uninstalls its app or deletes custom images.
 
 Optional start at login uses Tauri's official autostart plugin. Starting a second instance brings back the first; the tray offers open and quit actions. **Return to Windows** shows the desktop while keeping Canapey available. The preferred monitor is saved, with fallback to the primary screen if the TV is disconnected. Display topology is checked periodically, including after sleep. Winlogon and Explorer are left unchanged.
 
