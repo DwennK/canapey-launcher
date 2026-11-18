@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.8.0-experimental-78664E?style=flat-square" alt="Version 0.8.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.9.0-experimental-78664E?style=flat-square" alt="Version 0.9.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.8.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.9.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -102,7 +102,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.8.0.** Download the Windows installer from [the v0.8.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.8.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.9.0.** Download the Windows installer from [the v0.9.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.9.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -139,6 +139,8 @@ In **Settings → Controls → TV**, choose **Find my TV**, select the TV by nam
 
 After pairing, **Turn on the TV automatically** is enabled by default: Canapey sends Wake on LAN and the TV platform’s power-on command when the launcher starts or the PC resumes. **Turn off the TV automatically** is a separate option, disabled by default; it puts the TV in standby when the PC sleeps or shuts down (including restart). **Test TV wake** and **Turn off TV now** let you check the connection. Canapey must remain open for power events; enable its Windows startup setting for automatic wake at login.
 
+To return to the PC after using another device, choose **Find HDMI inputs** and save the port connected to the PC. Manual and automatic wake use this port on compatible TVs. **Keep current input** is the default.
+
 The installer supports Philips TVs with jointSPACE v6 PIN pairing and adds experimental LG webOS, Samsung Tizen, Sony BRAVIA IP control and Roku TV adapters in v0.8.0. Native Windows sleep/shutdown handling still needs physical PC validation. See [TV setup, behavior and validation](docs/TV.md).
 
 Roku TV support includes compatible TCL, Hisense and Roku-branded TVs. Compatibility depends on the operating system and exposed API, not the brand alone. The new adapters have automated protocol/UI tests but have not been physically validated on those TVs. Google TV remote pairing and VIDAA are not included.
@@ -147,7 +149,7 @@ Roku TV support includes compatible TCL, Hisense and Roku-branded TVs. Compatibi
 
 In **Settings → Controls → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
 
-Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
+Swipe to navigate, tap to select and use TV to return to Canapey. Focus **Library → Search the library** to type a search from the paired iPhone. Leaving the field closes the keyboard session. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
 
 This feature remains experimental: real Windows/iPhone compatibility and wake-from-sleep recovery have not yet been validated. Mouse mode, Siri, AirPlay, playback information and waking the PC are outside this version. See [implementation, upstream tracking and hardware checks](docs/APPLE_REMOTE.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 

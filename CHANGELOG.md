@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0 — 2026-11-18
+
+- Remember the PC's HDMI input under **Settings → Controls → TV**. On compatible LG webOS, Sony BRAVIA and Roku TVs, choose a port reported by the TV. Select Philips jointSPACE v6 models offer candidate ports to test. Manual and automatic wake use the saved input, including when the TV is already on. Existing pairings keep the current input until a port is chosen.
+- Type in **Library → Search the library** from a paired iPhone using Apple TV Remote in Control Center. The encrypted Companion session supports editing and clearing Unicode text while the field has focus. Physical iPhone and TV compatibility still needs confirmation.
+- Update the Vue and Tauri runtimes, Vite 8 and TypeScript 6. Refresh the Rust networking and cryptography dependencies used for TV control and iPhone pairing.
+
 ## 0.8.0 — 2026-11-02
 
 - Rebuild Settings as full-screen category lists and focused pages. Directional movement stays in the current page; Back restores the previous selection. Sliders adjust with left/right, and OK opens large option lists. Display, ambience and sound have separate pages.
