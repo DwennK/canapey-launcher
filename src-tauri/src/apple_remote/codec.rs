@@ -213,6 +213,52 @@ impl<'a> Decoder<'a> {
     }
 }
 
+/// Companion transaction IDs must remain positive when read as signed integers.
+/// Validate before dispatch so an invalid ID cannot trigger an action first.
+pub fn validate_xid(message: &Value) -> Result<()> {
+    let Value::Map(map) = message else {
+        return Err(Error::Protocol);
+    };
+    if let Some(value) = map.get("_x") {
+        if value.uint()? > i64::MAX as u64 {
+            return Err(Error::Protocol);
+        }
+    }
+    Ok(())
+}
+
+/// Encode only the envelope's XID with signed-safe width. Payload integers keep
+/// their existing unsigned representation (including nested fields named `_x`).
+/// Adapted from pyatv PR #2957, commit 39cf318; see docs/APPLE_REMOTE.md.
+pub fn encode_companion(message: &Value) -> Result<Vec<u8>> {
+    validate_xid(message)?;
+    let Value::Map(map) = message else {
+        return Err(Error::Protocol);
+    };
+    let mut out = vec![0xe0 + map.len().min(15) as u8];
+    for (key, value) in map {
+        out.extend(encode(&Value::Text(key.clone())));
+        if key == "_x" && value.uint()? >= 128 {
+            let n = value.uint()?;
+            let (tag, len) = if n <= i16::MAX as u64 {
+                (0x31, 2)
+            } else if n <= i32::MAX as u64 {
+                (0x32, 4)
+            } else {
+                (0x33, 8)
+            };
+            out.push(tag);
+            out.extend_from_slice(&n.to_le_bytes()[..len]);
+        } else {
+            out.extend(encode(value));
+        }
+    }
+    if map.len() >= 15 {
+        out.push(3);
+    }
+    Ok(out)
+}
+
 pub fn encode(value: &Value) -> Vec<u8> {
     let mut out = vec![];
     fn write(v: &Value, out: &mut Vec<u8>) {
@@ -324,6 +370,84 @@ pub fn tlv_encode(parts: &[(u8, &[u8])]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn companion_xid_wire_boundaries() {
+        // Wire fixtures from pyatv #2957, not just an unsigned round trip.
+        let cases: &[(u64, &[u8])] = &[
+            (0, &[8]),
+            (0x27, &[0x2f]),
+            (0x7f, &[0x30, 0x7f]),
+            (0x80, &[0x31, 0x80, 0]),
+            (0x7fff, &[0x31, 0xff, 0x7f]),
+            (0x8000, &[0x32, 0, 0x80, 0, 0]),
+            (0xff7f, &[0x32, 0x7f, 0xff, 0, 0]),
+            (0xff80, &[0x32, 0x80, 0xff, 0, 0]),
+            (0xfffe, &[0x32, 0xfe, 0xff, 0, 0]),
+            (0xffff, &[0x32, 0xff, 0xff, 0, 0]),
+            (0x10000, &[0x32, 0, 0, 1, 0]),
+            (0x7fffffff, &[0x32, 0xff, 0xff, 0xff, 0x7f]),
+            (0x80000000, &[0x33, 0, 0, 0, 0x80, 0, 0, 0, 0]),
+            (
+                i64::MAX as u64,
+                &[0x33, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f],
+            ),
+        ];
+        for &(xid, wire) in cases {
+            let message = dict([("_x", xid.into())]);
+            let encoded = encode_companion(&message).unwrap();
+            assert_eq!(
+                encoded,
+                [vec![0xe1, 0x42, b'_', b'x'], wire.to_vec()].concat()
+            );
+            assert_eq!(decode(&encoded).unwrap(), message);
+            // Model Apple's signed interpretation independently of our decoder.
+            if wire[0] >= 0x30 {
+                let mut signed = [if wire[wire.len() - 1] & 0x80 != 0 {
+                    0xff
+                } else {
+                    0
+                }; 8];
+                signed[..wire.len() - 1].copy_from_slice(&wire[1..]);
+                assert_eq!(i64::from_le_bytes(signed), xid as i64);
+            }
+        }
+    }
+
+    #[test]
+    fn companion_xid_does_not_change_payloads_or_auth() {
+        let payload = dict([("_x", 0xffff.into()), ("flags", u64::MAX.into())]);
+        let message = dict([("_c", payload.clone()), ("_x", 0xffff.into())]);
+        let mut expected = vec![0xe2, 0x42, b'_', b'c'];
+        expected.extend(encode(&payload));
+        expected.extend([0x42, b'_', b'x', 0x32, 0xff, 0xff, 0, 0]);
+        assert_eq!(encode_companion(&message).unwrap(), expected);
+        assert_eq!(encode(&0xffff.into()), [0x31, 0xff, 0xff]);
+        let auth = dict([("_pd", Value::Bytes(vec![6, 1, 1]))]);
+        assert_eq!(encode_companion(&auth).unwrap(), encode(&auth));
+        // Indefinite-length maps must retain their terminator.
+        let mut map: BTreeMap<_, _> = (0..15).map(|n| (format!("k{n}"), n.into())).collect();
+        map.insert("_x".into(), 0x80.into());
+        let large = Value::Map(map);
+        assert_eq!(decode(&encode_companion(&large).unwrap()).unwrap(), large);
+    }
+
+    #[test]
+    fn companion_rejects_invalid_xids() {
+        for value in [
+            "128".into(),
+            Value::Bool(true),
+            Value::Float(128.0),
+            Value::Null,
+            (1u64 << 63).into(),
+            u64::MAX.into(),
+        ] {
+            let message = dict([("_x", value)]);
+            assert!(validate_xid(&message).is_err());
+            assert!(encode_companion(&message).is_err());
+        }
+        assert!(encode_companion(&Value::Null).is_err());
+    }
+
     #[test]
     fn reference_after_empty_and_type_distinction() {
         let v = decode(&[0xd5, 0x40, 0x70, 0x41, b'x', 0xa0, 1]).unwrap();

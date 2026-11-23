@@ -6,10 +6,14 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pyatv
 from pyatv.conf import AppleTV, ManualService
 from pyatv.const import KeyboardFocusState, Protocol
+from pyatv.protocols.companion.connection import FrameType
+from pyatv.protocols.companion.protocol import CompanionProtocol
+from pyatv.support import opack
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -64,7 +68,41 @@ async def main():
             writer.close()
             await writer.wait_closed()
         credentials = await pair()
-        atv = await pyatv.connect(config(credentials), asyncio.get_running_loop())
+        # Capture the pinned oracle's protocol without reaching through facade internals.
+        protocols = []
+        handle_opack = CompanionProtocol._handle_opack
+        def observe_opack(protocol, *args):
+            if protocol not in protocols:
+                protocols.append(protocol)
+            return handle_opack(protocol, *args)
+        with patch.object(CompanionProtocol, "_handle_opack", observe_opack):
+            atv = await pyatv.connect(config(credentials), asyncio.get_running_loop())
+        assert len(protocols) == 1
+        protocol = protocols[0]
+        # pyatv preserves decoded integer width. Check actual encrypted replies,
+        # since matching the unsigned numeric ID alone would miss this regression.
+        xid_cases = [
+            (0x7F, b"\x30\x7f"),
+            (0x80, b"\x31\x80\x00"),
+            (0x7FFF, b"\x31\xff\x7f"),
+            (0x8000, b"\x32\x00\x80\x00\x00"),
+            (0xFF7F, b"\x32\x7f\xff\x00\x00"),
+            (0xFF80, b"\x32\x80\xff\x00\x00"),
+            (0xFFFE, b"\x32\xfe\xff\x00\x00"),
+            (0xFFFF, b"\x32\xff\xff\x00\x00"),
+            (0x10000, b"\x32\x00\x00\x01\x00"),
+            (0x7FFFFFFF, b"\x32\xff\xff\xff\x7f"),
+            (0x80000000, b"\x33\x00\x00\x00\x80\x00\x00\x00\x00"),
+        ]
+        for xid, expected_wire in reversed(xid_cases):
+            # Exercise both the session handler and the separate keyboard reply path.
+            for command in ("FetchAttentionState", "_tiStart"):
+                protocol._xid = xid
+                reply = await protocol.exchange_opack(
+                    FrameType.E_OPACK, {"_i": command, "_t": 2, "_c": {}}, timeout=3
+                )
+                assert reply["_x"] == xid
+                assert opack.pack(reply["_x"]) == expected_wire, (command, xid, reply)
         assert await atv.keyboard.text_get() is None
         async def wait_for_focus(expected):
             async with asyncio.timeout(3):
@@ -123,7 +161,7 @@ async def main():
         else:
             other.close()
             raise AssertionError("revoked identity accepted")
-        print("PASS: wrong PIN rejected, delayed PIN entry, encrypted keyboard focus/read/append/replace/clear, commands, reconnect, revocation")
+        print("PASS: wrong PIN rejected, delayed PIN entry, signed-safe XID boundaries in encrypted session/keyboard replies, keyboard focus/read/append/replace/clear, commands, reconnect, revocation")
     finally:
         await send("quit")
         await asyncio.wait_for(proc.wait(), 10)

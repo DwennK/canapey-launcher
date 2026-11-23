@@ -35,6 +35,30 @@ The pyatv interoperability check covers focus notifications, reading, appending,
 
 Full MIT licenses and copyrights are retained in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md), also bundled as an application resource. The reference Python code is not shipped.
 
+### Companion transaction ID correction (November 23, 2026, local/unreleased)
+
+Reviewed [pyatv PR #2957](https://github.com/postlund/pyatv/pull/2957) at
+[`39cf318ffabda75c9231f546c2bb9bec98fd3755`](https://github.com/postlund/pyatv/commit/39cf318ffabda75c9231f546c2bb9bec98fd3755), still unmerged at review time.
+Its positive-XID encoding rule and boundary fixtures are adapted locally in Rust;
+this is a targeted integration, not an update to the full pyatv baseline or oracle.
+The upstream default branches remain `c8a494d` and `b277a4c`.
+
+The receiver previously decoded an XID as `u64`, then re-encoded it with the shortest
+unsigned width. For example, `0xFF80` became `31 80 FF`, which does not preserve a
+positive signed value in Apple's decoder. Companion replies now encode that XID
+as `32 80 FF 00 00`. Only the top-level `_x` uses a signed-safe width; authentication
+frames and payload integers keep their existing encoding. Noninteger XIDs and
+values above signed 64-bit range are rejected before command dispatch. Messages
+without an XID retain existing behavior.
+
+Validation covers exact wire bytes at the 7-, 15-, 31- and 63-bit boundaries,
+unchanged payload/authentication encoding, invalid identifiers, and encrypted
+session and keyboard replies checked by the pinned pyatv oracle. A pyatv numeric
+round trip alone would miss the problem, so interoperability tests also assert the
+received OPACK integer width. The upstream report demonstrates the issue on tvOS;
+the effect on an actual iPhone remains unverified. No Windows/iPhone hardware
+compatibility claim follows from these tests.
+
 ### Mapping and adaptations
 
 | Python reference | Rust code | Decisions |

@@ -261,6 +261,7 @@ async fn connection(
                 }
             }
         } else if frame == 8 && auth.authenticated.is_some() {
+            codec::validate_xid(&message)?;
             let ident = message.get("_i")?.text()?;
             match ident {
                 "_tiStart" | "_tiStop" if message.get("_t")?.uint()? == 2 => {
@@ -326,7 +327,11 @@ async fn write_frame(
     message: &Value,
     cipher: &mut Option<Cipher>,
 ) -> Result<()> {
-    let mut bytes = codec::encode(message);
+    let mut bytes = if frame == 8 {
+        codec::encode_companion(message)?
+    } else {
+        codec::encode(message)
+    };
     let length = bytes.len() + if cipher.is_some() { 16 } else { 0 };
     if length > codec::MAX_FRAME {
         return Err(Error::Limit);

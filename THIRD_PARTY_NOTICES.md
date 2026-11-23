@@ -3,7 +3,7 @@
 Canapey's native Rust Companion receiver adapts protocol behavior and tests from:
 
 - windows-apple-remote, Arya Kavian, commit c8a494dcb656c79248fd24d60a814b35aa051e54: https://github.com/aryakvn/windows-apple-remote
-- pyatv, Pierre Ståhl and contributors, v0.18.0: https://github.com/postlund/pyatv
+- pyatv, Pierre Ståhl and contributors, v0.18.0, plus the Companion XID encoding rule and boundary fixtures from PR #2957 at 39cf318ffabda75c9231f546c2bb9bec98fd3755: https://github.com/postlund/pyatv/pull/2957
 
 The runtime is a Rust port; Python is used only as a development/CI interoperability oracle. Adaptations are documented in docs/APPLE_REMOTE.md.
 
