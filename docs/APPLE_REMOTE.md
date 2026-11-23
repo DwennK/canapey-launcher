@@ -14,7 +14,7 @@ The initial name is `Canapey — <COMPUTERNAME>`. **Name and network** changes i
 | Center tap | Confirm; hold for card options | Enter |
 | Back | Navigate back | Escape |
 | TV | Home | Return to Canapey Home |
-| Play/pause | Windows media command | Same |
+| Play/pause | Windows media command | Toggles playback in the foreground Silo player, otherwise sends the Windows media command |
 | Volume | Windows volume | Same |
 
 **My iPhone cannot find Canapey** explains Private profiles, VPNs, guest networks and private firewall permissions: TCP on the displayed port and mDNS UDP 5353. It does not inspect actual firewall rules or automatically add exceptions.
@@ -91,6 +91,7 @@ The implementation chat's recorded Codex monitor runs **Mondays at 09:00 Europe/
 | November 18, 2026, v0.10.0 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c` | Both heads match the v0.9.0 review. No open windows-apple-remote issues. The pyatv comparison with v0.18.0 lists only CHANGES.md and pyatv/const.py. No new changes to port. Integrated revisions remain unchanged. Windows tests and the Companion oracle are release gates. |
 | November 18, 2026, v0.10.1 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c` | Both heads match the v0.10.0 review. No open windows-apple-remote issues. Only CHANGES.md and pyatv/const.py differ in the comparison with v0.18.0. No upstream fixes to port. The local pairing deadline fix is covered by delayed PIN entry and reconnection in the Companion oracle. |
 | November 23, 2026, v0.11.0 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c`, PR [#2957](https://github.com/postlund/pyatv/pull/2957) at `39cf318` | Both default branches are unchanged. Integrated the reviewed XID fix and boundary tests described above. pyatv issues [#2956](https://github.com/postlund/pyatv/issues/2956) and [#2958](https://github.com/postlund/pyatv/issues/2958) concern Apple TV client connections and provide no receiver patch. No open windows-apple-remote issues. |
+| November 23, 2026, v0.11.1 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c`, [#2957](https://github.com/postlund/pyatv/pull/2957) at `39cf318`, [#2947](https://github.com/postlund/pyatv/pull/2947) at `a405c5d` | Both heads and the integrated XID fix match v0.11.0. No open windows-apple-remote issues. The srptools 2.0 adaptation affects Python pairing code. Canapey uses Rust and the test oracle pins srptools 1.0.1. No additional port. Validate foreground Silo media routing with browser playback tests, Windows CI and the existing Companion oracle. |
 
 ## Architecture and protection limits
 

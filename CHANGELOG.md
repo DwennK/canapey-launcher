@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1 — 2026-11-23
+
+- Use Left and Right to rewind or fast-forward the current Silo episode with the controls hidden or the timeline focused. Use the visible transport row to select episodes, audio and subtitles.
+- Send mapped Play/Pause, Previous, Next and Stop directly to the foreground Silo player. Previous and Next follow the Silo profile's skip intervals.
+
 ## 0.11.0 — 2026-11-23
 
 - Open Silo in a dedicated full-screen window. Browse posters with the remote, resume a series, select audio and subtitles, and return to the same poster. Home pauses playback and recalls Canapey.

@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.11.0-experimental-78664E?style=flat-square" alt="Version 0.11.0 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.11.1-experimental-78664E?style=flat-square" alt="Version 0.11.1 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.0"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.1"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -103,7 +103,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.11.0.** Download the Windows installer from [the v0.11.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.0), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.11.1.** Download the Windows installer from [the v0.11.1 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.1), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
@@ -167,6 +167,8 @@ Settings opens on the last-used page. The sidebar offers direct access to all el
 In **Settings → Remote**, choose **Set up essential buttons** for a guided setup of Home, directions, OK, Back and volume. Each save advances to the next button; skipped buttons can be configured later, and resuming starts at the first unconfigured button. For custom bindings, click a button on the real Skip 1s photo, press that button on the remote, choose an action, then **Save**. Map navigation, Home, app launch/resume, volume, playback and launcher controls independently. The **Colors** view exposes the four ring color commands. A/B/C activity selection and the color-mode switch remain managed by the Skip 1s. Change or remove individual bindings from the same page.
 
 Canapey learns the keyboard input received from any receiver or keyboard; it does not depend on Flirc or reprogram infrared signals. **Enable throughout Windows** is available for every action and enabled for new bindings: ordinary keys, navigation, numpad and media keys can be reserved while Canapey stays running. OK, arrows and Back target the active app; only Home returns to Canapey. Launcher-only panels stay inactive while another app has focus. The same physical keyboard keys are affected and may lose their usual behavior in other apps. Reserved system keys and conflicts are reported when saving. Existing local bindings stay local until you enable the option and save them again.
+
+For Silo, leave **Enable throughout Windows** on for the remote buttons you want to use in the player. During an episode, Left and Right seek when the controls are hidden or the timeline is focused. On the visible button row, the arrows move focus and OK activates a control. On the timeline, OK returns focus to Play/Pause. Dedicated Previous and Next track actions seek by the intervals in your Silo profile. To change episodes, select the on-screen episode buttons. Play/Pause controls the current video and Stop exits the player.
 
 A conflicting shortcut or failed save preserves previous bindings. Capture stops with **Cancel listening**, loss of focus, leaving the page, or after 15 seconds; Esc itself can be learned. Browser preview demonstrates association but cannot register Windows shortcuts. Real Skip 1s / Flirc behavior, media control and foreground focus still need testing on Windows. See [remote setup and validation](docs/REMOTE.md).
 
