@@ -137,7 +137,7 @@ function remoteCaptureChanged(value: boolean) {
 async function saveRemoteBindings(bindings: RemoteBinding[]) {
   config.value.settings.remoteHome = null;
   config.value.settings.remoteBindings = bindings;
-  return queueSave(true);
+  return queueSave({ remoteHomeUpdate: true });
 }
 let remoteAcceptCode: string | null = null;
 function remoteBindingFor(event: KeyboardEvent) {
@@ -729,13 +729,13 @@ async function run(label: string, fn: () => Promise<unknown>) {
 function persist() {
   return queueSave();
 }
-function queueSave(remoteHomeUpdate = false, feedback = panel.value === 'settings') {
+function queueSave(options: api.SaveOptions = {}, feedback = panel.value === 'settings') {
   const request = ++saveRequest;
   if (feedback) settingsSaveStatus.value = t('Saving…');
   const snapshot = JSON.parse(JSON.stringify(config.value));
   saveChain = saveChain.then(async () => {
     try {
-      await api.save(snapshot, remoteHomeUpdate);
+      await api.save(snapshot, options);
       lastSaved = snapshot;
       if (feedback && request === saveRequest) settingsSaveStatus.value = t('Saved');
       return true;
@@ -755,7 +755,7 @@ function selectionChanged() {
   // Utility cards must not erase the last application to restore on startup.
   if (!id || id === config.value.selectedId) return;
   config.value.selectedId = id;
-  void queueSave(false, false);
+  void queueSave({}, false);
 }
 function sound() {
   if (!config.value.settings.sound || config.value.settings.soundVolume <= 0) return;
@@ -1507,7 +1507,7 @@ watch(lastSettingsPage, () => {
   if (!loaded.value) return;
   config.value.settings.lastSettingsTab = lastSettingsPage.value;
   settingsSaveStatus.value = '';
-  void queueSave(false, false);
+  void queueSave({}, false);
 });
 watch(() => tiles.value.map(tile => tile.id), (ids, previous) => {
   const id = previous?.[selected.value];
@@ -1552,6 +1552,10 @@ onMounted(async () => {
     startupMark("subscribeStart");
     stopNative = await api.subscribe({
       siloUnavailable: () => { void configureSilo(t('Could not open your Silo server.')); },
+      navigationSound: enabled => {
+        config.value.settings.sound = enabled;
+        lastSaved.settings.sound = enabled;
+      },
       appleInput,
       libraryText: field => {
         if (phoneSearchId.value === field.id && document.hasFocus() && document.activeElement === searchInput.value && !panel.value && !keyboardTarget.value && !choiceTarget.value) {
@@ -2287,7 +2291,7 @@ onUnmounted(() => {
                       v-model="config.settings.sound"
                       type="checkbox"
                       role="switch"
-                      @change="persist"
+                      @change="queueSave({ navigationSoundUpdate: true })"
                   /></label>
                   <label class="setting-row">
                     <span>{{ t('Sound volume') }}<small>{{ Math.round(config.settings.soundVolume * 100) }} {{ t('% · Canapey sounds only.') }}</small></span>

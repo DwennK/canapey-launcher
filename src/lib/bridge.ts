@@ -20,6 +20,15 @@ import {
 } from "./types";
 export const native = isTauri();
 const browserKey = "canapey-ui-preview-v1";
+// Only an explicit toggle writes this key. Other tabs can safely save older snapshots.
+const browserSoundKey = "canapey-ui-preview-navigation-sound";
+
+function browserSound(fallback: boolean): boolean {
+  const saved = localStorage.getItem(browserSoundKey);
+  if (saved === "true") return true;
+  if (saved === "false") return false;
+  return fallback;
+}
 const unavailable = () =>
   Promise.reject(
     new Error(t('This action requires Canapey Launcher on Windows 11.')),
@@ -54,6 +63,7 @@ export async function boot(): Promise<Boot> {
       )
         config = { ...c, settings: { ...defaults().settings, ...c.settings, selectorColor: resolveSelectorColor(c.settings.selectorColor), library: normalizeLibrary(c.settings.library) } };
     }
+    config.settings.sound = browserSound(config.settings.sound);
   } catch {
     /* preview only */
   }
@@ -82,9 +92,18 @@ async function initializeLanguage(result: Boot) {
     catch { result.warning = [result.warning, t('Could not save the language preference. Choose it again in Settings.')].filter(Boolean).join(' '); }
   }
 }
-export async function save(config: Config, remoteHomeUpdate = false): Promise<Config> {
-  if (native) return invoke("save_config", { config, remoteHomeUpdate });
-  localStorage.setItem(browserKey, JSON.stringify(config));
+export interface SaveOptions {
+  remoteHomeUpdate?: boolean;
+  navigationSoundUpdate?: boolean;
+}
+export async function save(config: Config, options: SaveOptions = {}): Promise<Config> {
+  if (native) return invoke("save_config", { config, remoteHomeUpdate: options.remoteHomeUpdate ?? false });
+  if (options.navigationSoundUpdate) {
+    localStorage.setItem(browserSoundKey, String(config.settings.sound));
+    return config;
+  }
+  const settings = { ...config.settings, sound: browserSound(config.settings.sound) };
+  localStorage.setItem(browserKey, JSON.stringify({ ...config, settings }));
   return config;
 }
 export const scan = (): Promise<AppEntry[]> =>
@@ -144,6 +163,7 @@ export const openSilo = (server: string): Promise<void> =>
   native ? invoke('open_silo', { server }) : unavailable();
 export async function subscribe(handlers: {
   siloUnavailable: () => void;
+  navigationSound: (enabled: boolean) => void;
   action: (v: Action) => void;
   libraryText: (field: LibrarySearchField) => void;
   appleService: (running: boolean) => void;
@@ -157,7 +177,14 @@ export async function subscribe(handlers: {
   remoteAction: (event: {binding: RemoteBinding; pressed: boolean; cancelled?: boolean}) => void;
   updateStatus: (message: string) => void;
 }) {
-  if (!native) return () => {};
+  if (!native) {
+    const syncSound = (event: StorageEvent) => {
+      if (event.storageArea === localStorage && event.key === browserSoundKey)
+        handlers.navigationSound(browserSound(true));
+    };
+    window.addEventListener("storage", syncSound);
+    return () => window.removeEventListener("storage", syncSound);
+  }
   const stops = await Promise.all([
     listen('silo-unavailable', handlers.siloUnavailable),
     listen<LibrarySearchField>('apple-library-text', e => handlers.libraryText(e.payload)),

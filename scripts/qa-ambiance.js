@@ -30,12 +30,24 @@ async (page) => {
     await sound.uncheck();assert(await slider('Sound volume').isDisabled()&&await button('Preview sound').isDisabled(),'Muted controls remain active');
     await sound.focus();await page.keyboard.press('ArrowDown');
     assert(await sound.evaluate(el=>document.activeElement===el),'Down focused a disabled sound control');
-    await page.waitForFunction(()=>{const s=JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).settings;return s.backgroundBlur===7&&s.soundVolume===.25&&!s.sound;});
     await page.reload();await appearance();await button('Ambience').click();
     assert(await slider('Background brightness').inputValue()==='0.65'&&await slider('Background blur').inputValue()==='7','Appearance did not survive reload');
     await page.keyboard.press('Escape');await button('Sound').click();
     assert(await slider('Sound volume').inputValue()==='0.25'&&!await sound.isChecked(),'Sound did not survive reload');
+    const other=await context.newPage();
+    await other.goto(page.url());
+    await other.getByRole('button',{name:'Settings',exact:true}).click();
+    await other.getByRole('button',{name:'Sound',exact:true}).click();
+    const otherSound=other.getByRole('switch',{name:'Navigation sounds',exact:true});
+    assert(!await otherSound.isChecked(),'Second tab did not load the saved mute');
+    await sound.check();
+    await other.getByRole('switch',{name:'Navigation sounds',checked:true}).waitFor();
+    await other.keyboard.press('Escape');
+    await other.getByRole('button',{name:'Display',exact:true}).click();
+    await page.reload();
+    await appearance();await button('Sound').click();
+    assert(await sound.isChecked(),'Saving Display in another tab reverted navigation sounds');
     assert(!errors.length,errors.join('\n'));
-    return {passed:true,checks:['separate ambience and sound pages','background effects','direct sliders','audio gain','disabled controls skipped','saved preferences survive reload'],errors};
+    return {passed:true,checks:['separate ambience and sound pages','background effects','direct sliders','audio gain','disabled controls skipped','saved preferences survive reload','sound persists across tabs'],errors};
   } finally {await context.close();}
 }
