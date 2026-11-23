@@ -1,6 +1,6 @@
 # iPhone / Apple TV Remote
 
-Status as of **November 18, 2026**: experimental Rust receiver introduced in v0.5.0, disabled by default and Windows-only. Automated pyatv interoperability passed; **discovery and operation with a real iPhone on Windows remain unverified**. See [v0.5.0](https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0) for distributed assets and delivery results.
+Status as of **November 23, 2026**: experimental Rust receiver introduced in v0.5.0, disabled by default and Windows-only. Automated pyatv interoperability passed; **discovery and operation with a real iPhone on Windows remain unverified**. See [v0.5.0](https://github.com/DwennK/canapey-launcher/releases/tag/v0.5.0) for distributed assets and delivery results.
 
 ## Usage
 
@@ -29,17 +29,17 @@ The pyatv interoperability check covers focus notifications, reading, appending,
 
 | Source | Latest reviewed reference | Ported / used reference |
 | --- | --- | --- |
-| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0; HEAD rechecked November 18, 2026 | Companion subset of this commit, adapted to Rust for v0.5.0; not a complete port |
-| [pyatv](https://github.com/postlund/pyatv) | [`b277a4c8222ecdcbaab8a24e3e713ca44765adb4`](https://github.com/postlund/pyatv/tree/b277a4c8222ecdcbaab8a24e3e713ca44765adb4), HEAD rechecked November 18, 2026; compared with `v0.18.0` for Companion, HAP/SRP, OPACK and ChaCha20 | Interoperability oracle `pyatv==0.18.0`; adapted cryptographic/serialization conventions and library search text input |
+| [windows-apple-remote](https://github.com/aryakvn/windows-apple-remote) | [`c8a494dcb656c79248fd24d60a814b35aa051e54`](https://github.com/aryakvn/windows-apple-remote/tree/c8a494dcb656c79248fd24d60a814b35aa051e54), release 0.2.0; HEAD rechecked November 23, 2026 | Companion subset of this commit, adapted to Rust for v0.5.0; not a complete port |
+| [pyatv](https://github.com/postlund/pyatv) | [`b277a4c8222ecdcbaab8a24e3e713ca44765adb4`](https://github.com/postlund/pyatv/tree/b277a4c8222ecdcbaab8a24e3e713ca44765adb4), HEAD rechecked November 23, 2026; compared with `v0.18.0` for Companion, HAP/SRP, OPACK and ChaCha20 | Interoperability oracle `pyatv==0.18.0`; adapted cryptographic/serialization conventions and library search text input. The XID rule is ported separately from PR #2957 at `39cf318`. |
 | [Companion documentation](https://pyatv.dev/documentation/protocols/#companion-link) | Read October 19, 2026 | Protocol description, not an Apple compatibility guarantee |
 
 Full MIT licenses and copyrights are retained in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md), also bundled as an application resource. The reference Python code is not shipped.
 
-### Companion transaction ID correction (November 23, 2026, local/unreleased)
+### Companion transaction ID correction (v0.11.0)
 
 Reviewed [pyatv PR #2957](https://github.com/postlund/pyatv/pull/2957) at
 [`39cf318ffabda75c9231f546c2bb9bec98fd3755`](https://github.com/postlund/pyatv/commit/39cf318ffabda75c9231f546c2bb9bec98fd3755), still unmerged at review time.
-Its positive-XID encoding rule and boundary fixtures are adapted locally in Rust;
+Its positive-XID encoding rule and boundary fixtures are adapted in Rust;
 this is a targeted integration, not an update to the full pyatv baseline or oracle.
 The upstream default branches remain `c8a494d` and `b277a4c`.
 
@@ -90,6 +90,7 @@ The implementation chat's recorded Codex monitor runs **Mondays at 09:00 Europe/
 | November 18, 2026, v0.9.0 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c` compared with v0.18.0 | Both heads are unchanged. windows-apple-remote has no open issues. Only the changelog and version constants differ in pyatv. The new keyboard uses the v0.18.0 Companion text protocol and oracle for focus, Unicode edits and clearing. No additional upstream fixes were available to port. |
 | November 18, 2026, v0.10.0 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c` | Both heads match the v0.9.0 review. No open windows-apple-remote issues. The pyatv comparison with v0.18.0 lists only CHANGES.md and pyatv/const.py. No new changes to port. Integrated revisions remain unchanged. Windows tests and the Companion oracle are release gates. |
 | November 18, 2026, v0.10.1 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c` | Both heads match the v0.10.0 review. No open windows-apple-remote issues. Only CHANGES.md and pyatv/const.py differ in the comparison with v0.18.0. No upstream fixes to port. The local pairing deadline fix is covered by delayed PIN entry and reconnection in the Companion oracle. |
+| November 23, 2026, v0.11.0 | windows-apple-remote `c8a494d` (v0.2.0), pyatv `b277a4c`, PR [#2957](https://github.com/postlund/pyatv/pull/2957) at `39cf318` | Both default branches are unchanged. Integrated the reviewed XID fix and boundary tests described above. pyatv issues [#2956](https://github.com/postlund/pyatv/issues/2956) and [#2958](https://github.com/postlund/pyatv/issues/2958) concern Apple TV client connections and provide no receiver patch. No open windows-apple-remote issues. |
 
 ## Architecture and protection limits
 

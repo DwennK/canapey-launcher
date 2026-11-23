@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — 2026-11-23
 
 - Open Silo in a dedicated full-screen window. Browse posters with the remote, resume a series, select audio and subtitles, and return to the same poster. Home pauses playback and recalls Canapey.
-
 - Add websites from **Library → Add → Add website** with a URL, a custom name and optional card artwork. Web cards open in the Windows default browser. The form supports controller navigation, the on-screen keyboard, duplicate detection and retrying failed saves.
+- Keep navigation sound preferences in sync across browser preview tabs.
+- Preserve positive transaction identifiers in iPhone Companion replies, including replies used by the remote keyboard.
 
 ## 0.10.1 — 2026-11-18
 

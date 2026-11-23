@@ -15,12 +15,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Windows_11-x64-28435B?style=flat-square" alt="Windows 11 x64">
-  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.10.1-experimental-78664E?style=flat-square" alt="Version 0.10.1 — experimental"></a>
+  <a href="https://github.com/DwennK/canapey-launcher/releases"><img src="https://img.shields.io/badge/0.11.0-experimental-78664E?style=flat-square" alt="Version 0.11.0 — experimental"></a>
   <img src="https://img.shields.io/badge/Tauri_2-Rust_%2B_Vue_3-344C44?style=flat-square" alt="Built with Tauri 2, Rust and Vue 3">
 </p>
 
 <p align="center">
-  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.10.1"><strong>Windows downloads</strong></a> ·
+  <a href="https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.0"><strong>Windows downloads</strong></a> ·
   <a href="#quick-start">Build from source</a> ·
   <a href="CHANGELOG.md">Release notes</a> ·
   <a href="https://github.com/DwennK/canapey-launcher/issues">Report an issue</a>
@@ -87,9 +87,9 @@ The current source uses English throughout. First-launch system-language detecti
 | Area | Available in the current implementation |
 | --- | --- |
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
-| **Silo (unreleased)** | Open the Silo card, enter your HTTP or HTTPS server address, and sign in on Silo. Arrows move between controls, OK selects, and Back closes menus or returns to the previous poster. Home pauses playback and recalls Canapey. |
+| **Silo** | Open the Silo card, enter your HTTP or HTTPS server address, and sign in on Silo. Arrows move between controls, OK selects, and Back closes menus or returns to the previous poster. Home pauses playback and recalls Canapey. |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
-| **Shortcuts** | Executables, Windows shortcuts and supported URIs; add websites with a URL, name and optional image, opening in the default browser (unreleased) |
+| **Shortcuts** | Executables, Windows shortcuts and supported URIs; add websites with a URL, name and optional image, opening in the default browser |
 | **Quick controls** | Header audio button, Windows master volume/mute, default output selection; controller-accessible side panel |
 | **iPhone remote** | Experimental Apple TV Remote receiver in Rust: PIN pairing, navigation, Home and media controls; disabled by default, private IPv4 networks only |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
@@ -103,7 +103,7 @@ The current source uses English throughout. First-launch system-language detecti
 
 ## Downloads
 
-**Current project version: 0.10.1.** Download the Windows installer from [the v0.10.1 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.10.1), alongside its release notes and `SHA256SUMS.txt`.
+**Current project version: 0.11.0.** Download the Windows installer from [the v0.11.0 prerelease](https://github.com/DwennK/canapey-launcher/releases/tag/v0.11.0), alongside its release notes and `SHA256SUMS.txt`.
 
 | Platform | Distribution | Status |
 | --- | --- | --- |
