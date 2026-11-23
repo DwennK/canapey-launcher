@@ -39,4 +39,4 @@ pub async fn open_silo(app: AppHandle, server: String) -> Result<(), String> {
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::navigation_press;
+pub use windows::{navigation_press, playback_press};

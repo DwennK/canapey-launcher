@@ -746,9 +746,18 @@ pub(crate) fn remote_dispatcher(
                     binding.action
                 );
             }
-            let focused = app
-                .get_webview_window("main")
-                .is_some_and(|w| w.is_focused().unwrap_or(false));
+            if pressed
+                && matches!(
+                    binding.action.as_str(),
+                    "playPause" | "previousTrack" | "nextTrack" | "stop"
+                )
+            {
+                if let Err(error) = crate::silo::playback_press(&app, &binding.action) {
+                    let _ = app.emit("native-error", error);
+                }
+                continue;
+            }
+            let focused = platform::foreground_webview(&app, "main").is_some();
             if crate::remote_shortcut::interface_action(&binding.action) || !pressed {
                 let result = navigation.dispatch(
                     &binding.button,

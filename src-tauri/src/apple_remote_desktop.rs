@@ -361,7 +361,7 @@ fn action_sink(app: tauri::AppHandle) -> crate::apple_remote::ActionSink {
                 "volumeUp" | "volumeDown" | "playPause" | "previousTrack" | "nextTrack"
                     if event.pressed =>
                 {
-                    crate::platform::media_command(event.action)
+                    crate::silo::playback_press(&app, event.action)
                 }
                 "accept-cancel" => {
                     accepts.remove(&event.connection);

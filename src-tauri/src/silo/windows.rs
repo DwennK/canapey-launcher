@@ -152,6 +152,10 @@ pub fn navigation_press(window: &tauri::WebviewWindow, action: &str) -> Result<(
         "right" => ("ArrowRight", 39),
         "accept" => ("Enter", 13),
         "back" => ("Escape", 27),
+        "playPause" => ("MediaPlayPause", 0xB3),
+        "previousTrack" => ("MediaTrackPrevious", 0xB1),
+        "nextTrack" => ("MediaTrackNext", 0xB0),
+        "stop" => ("MediaStop", 0xB2),
         _ => return Err("Unsupported Silo navigation key.".into()),
     };
     // Both callers run on ordered input workers. Wait there for Chromium to acknowledge
@@ -188,4 +192,14 @@ pub fn navigation_press(window: &tauri::WebviewWindow, action: &str) -> Result<(
             .map_err(|e| e.to_string())??;
     }
     Ok(())
+}
+
+// Called on the ordered input worker, never the WebView2 UI thread.
+pub fn playback_press(app: &AppHandle, action: &str) -> Result<(), String> {
+    if matches!(action, "playPause" | "previousTrack" | "nextTrack" | "stop") {
+        if let Some(window) = crate::platform::foreground_webview(app, "silo") {
+            return navigation_press(&window, action);
+        }
+    }
+    crate::platform::media_command(action)
 }

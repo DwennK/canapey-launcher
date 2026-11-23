@@ -1,0 +1,49 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body { margin: 0; color: white; background: black }
+  .player-container, video { width: 100vw; height: 100vh }
+  .hud-top-chrome { position: absolute; top: 1rem; left: 1rem }
+  .player-hud { position: absolute; inset: auto 1rem 1rem; text-align: center }
+  .player-hud button { width: min(3rem, 12vw); height: 2.5rem; vertical-align: middle }
+  [role=slider] { background: #555; height: 34px; margin-bottom: 10px }
+  .cursor-none .player-controls { opacity: 0; pointer-events: none }
+</style>
+<section class="player-container">
+  <video src="/seek-test.webm" preload="auto" muted></video>
+  <div class="player-controls">
+    <div class="hud-top-chrome"><button class="hud-glass-btn--text">Exit</button></div>
+    <div class="player-hud">
+      <div role="slider" data-player-seek-slider tabindex="0" aria-label="Playback position"></div>
+      <button id="previous" aria-label="Previous episode">⏮</button>
+      <button id="back" aria-label="Rewind">⏪</button>
+      <button class="hud-play-btn" aria-label="Play / pause">⏯</button>
+      <button id="forward" aria-label="Fast forward">⏩</button>
+      <button id="next" aria-label="Next episode">⏭</button>
+      <button id="tracks">Tracks</button>
+    </div>
+  </div>
+  <dialog><button>Audio</button><button>Subtitles</button></dialog>
+</section>
+<script>
+  const hud = document.querySelector('.player-container');
+  const video = document.querySelector('video');
+  const dialog = document.querySelector('dialog');
+  const shift = seconds => video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+  hud.onmousemove = () => hud.classList.remove('cursor-none');
+  document.querySelector('.hud-play-btn').onclick = () => video.paused ? video.play() : video.pause();
+  document.querySelector('#back').onclick = () => shift(-10);
+  document.querySelector('#forward').onclick = () => shift(30);
+  document.querySelector('[role=slider]').onkeydown = event => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    shift(event.key === 'ArrowLeft' ? -10 : 30);
+  };
+  document.querySelector('#tracks').onclick = () => dialog.showModal();
+  document.querySelector('#next').onclick = () => hud.dataset.episode = 'next';
+  document.querySelector('#previous').onclick = () => hud.dataset.episode = 'previous';
+  document.querySelector('.hud-glass-btn--text').onclick = () => {
+    video.pause();
+    hud.replaceWith('Episode details');
+  };
+</script>

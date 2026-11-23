@@ -40,6 +40,26 @@
       (el) => el.querySelector('video') && el.getBoundingClientRect().width >= innerWidth * 0.8,
     );
   }
+  function wakePlayer(hud) {
+    hud.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+  }
+  function playButton(hud) {
+    return [...hud.querySelectorAll('.hud-play-btn,button[data-paused]')].find(
+      (button) => button.getClientRects().length > 0,
+    );
+  }
+  function transport(hud, key) {
+    const play = playButton(hud);
+    // Silo places its profile-specific skip buttons immediately beside Play.
+    // Use its own handlers so remuxed streams and watch parties seek correctly.
+    const button = {
+      MediaPlayPause: play,
+      MediaTrackPrevious: play?.previousElementSibling,
+      MediaTrackNext: play?.nextElementSibling,
+      MediaStop: hud.querySelector('.hud-top-chrome .hud-glass-btn--text'),
+    }[key];
+    if (button?.matches('button:enabled')) button.click();
+  }
   function scope() {
     if (keyboard) return keyboard;
     const panels = [...document.querySelectorAll(layers)].filter(visible);
@@ -334,11 +354,21 @@
       initial = false;
       if (e.altKey || e.ctrlKey || e.metaKey || e.isComposing) return;
       const back = ['Escape', 'Backspace', 'BrowserBack'].includes(e.key);
-      if (!back && e.key !== 'Enter' && !e.key.startsWith('Arrow')) return;
       const eat = () => {
         e.preventDefault();
         e.stopImmediatePropagation();
       };
+      if (['MediaPlayPause', 'MediaTrackPrevious', 'MediaTrackNext', 'MediaStop'].includes(e.key)) {
+        const hud = player();
+        if (!hud) return;
+        eat();
+        wakePlayer(hud);
+        if (!e.repeat || e.key === 'MediaTrackPrevious' || e.key === 'MediaTrackNext') {
+          transport(hud, e.key);
+        }
+        return;
+      }
+      if (!back && e.key !== 'Enter' && !e.key.startsWith('Arrow')) return;
       if (e.repeat && (e.key === 'Enter' || (back && e.key !== 'Backspace'))) {
         eat();
         return;
@@ -376,7 +406,7 @@
           editingSlider = null;
           return;
         }
-        if (root.matches?.(layers)) {
+        if (root.matches?.(layers) || root.matches?.('.player-menu-surface')) {
           // Radix and the Silo player own Escape, including nested menus.
           if (e.key !== 'Escape') {
             eat();
@@ -397,6 +427,34 @@
         } else backOnePage();
         return;
       }
+      const hud = player();
+      const horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+      if (hud && root === hud) {
+        const play = playButton(hud);
+        const timeline = hud.querySelector('[data-player-seek-slider]') || hud.querySelector('.player-hud [role=slider]');
+        const hidden = play && (hud.classList.contains('cursor-none') || !visible(play));
+        wakePlayer(hud);
+        if (timeline && active === timeline && horizontal) {
+          // Let Silo handle the trusted key using the profile's skip interval.
+          return;
+        }
+        if (hidden) {
+          eat();
+          if (horizontal) {
+            focus(timeline);
+            transport(hud, e.key === 'ArrowLeft' ? 'MediaTrackPrevious' : 'MediaTrackNext');
+          } else {
+            focus(play);
+            if (e.key === 'Enter') transport(hud, 'MediaPlayPause');
+          }
+          return;
+        }
+        if (timeline && active === timeline && e.key === 'Enter') {
+          eat();
+          focus(play);
+          return;
+        }
+      }
       if (active.matches('input[type=range],[role=slider]')) {
         if (e.key === 'Enter') {
           eat();
@@ -407,8 +465,6 @@
       }
       editingSlider = null;
       pending = null;
-      const hud = player();
-      if (hud) hud.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
       if (e.key === 'Enter') {
         if (input) {
           eat();

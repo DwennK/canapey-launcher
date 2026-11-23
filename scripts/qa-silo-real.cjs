@@ -81,6 +81,20 @@ const { chromium } = require('playwright');
       .locator('video')
       .first()
       .evaluate((v) => v.currentTime);
+    // Read Silo's absolute timeline, which also covers remuxed streams whose
+    // HTML video element can have a session-relative time base.
+    const timeline = page.locator('.player-hud [role=slider]').first();
+    await reach('ArrowUp', () => timeline.evaluate(el => el === document.activeElement));
+    const position = async () => Number(await timeline.getAttribute('aria-valuenow'));
+    const beforeSeek = await position();
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(before => Number(document.querySelector('.player-hud [role=slider]').getAttribute('aria-valuenow')) > before + 1, beforeSeek);
+    const afterForward = await position();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(before => Number(document.querySelector('.player-hud [role=slider]').getAttribute('aria-valuenow')) < before - 1, afterForward);
+    const afterRewind = await position();
+    await page.keyboard.press('Enter');
+    await page.locator('.hud-play-btn:focus').waitFor();
     const subtitleTrigger = page.locator('button[aria-label^="Subtitles,"]:focus');
     await reach('ArrowRight', async () => (await subtitleTrigger.count()) > 0);
     // Audio and subtitles must each be reachable with the transport row.
@@ -170,6 +184,7 @@ const { chromium } = require('playwright');
     console.log({
       series: selectedName,
       resumedAtSeconds: resumed,
+      seekPositions: [beforeSeek, afterForward, afterRewind],
       audioBefore,
       audioAfter,
       subtitleBefore: before,

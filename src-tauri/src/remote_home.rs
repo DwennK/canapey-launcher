@@ -160,7 +160,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                     // RegisterHotKey uses MOD_NOREPEAT. Preserve distinct fast presses in Silo.
                     let silo_key = matches!(
                         binding.action.as_str(),
-                        "up" | "down" | "left" | "right" | "back"
+                        "up" | "down" | "left" | "right" | "back" | "previousTrack" | "nextTrack"
                     ) && crate::platform::foreground_webview(app, "silo").is_some();
                     if repeated && binding.action != "accept" && !silo_key {
                         return;

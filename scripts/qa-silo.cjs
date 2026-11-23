@@ -115,6 +115,78 @@ async function navigation(browser) {
   }
 }
 
+async function playback(browser, width, height) {
+  const context = await browser.newContext({ viewport: { width, height } });
+  try {
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.addInitScript({ content: script });
+    const clip = fs.readFileSync(require.resolve('./fixtures/seek-test.webm')).toString('base64');
+    const html = fs.readFileSync(require.resolve('./fixtures/silo-player.html'), 'utf8');
+    await page.route('http://silo.test/watch/test', route => route.fulfill({
+      body: html.replace('/seek-test.webm', 'data:video/webm;base64,' + clip), contentType: 'text/html',
+    }));
+    page.setDefaultTimeout(5000);
+    await page.goto('http://silo.test/watch/test');
+    await page.waitForFunction(() => document.querySelector('video').readyState >= 3);
+    await page.locator('.hud-play-btn:focus').waitFor();
+    const key = name => page.keyboard.press(name);
+    const cdp = await context.newCDPSession(page);
+    async function media(name, vk) {
+      for (const type of ['keyDown', 'keyUp']) {
+        await cdp.send('Input.dispatchKeyEvent', {
+          type, key: name, code: name, windowsVirtualKeyCode: vk, text: '',
+        });
+      }
+    }
+    const at = seconds => page.waitForFunction(
+      t => Math.abs(document.querySelector('video').currentTime - t) < 0.1, seconds,
+      { timeout: 2000 },
+    );
+    await key('ArrowUp');
+    await page.locator('[data-player-seek-slider]:focus').waitFor();
+    await key('ArrowRight');
+    await at(30);
+    await key('ArrowLeft');
+    await at(20);
+    await key('Enter');
+    await page.locator('.hud-play-btn:focus').waitFor();
+    await page.locator('.player-container').evaluate(el => el.classList.add('cursor-none'));
+    await key('ArrowLeft');
+    await at(10);
+    await key('ArrowRight');
+    await at(40);
+    await media('MediaTrackNext', 176);
+    await at(70);
+    await media('MediaTrackPrevious', 177);
+    await at(60);
+    await media('MediaTrackPrevious', 177);
+    await at(50);
+    await media('MediaPlayPause', 179);
+    await page.waitForFunction(() => document.querySelector('video').currentTime > 50.2);
+    await media('MediaPlayPause', 179);
+    await page.waitForFunction(() => document.querySelector('video').paused);
+    await key('Enter');
+    await key('ArrowRight');
+    await key('ArrowRight');
+    await key('Enter');
+    await page.locator('[data-episode=next]').waitFor();
+    await key('ArrowRight');
+    await key('Enter');
+    await page.locator('dialog[open]').waitFor();
+    await key('ArrowRight');
+    assert.equal(await page.locator(':focus').innerText(), 'Subtitles');
+    await key('Escape');
+    await page.locator('#tracks:focus').waitFor();
+    await media('MediaStop', 178);
+    await page.getByText('Episode details').waitFor();
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+}
+
 async function launcher(browser, url, width, height) {
   const context = await browser.newContext({ viewport: { width, height } });
   try {
@@ -140,7 +212,7 @@ async function launcher(browser, url, width, height) {
         invoke: async (cmd, args = {}) => {
           if (cmd === 'bootstrap')
             return {
-              config: (await import('/src/lib/types.ts')).defaults(),
+              config: JSON.parse(sessionStorage.getItem('saved-config')) ?? (await import('/src/lib/types.ts')).defaults(),
               native: true,
               sessions: [],
               controller: null,
@@ -153,7 +225,15 @@ async function launcher(browser, url, width, height) {
             window.qa.calls.push(args.server);
             return;
           }
-          if (cmd === 'save_config') return args.config;
+          if (cmd === 'save_config') {
+            sessionStorage.setItem('saved-config', JSON.stringify(args.config));
+            return args.config;
+          }
+          if (cmd === 'remote_home_status') return {
+            available: true,
+            active: JSON.parse(sessionStorage.getItem('saved-config'))?.settings.remoteBindings ?? [],
+          };
+          if (cmd === 'list_monitors') return [];
           if (cmd === 'audio_state') return { outputs: [], defaultId: null, volume: null, muted: false };
           if (cmd === 'check_update') return { state: 'disabled' };
           return null;
@@ -161,6 +241,9 @@ async function launcher(browser, url, width, height) {
       };
     });
     const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.setDefaultTimeout(8000);
     await page.goto(url);
     await page.locator('.app-card:focus').waitFor();
     const silo = page.getByRole('button', { name: 'Silo', exact: true });
@@ -200,6 +283,35 @@ async function launcher(browser, url, width, height) {
       await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => qa.calls[0] === 'http://silo.test:8090/');
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Remote', exact: true }).click();
+    const picker = page.getByRole('combobox', { name: 'Button', exact: true });
+    for (const [button, key, action] of [
+      ['previous', 'F6', 'previousTrack'], ['next', 'F7', 'nextTrack'],
+      ['play', 'F8', 'playPause'], ['right', 'F9', 'right'],
+    ]) {
+      await picker.selectOption(button);
+      await page.getByText('Listening…', { exact: true }).waitFor();
+      await page.keyboard.press(key);
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await page.waitForFunction(({key, action}) =>
+        JSON.parse(sessionStorage.getItem('saved-config'))?.settings.remoteBindings.some(
+          b => b.global && b.action === action && b.key.code === key,
+        ), {key, action});
+      // The editor waits for a learned key's release before resuming capture.
+      await page.waitForTimeout(510);
+    }
+    await page.reload();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Remote', exact: true }).click();
+    await picker.selectOption('next');
+    await page.getByText('Next track · Global active', { exact: true }).waitFor();
+    assert.equal(await page.locator('.remote-signal kbd').innerText(), 'F7');
+    assert.deepEqual(errors, []);
+    if (process.env.SILO_QA_SHOTS) {
+      await page.locator('.remote-scope-note').first().scrollIntoViewIfNeeded();
+      await page.screenshot({ path: process.env.SILO_QA_SHOTS + '/remote-' + width + '.png' });
+    }
   } finally {
     await context.close();
   }
@@ -217,10 +329,12 @@ async function launcher(browser, url, width, height) {
       for (const [w, h] of [
         [1440, 900],
         [390, 844],
-      ])
+      ]) {
+        await playback(browser, w, h);
         await launcher(browser, server.resolvedUrls.local[0], w, h);
+      }
       console.log(
-        'PASS: Silo geometry, scroll, restoration, keyboard, modal, repeat, origin and launcher lifecycle fixtures.',
+        'PASS: Episode seeking, playback, media shortcuts, track menus, Silo geometry, scroll, restoration, keyboard, modal, repeat, origin and launcher lifecycle fixtures.',
       );
     } finally {
       await browser.close();
