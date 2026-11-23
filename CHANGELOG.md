@@ -4,6 +4,8 @@
 
 - Open Silo in a dedicated full-screen window. Browse posters with the remote, resume a series, select audio and subtitles, and return to the same poster. Home pauses playback and recalls Canapey.
 
+- Add websites from **Library → Add → Add website** with a URL, a custom name and optional card artwork. Web cards open in the Windows default browser. The form supports controller navigation, the on-screen keyboard, duplicate detection and retrying failed saves.
+
 ## 0.10.1 — 2026-11-18
 
 - Navigate all eleven Settings pages with the keyboard. Focus stays in the expected row or column and returns to the originating control after closing a picker or search. Enter submits the TV pairing code.

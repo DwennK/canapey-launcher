@@ -7,6 +7,7 @@ import { isSystemTool } from '../lib/discovery';
 import { focusElement } from '../lib/navigation';
 import { targetKey, type Action, type AppEntry, type Theme } from '../lib/types';
 import Icon from './Icon.vue';
+import AddWebsite from './AddWebsite.vue';
 
 const props = defineProps<{
   native: boolean;
@@ -23,6 +24,13 @@ const loading = ref(false), saving = ref(false), browsing = ref(false);
 const scanError = ref(''), actionError = ref('');
 const field = ref<HTMLInputElement>(), list = ref<HTMLElement>(), more = ref<HTMLButtonElement>();
 const confirmButton = ref<HTMLButtonElement>(), cancel = ref<HTMLButtonElement>();
+const websiteOpen = ref(false), website = ref<InstanceType<typeof AddWebsite>>();
+const websiteButton = ref<HTMLButtonElement>();
+async function closeWebsite() {
+  websiteOpen.value = false;
+  await nextTick();
+  focusElement(websiteButton.value);
+}
 let alive = true;
 let lastRow: HTMLButtonElement | null = null;
 
@@ -127,6 +135,7 @@ function rememberRow(event: FocusEvent) {
 function rowButtons() { return Array.from(list.value?.querySelectorAll<HTMLButtonElement>('[data-app-row]:not(:disabled)') ?? []); }
 function enterList() { focusElement(list.value?.querySelector<HTMLButtonElement>('button:not(:disabled)') ?? cancel.value); }
 function focusInitial() {
+  if (websiteOpen.value) { website.value?.focusInitial(); return; }
   if (document.documentElement.dataset.inputMode === 'directional') {
     if (loading.value && !apps.value.length) focusElement(list.value);
     else if (rowButtons().length) enterList();
@@ -134,6 +143,7 @@ function focusInitial() {
   } else field.value?.focus();
 }
 function navigate(action: Action) {
+  if (websiteOpen.value) return website.value?.navigate(action) ?? false;
   if (action === 'back' && closeOptions()) return true;
   if (action === 'back' && document.activeElement === field.value && query.value) {
     clearSearch();
@@ -162,11 +172,16 @@ defineExpose({ navigate, focusInitial });
 </script>
 
 <template>
-  <div class="app-picker">
+  <AddWebsite v-if="websiteOpen" ref="website" :native="native" :library="library" :save="save" @back="closeWebsite" @keyboard="emit('keyboard', $event)" />
+  <div v-else class="app-picker">
     <header>
       <h2>{{ t('Add apps') }}</h2>
       <p>{{ native ? t('Choose apps from this PC.') : t('Try sample apps in your browser library.') }}</p>
     </header>
+    <div class="picker-sources">
+      <button ref="websiteButton" :disabled="browsing || saving" @click="websiteOpen = true"><Icon name="globe" :size="18" />{{ t('Add website') }}</button>
+      <button v-if="native" :disabled="browsing || saving" @click="chooseFile"><Icon name="folder" :size="18" />{{ t('Choose file…') }}</button>
+    </div>
     <div class="picker-tools">
       <div class="picker-search">
         <Icon name="search" :size="19" />
@@ -205,7 +220,6 @@ defineExpose({ navigate, focusInitial });
     </div>
     <p v-if="actionError" class="picker-error" role="alert">{{ actionError }}</p>
     <footer>
-      <button v-if="native" class="picker-file" :disabled="browsing || saving" @click="chooseFile"><Icon name="folder" :size="18" />{{ t('Choose file…') }}</button>
       <button ref="cancel" class="picker-cancel" :disabled="saving" @click="emit('close')">{{ t('Cancel') }}</button>
       <button ref="confirmButton" class="picker-add" :disabled="!choices.length || saving" @click="submit">
         {{ saving ? t('Saving…') : choices.length > 1 ? t('Add {0} apps', [choices.length]) : choices.length ? t('Add app') : t('Add') }}
@@ -222,6 +236,8 @@ defineExpose({ navigate, focusInitial });
 }
 header { padding: 29px 30px 18px; }
 .app-picker h2 { margin: 0; font-size: calc(31px * var(--ui-scale)); font-weight: 640; letter-spacing: -.043em; line-height: 1.12; }
+.picker-sources { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 28px 16px; }
+.picker-sources button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 13px; background: #353940; border-radius: 9px; font-size: calc(16px * var(--ui-scale)); }
 header p { margin: 7px 0 0; color: #bdc0c6; font-size: calc(16px * var(--ui-scale)); line-height: 1.4; }
 .picker-tools { display: flex; align-items: stretch; gap: 9px; padding: 0 28px 14px; }
 .picker-search, .picker-more { background: #17191c; border: 1px solid #ffffff20; border-radius: 10px; }
@@ -265,7 +281,6 @@ header p { margin: 7px 0 0; color: #bdc0c6; font-size: calc(16px * var(--ui-scal
 .picker-error { margin: 0; padding: 10px 26px; color: #ffd1bf; }
 footer { display: flex; align-items: center; gap: 10px; padding: 16px 25px 19px; border-top: 1px solid #ffffff14; background: #1f2125; }
 footer button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; padding: 8px 18px; border-radius: 9px; font-size: calc(16px * var(--ui-scale)); font-weight: 560; }
-.picker-file { padding-inline: 5px; color: var(--accent); }
 .picker-cancel { margin-left: auto; background: #36393f; color: #ebecef; }
 .picker-add { min-width: 90px; color: var(--on-accent); background: var(--accent); }
 .picker-add:disabled { background: #33363b; color: #a2a7af; opacity: 1; }
@@ -274,12 +289,12 @@ footer button { display: inline-flex; align-items: center; justify-content: cent
 @media (max-width:600px) {
   header { padding: 23px 18px 14px; }
   .picker-tools { padding: 0 16px 10px; }
+  .picker-sources { padding-inline: 18px; }
   .picker-list { height: calc(12px + var(--picker-rows) * 50px * var(--ui-scale)); padding-inline: 6px; max-height: 55svh; }
   .picker-app { gap: 12px; min-height: 50px; padding-inline: 12px; }
   .picker-options { padding-inline: 18px; }
   footer { padding: 12px; gap: 8px; }
   footer button { padding-inline: 12px; font-size: 15px; }
-  .picker-file { padding-inline: 2px; }
   .picker-add { min-width: 66px; }
 }
 @media (max-height:480px) {

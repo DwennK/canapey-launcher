@@ -89,7 +89,7 @@ The current source uses English throughout. First-launch system-language detecti
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
 | **Silo (unreleased)** | Open the Silo card, enter your HTTP or HTTPS server address, and sign in on Silo. Arrows move between controls, OK selects, and Back closes menus or returns to the previous poster. Home pauses playback and recalls Canapey. |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
-| **Shortcuts** | Executables, Windows shortcuts and supported URIs |
+| **Shortcuts** | Executables, Windows shortcuts and supported URIs; add websites with a URL, name and optional image, opening in the default browser (unreleased) |
 | **Quick controls** | Header audio button, Windows master volume/mute, default output selection; controller-accessible side panel |
 | **iPhone remote** | Experimental Apple TV Remote receiver in Rust: PIN pairing, navigation, Home and media controls; disabled by default, private IPv4 networks only |
 | **Controllers** | D-pad and left-stick navigation, Xbox/PlayStation button labels, configurable deadzone and a global return shortcut |
