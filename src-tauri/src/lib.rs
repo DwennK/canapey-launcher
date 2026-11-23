@@ -14,6 +14,11 @@ pub mod remote_navigation;
 pub mod remote_shortcut;
 #[cfg(feature = "desktop")]
 mod runtime;
+#[cfg(feature = "desktop")]
+mod silo;
+#[cfg(any(feature = "desktop", test))]
+#[path = "silo/policy.rs"]
+mod silo_policy;
 pub mod tracking;
 pub mod tv;
 #[cfg(feature = "desktop")]

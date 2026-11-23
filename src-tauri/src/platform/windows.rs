@@ -101,6 +101,16 @@ pub fn foreground_is_ours() -> bool {
         pid == std::process::id()
     }
 }
+// WebView2's focused child and its foreground top-level window have different HWNDs.
+pub fn foreground_webview(app: &tauri::AppHandle, label: &str) -> Option<tauri::WebviewWindow> {
+    app.get_webview_window(label).filter(|window| {
+        window
+            .hwnd()
+            .ok()
+            .is_some_and(|hwnd| !hwnd.0.is_null() && hwnd.0 == unsafe { GetForegroundWindow() })
+    })
+}
+
 pub fn focus(handle: isize) -> bool {
     focus_window(handle, false)
 }

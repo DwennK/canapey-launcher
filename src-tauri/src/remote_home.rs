@@ -157,7 +157,12 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 });
                 if pressed {
                     inner.last_press = Some((binding.button.clone(), now));
-                    if repeated && binding.action != "accept" {
+                    // RegisterHotKey uses MOD_NOREPEAT. Preserve distinct fast presses in Silo.
+                    let silo_key = matches!(
+                        binding.action.as_str(),
+                        "up" | "down" | "left" | "right" | "back"
+                    ) && crate::platform::foreground_webview(app, "silo").is_some();
+                    if repeated && binding.action != "accept" && !silo_key {
                         return;
                     }
                 }

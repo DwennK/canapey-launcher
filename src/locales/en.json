@@ -804,5 +804,13 @@
   "Search settings": "Search settings",
   "Matching settings": "Matching settings",
   "No matching settings.": "No matching settings.",
-  "Go to {0}": "Go to {0}"
+  "Go to {0}": "Go to {0}",
+  "Enter a valid HTTP or HTTPS server address.": "Enter a valid HTTP or HTTPS server address.",
+  "Could not open your Silo server.": "Could not open your Silo server.",
+  "Watch movies and series from your Silo server.": "Watch movies and series from your Silo server.",
+  "Silo server address": "Silo server address",
+  "On-screen keyboard": "On-screen keyboard",
+  "Open Silo": "Open Silo",
+  "Retry": "Retry",
+  "Change server address": "Change server address"
 }

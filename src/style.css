@@ -1983,3 +1983,8 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
 .repair-location dt { margin-top: 8px; color: var(--muted); }
 .repair-location dd { margin: 4px 0 16px; overflow-wrap: anywhere; }
 .repair-location [data-repair-candidate] { white-space: normal; overflow-wrap: anywhere; text-align: left; }
+
+.silo-setup { display: grid; gap: 14px; padding: 8px 2px; }
+.silo-setup p { margin: 0; color: #ffcebd; }
+.silo-address { display: flex; align-items: center; gap: 8px; }
+.silo-address input { flex: 1; min-width: 0; }

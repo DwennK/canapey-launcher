@@ -512,6 +512,7 @@ dependencies = [
  "tokio-tungstenite",
  "url",
  "uuid",
+ "webview2-com",
  "windows",
  "windows-sys 0.61.2",
  "x25519-dalek",

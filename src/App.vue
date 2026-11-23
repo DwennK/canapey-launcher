@@ -8,6 +8,41 @@ import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/libr
 import RemovalNotice from "./components/RemovalNotice.vue";
 import { isVacuumTube, registerYouTube, showYouTubeSuggestion } from './lib/youtube';
 const YouTubeSetup = defineAsyncComponent(() => import('./components/YouTubeSetup.vue'));
+const siloTile: Tile = { id: 'catalog-silo', name: 'Silo', theme: 'silo' };
+const siloKey = 'canapey-silo-server';
+const siloAddress = ref(localStorage.getItem(siloKey) ?? '');
+const siloError = ref('');
+const siloEditing = ref(false);
+const siloOpening = ref(false);
+async function configureSilo(error = '', editAddress = !error) {
+  siloError.value = error;
+  siloEditing.value = editAddress;
+  await openPanel('silo');
+  await nextTick();
+  focusElement(panelRoot.value?.querySelector<HTMLElement>('[data-silo-primary]') ?? undefined);
+}
+async function openSilo() {
+  if (siloOpening.value) return;
+  if (!siloAddress.value.trim()) return configureSilo();
+  let url: URL;
+  try {
+    url = new URL(siloAddress.value.trim());
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash)
+      throw new Error();
+  } catch {
+    await configureSilo(t('Enter a valid HTTP or HTTPS server address.'), true);
+    return;
+  }
+  siloOpening.value = true;
+  try {
+    localStorage.setItem(siloKey, url.href);
+    siloAddress.value = url.href;
+    if (panel.value === 'silo') await closePanel();
+    await api.openSilo(url.href);
+  } catch (error) {
+    await configureSilo(native.value ? t('Could not open your Silo server.') : String(error instanceof Error ? error.message : error));
+  } finally { siloOpening.value = false; }
+}
 const youtubeDetected = ref<AppEntry | null>(null);
 const youtubeBusy = ref(false);
 const youtubeChecking = ref(false);
@@ -163,6 +198,7 @@ type Panel =
   | "confirm"
   | "quick"
   | "move"
+  | "silo"
   | "youtube";
 interface Tile {
   id: string;
@@ -448,7 +484,7 @@ const examples: Tile[] = [
   { id: "suggest-launchbox", name: "LaunchBox", theme: "launchbox", suggestion: true },
   { id: "suggest-steam", name: "Steam", theme: "steam", suggestion: true },
   { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
-  { id: "suggest-silo", name: "Silo", theme: "silo", suggestion: true },
+  siloTile,
 ];
 const visibleApps = computed(() => {
   if (view.value !== 'carousel') return libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, libraryFilter.value);
@@ -460,6 +496,7 @@ const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(a
 const tiles = computed<Tile[]>(() => config.value.apps.length
   ? [...visibleApps.value.map(entry => ({ id: entry.id, name: entry.name, theme: entry.theme, entry })),
      ...(showYouTubeSuggestion(config.value.apps, view.value === 'carousel' ? '' : libraryQuery.value, view.value === 'carousel' ? 'all' : libraryFilter.value) ? [{id:'catalog-youtube',name:'YouTube',theme:'youtube' as const,catalog:true,suggestion:true}] : []),
+     ...(view.value === 'carousel' || (['all', 'video'].includes(libraryFilter.value) && 'silo'.includes(libraryQuery.value.trim().toLowerCase())) ? [siloTile] : []),
      ...(view.value === 'carousel' ? [{ id: 'library', get name() { return t('All apps'); }, theme: 'home' as const, special: 'library' }] : [])]
   : [{ id: 'add', get name() { return t('Add apps'); }, theme: 'home', special: 'add' }, ...examples.map(tile => tile.id === 'suggest-youtube' ? {...tile,id:'catalog-youtube',catalog:true} : tile)]);
 const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
@@ -498,7 +535,7 @@ const heroTitle = computed(() =>
       : current.value.name,
 );
 const subtitle = computed(() =>
-  current.value.catalog ? t('YouTube on your TV, built for a controller.') : current.value.special === "windows"
+  current.value.id === siloTile.id ? t('Watch movies and series from your Silo server.') : current.value.catalog ? t('YouTube on your TV, built for a controller.') : current.value.special === "windows"
     ? t('Canapey stays open in the background.')
     : current.value.special === 'library' ? t('Find, filter and organize all your apps.')
     : !config.value.apps.length ? t('Choose the apps you want on your TV.')
@@ -835,6 +872,11 @@ async function acceptConfirm() {
   });
 }
 async function activate(tile = current.value, youtubeChecked = false) {
+  if (tile.id === siloTile.id) {
+    siloAddress.value = localStorage.getItem(siloKey) ?? '';
+    await openSilo();
+    return;
+  }
   if (!youtubeChecked && (tile.catalog || (tile.entry && isVacuumTube(tile.entry)))) {
     if (youtubeChecking.value) return;
     youtubeChecking.value = true;
@@ -1509,6 +1551,7 @@ onMounted(async () => {
     if (b.warning) notify(b.warning);
     startupMark("subscribeStart");
     stopNative = await api.subscribe({
+      siloUnavailable: () => { void configureSilo(t('Could not open your Silo server.')); },
       appleInput,
       libraryText: field => {
         if (phoneSearchId.value === field.id && document.hasFocus() && document.activeElement === searchInput.value && !panel.value && !keyboardTarget.value && !choiceTarget.value) {
@@ -1730,7 +1773,7 @@ onUnmounted(() => {
                 : hasHomeSelection ? t('Running and favorites') : t('Get started')
           }}</span>
           <span v-if="!empty" class="section-count" role="status">{{
-            t('{0} app{1}{2}', [tiles.filter(tile => !tile.special).length, tiles.filter(tile => !tile.special).length > 1 ? "s" : "", view === 'grid' && libraryFiltered ? t(' of {0}', [config.apps.length + Number(!config.apps.some(isVacuumTube))]) : ''])
+            t('{0} app{1}{2}', [tiles.filter(tile => !tile.special).length, tiles.filter(tile => !tile.special).length > 1 ? "s" : "", view === 'grid' && libraryFiltered ? t(' of {0}', [config.apps.length + 1 + Number(!config.apps.some(isVacuumTube))]) : ''])
           }}</span>
         </div>
         <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />{{ t('Add') }}</button>
@@ -1830,7 +1873,7 @@ onUnmounted(() => {
           ref="panelRoot"
           class="panel"
           :class="{
-            compact: ['power', 'confirm', 'session', 'repair'].includes(panel),
+            compact: ['power', 'confirm', 'session', 'repair', 'silo'].includes(panel),
             'audio-panel': panel === 'audio',
             'settings-panel': panel === 'settings',
             'picker-panel': panel === 'add',
@@ -1843,7 +1886,7 @@ onUnmounted(() => {
           role="dialog"
           aria-modal="true"
           :aria-label="
-            panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === 'audio'
+            panel === 'silo' ? 'Silo' : panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === 'audio'
               ? t('Quick controls')
               : panel === 'quick'
                 ? t('Actions for {0}', [quickApp?.name])
@@ -1871,7 +1914,7 @@ onUnmounted(() => {
               <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
                 {{
-                  panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === "audio"
+                  panel === 'silo' ? 'Silo' : panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === "audio"
                     ? t('Quick controls')
                     : panel === "quick"
                       ? quickApp?.name
@@ -1895,7 +1938,23 @@ onUnmounted(() => {
               <Icon name="close" />
             </button>
           </div>
-          <YouTubeSetup v-if="panel === 'youtube'" :native="native" :save-app="saveYouTube" :open-app="openYouTube" @busy="youtubeBusy = $event" @detected="youtubeDetected = $event" />
+          <form v-if="panel === 'silo'" class="silo-setup" @submit.prevent="openSilo">
+            <p v-if="siloError" role="alert">{{ siloError }}</p>
+            <template v-if="siloEditing">
+              <label for="silo-server">{{ t('Silo server address') }}</label>
+              <div class="silo-address">
+                <input id="silo-server" v-model="siloAddress" data-silo-primary type="text" inputmode="url" placeholder="https://silo.example.org" autocomplete="off" spellcheck="false" />
+                <button type="button" class="icon-button" :aria-label="t('On-screen keyboard')" @click="keyboardFor('#silo-server')"><Icon name="keyboard" /></button>
+              </div>
+              <button class="primary-button" type="submit">{{ t('Open Silo') }}</button>
+            </template>
+            <template v-else>
+              <button class="primary-button" data-silo-primary type="submit">{{ t('Retry') }}</button>
+              <button type="button" class="small-button" @click="configureSilo()">{{ t('Change server address') }}</button>
+            </template>
+            <button type="button" class="small-button" @click="closePanel">{{ t('Return to Canapey') }}</button>
+          </form>
+          <YouTubeSetup v-else-if="panel === 'youtube'" :native="native" :save-app="saveYouTube" :open-app="openYouTube" @busy="youtubeBusy = $event" @detected="youtubeDetected = $event" />
           <div v-else-if="panel === 'repair' && repairApp" class="repair-location">
             <h3>{{ repairApp.name }}</h3>
             <dl><dt>{{ t('Saved location') }}</dt><dd>{{ repairApp.target.value }}</dd>
@@ -2348,7 +2407,7 @@ onUnmounted(() => {
           </template>
           <AddApps v-else-if="panel === 'add'" ref="appPicker"
             :native="native" :initial-query="importQuery" :library="config.apps" :discovered="discoveredApps"
-            :samples="examples.filter(tile => tile.id !== 'suggest-youtube')" :save="addEntries"
+            :samples="examples.filter(tile => tile.id !== 'suggest-youtube' && tile.id !== siloTile.id)" :save="addEntries"
             @discovered="discoveredApps = $event" @keyboard="openKeyboard" @close="closePanel" />
           <template v-else-if="panel === 'edit' && editing">
             <div class="edit-layout">

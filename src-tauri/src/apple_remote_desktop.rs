@@ -94,16 +94,7 @@ pub fn start(app: &tauri::AppHandle) {
 fn launcher_is_foreground(app: &tauri::AppHandle) -> bool {
     #[cfg(windows)]
     {
-        // WebView2 can own keyboard focus while its top-level launcher is foreground.
-        app.get_webview_window("main")
-            .and_then(|window| window.hwnd().ok())
-            .is_some_and(|hwnd| {
-                !hwnd.0.is_null()
-                    && hwnd.0
-                        == unsafe {
-                            windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow()
-                        }
-            })
+        crate::platform::foreground_webview(app, "main").is_some()
     }
     #[cfg(not(windows))]
     {
@@ -360,6 +351,7 @@ fn action_sink(app: tauri::AppHandle) -> crate::apple_remote::ActionSink {
                 external.remove(&(event.connection, action));
             }
             let focused = authorized && launcher_is_foreground(&app);
+            let silo = crate::platform::foreground_webview(&app, "silo");
             let result = match event.action {
                 "home" if event.pressed => {
                     let handle = app.clone();
@@ -378,6 +370,11 @@ fn action_sink(app: tauri::AppHandle) -> crate::apple_remote::ActionSink {
                         serde_json::json!({"action":"accept-cancel","connection":event.connection}),
                     );
                     Ok(())
+                }
+                action @ ("accept" | "up" | "down" | "left" | "right" | "back")
+                    if event.pressed && silo.is_some() =>
+                {
+                    crate::silo::navigation_press(silo.as_ref().unwrap(), action)
                 }
                 "accept" => {
                     if event.pressed {

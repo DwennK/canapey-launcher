@@ -76,6 +76,11 @@ pub fn show_home(app: &tauri::AppHandle) {
 }
 fn return_to_launcher(app: &tauri::AppHandle, preserve_panel: bool) {
     let started = Instant::now();
+    if let Some(silo) = app.get_webview_window("silo") {
+        let _ =
+            silo.eval("document.querySelectorAll('video,audio').forEach(media => media.pause())");
+        let _ = silo.hide();
+    }
     if let Some(state) = app.try_state::<State>() {
         state.controller_test.store(false, Ordering::SeqCst);
         let _ = app.emit("controller-test-ended", ());
@@ -750,7 +755,14 @@ pub(crate) fn remote_dispatcher(
                     &binding.action,
                     pressed,
                     focused,
-                    platform::shortcut_navigation_press,
+                    |action| {
+                        if let Some(silo) = platform::foreground_webview(&app, "silo") {
+                            crate::silo::navigation_press(&silo, action)?;
+                            Ok(None)
+                        } else {
+                            platform::shortcut_navigation_press(action).map(Some)
+                        }
+                    },
                 );
                 match result {
                     Ok(Delivery::None) => {}
@@ -1106,6 +1118,7 @@ pub fn run() {
                 artwork_started.elapsed().as_millis(),
                 config.apps.len()
             );
+            app.manage(crate::silo::SiloState::default());
             app.manage(State {
                 config: Mutex::new(config.clone()),
                 config_save: Mutex::new(()),
@@ -1175,7 +1188,9 @@ pub fn run() {
             );
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler({
+            let main_commands: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
+            crate::silo::open_silo,
             crate::tv_desktop::tv_status,
             crate::tv_desktop::tv_discover,
             crate::tv_desktop::tv_inspect,
@@ -1227,7 +1242,15 @@ pub fn run() {
             open_logs,
             check_update,
             install_update
-        ])
+        ];
+            move |invoke| {
+                if invoke.message.webview_ref().label() != "main" {
+                    invoke.resolver.reject("Launcher commands require the main window.");
+                    return true;
+                }
+                main_commands(invoke)
+            }
+        })
         .build(tauri::generate_context!())
         .expect("Could not start Canapey Launcher")
         .run(|app, event| {
