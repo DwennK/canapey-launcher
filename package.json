@@ -2,6 +2,7 @@
   "name": "canapey-launcher",
   "version": "0.11.0",
   "private": true,
+  "packageManager": "pnpm@12.15.0",
   "type": "module",
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
@@ -14,7 +15,7 @@
     "desktop": "tauri dev",
     "test": "vitest run",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features",
-    "check": "npm run version:check && npm run build && npm test && npm run test:rust",
+    "check": "pnpm run version:check && pnpm run build && pnpm test && pnpm run test:rust",
     "version:check": "node scripts/version.mjs check",
     "version:bump": "node scripts/version.mjs",
     "release:configure": "node scripts/configure-release.mjs"

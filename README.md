@@ -194,24 +194,24 @@ In **Settings → Controllers → Test controller**, choose **Start test** to vi
 
 ## Quick start
 
-For native development: **Windows 11 x64**, Node.js **24 LTS** (or a supported version from `package.json`, including 22.12+ on the 22.x line), Rust **1.90+**, Visual Studio Build Tools with **Desktop development with C++**, the Windows SDK and WebView2.
+For native development: **Windows 11 x64**, Node.js **24 LTS** (or a supported version from `package.json`, including 22.12+ on the 22.x line), pnpm **12.15.0**, Rust **1.90+**, Visual Studio Build Tools with **Desktop development with C++**, the Windows SDK and WebView2.
 
 ```sh
 git clone https://github.com/DwennK/canapey-launcher.git
 cd canapey-launcher
-npm ci
+pnpm install --frozen-lockfile
 ```
 
 **Run the Windows desktop app:**
 
 ```sh
-npm run desktop
+pnpm run desktop
 ```
 
 **Preview the interface in a browser**, including on macOS or Linux:
 
 ```sh
-npm run dev
+pnpm run dev
 ```
 
 Open [127.0.0.1:1420](http://127.0.0.1:1420). The preview uses isolated browser storage and allows interface and settings previews. Its visible preview label identifies the mode: it does not simulate Windows launches, discovery, Rust controller input or successful updates.
@@ -219,7 +219,7 @@ Open [127.0.0.1:1420](http://127.0.0.1:1420). The preview uses isolated browser 
 **Build the Windows installer** on Windows 11 x64:
 
 ```powershell
-npm run tauri -- build --target x86_64-pc-windows-msvc --bundles nsis
+pnpm run tauri build --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
 Output: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
@@ -230,7 +230,7 @@ Output: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
 With `cargo-xwin`, LLVM and NSIS installed:
 
 ```sh
-PATH="/opt/homebrew/opt/llvm/bin:$PATH" npm run tauri -- build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
+PATH="/opt/homebrew/opt/llvm/bin:$PATH" pnpm run tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc --bundles nsis
 ```
 
 This produces a Windows installer; it does not prove that the app runs correctly on Windows. The [Windows CI workflow](.github/workflows/ci.yml) also builds an installer and retains it as a test artifact.
@@ -302,19 +302,19 @@ Development builds keep updates disabled. Release builds, including `0.x`, embed
 For an authorised publication, follow [AGENTS.md](AGENTS.md): use a patch for fixes and small improvements, a minor for substantial features or breaking changes during the experimental phase. Moving to `1.0.0` requires an explicit decision.
 
 ```sh
-npm run version:bump -- patch  # or minor
-npm run version:check
-npm run check
+pnpm run version:bump patch  # or minor
+pnpm run version:check
+pnpm run check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 ```
 
-The bump command synchronises `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`; it creates no commit or tag. Update `CHANGELOG.md` and this README's version/download references, then create focused commits. Once delivery is authorised, push the commits and an annotated `vX.Y.Z` tag. Never move a published tag. Both workflows check version consistency; the release workflow also checks the tag. It creates a draft with a Windows installer, updater signature, `latest.json` and SHA-256 checksum. All `0.x` releases remain prereleases. Review the assets and notes before publishing, then verify the public tag, commit, release, downloads and update-channel workflow.
+The bump command synchronises `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`; it creates no commit or tag. Update `CHANGELOG.md` and this README's version/download references, then create focused commits. Once delivery is authorised, push the commits and an annotated `vX.Y.Z` tag. Never move a published tag. Both workflows check version consistency; the release workflow also checks the tag. It creates a draft with a Windows installer, updater signature, `latest.json` and SHA-256 checksum. All `0.x` releases remain prereleases. Review the assets and notes before publishing, then verify the public tag, commit, release, downloads and update-channel workflow.
 
 **Update behaviour:** the official Tauri Updater supports a check after 15 seconds, manual checks, release notes, signature verification and user-initiated installation with local data preserved. It never downloads or restarts automatically without user action. Checking for updates remains available with tracked apps open. On confirmed installation, Canapey requests normal closure and waits up to 30 seconds for tracked windows to disappear; save dialogs or errors leave the update retryable without forcing processes to stop. Shared or unidentified windows remain open. New launches are blocked during preparation and installation; network failures do not block the home screen.
 
 Signing configuration (already provisioned for this repository; do not rotate existing keys casually):
 
-1. For a new repository only, generate a signing pair with `npm run tauri -- signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the app; remove temporary local copies after verification and import into Actions secrets. Retain the same key for future releases.
+1. For a new repository only, generate a signing pair with `pnpm run tauri signer generate -w <path-outside-the-repository>`. Keep the private key out of Git and the app; remove temporary local copies after verification and import into Actions secrets. Retain the same key for future releases.
 2. Store the private key in the Actions secret `TAURI_SIGNING_PRIVATE_KEY` and its password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 3. Store the **complete base64 contents** of the `.pub` file in the Actions variable `TAURI_UPDATER_PUBLIC_KEY`.
 4. The [release workflow](.github/workflows/release.yml) generates the ignored `tauri.release.conf.json` with the correct channel and signs the installer. Missing signing configuration fails the build instead of producing a release with updates disabled.
@@ -330,7 +330,7 @@ Secrets stay in Actions, never in the frontend; GitHub provides `GITHUB_TOKEN`. 
 ## Development & validation
 
 ```sh
-npm run check
+pnpm run check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```

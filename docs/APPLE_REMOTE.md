@@ -109,7 +109,7 @@ Functional limits: IPv4 only; no complete automatic firewall diagnostic; iPhone 
 ## Reproducible validation
 
 ```sh
-npm run check
+pnpm run check
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo build --manifest-path src-tauri/Cargo.toml --locked --no-default-features --example companion_probe
 python3 -m venv /tmp/canapey-companion-tests

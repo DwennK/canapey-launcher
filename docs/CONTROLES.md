@@ -25,7 +25,7 @@ From the carousel, Up reaches the main button then header; Down opens the grid. 
 Tests use installed Chrome, an isolated profile, desktop 1440×900 and mobile 390×844. `scripts/qa-ui.js` additionally covers real preview-storage import/save/removal, settings and native-unavailable messages. Header, Settings focus and Backspace were also inspected in the in-app browser.
 
 ```sh
-# Start Vite in another terminal: npm run dev
+# Start Vite in another terminal: pnpm run dev
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=controls open http://127.0.0.1:1420 --browser chrome --config .playwright/cli.config.json
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=controls run-code "$(cat scripts/qa-controls.js)"
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=controls close

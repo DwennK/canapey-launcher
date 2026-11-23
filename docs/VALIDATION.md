@@ -42,7 +42,7 @@ The offline-resource test blocked every host except local Vite. It establishes s
 
 ## Replay UI checks
 
-Start `npm run dev`, then use the installed Playwright skill:
+Start `pnpm run dev`, then use the installed Playwright skill:
 
 ```sh
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 ~/.codex/skills/playwright/scripts/playwright_cli.sh -s=canapey open http://127.0.0.1:1420 --browser chrome --config .playwright/cli.config.json

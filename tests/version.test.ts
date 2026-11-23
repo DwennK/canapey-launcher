@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const script = resolve('scripts/version.mjs');
-const files = ['package.json', 'package-lock.json', 'src-tauri/tauri.conf.json', 'src-tauri/Cargo.toml', 'src-tauri/Cargo.lock'];
+const files = ['package.json', 'src-tauri/tauri.conf.json', 'src-tauri/Cargo.toml', 'src-tauri/Cargo.lock'];
 const directories: string[] = [];
 function fixture() {
   const directory = mkdtempSync(join(tmpdir(), 'canapey-version-'));
@@ -17,7 +17,7 @@ function fixture() {
 afterEach(() => directories.splice(0).forEach(directory => rmSync(directory, { recursive: true, force: true })));
 
 describe('release version consistency', () => {
-  it.each(['patch', 'minor'])('keeps all manifests and lockfiles aligned after a %s bump', mode => {
+  it.each(['patch', 'minor'])('keeps all versioned manifests and the Cargo lockfile aligned after a %s bump', mode => {
     const cwd = fixture();
     const [major, minor, patch] = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version.split('.').map(Number);
     const expected = mode === 'patch' ? `${major}.${minor}.${patch + 1}` : `${major}.${minor + 1}.0`;

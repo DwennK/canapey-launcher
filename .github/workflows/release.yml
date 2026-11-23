@@ -24,26 +24,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ format('refs/tags/{0}', env.RELEASE_TAG) }}
+      - uses: pnpm/action-setup@v6.1.1
+        with:
+          version: ${{ env.RELEASE_TAG == 'v0.11.0' && '12.15.0' || '' }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
       - name: Validate all versions and tag
         run: node scripts/version.mjs check "--tag=$env:RELEASE_TAG"
-      - run: npm run build
-      - run: npm test
+      - run: pnpm run build
+      - run: pnpm test
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --target x86_64-pc-windows-msvc
       - name: Configure signed update endpoint
-        run: npm run release:configure
+        run: pnpm run release:configure
         env:
           TAURI_UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
+      # This existing tag predates the pnpm build hook. Keep its tracked source intact.
+      - name: Use pnpm for the v0.11.0 frontend build hook
+        if: env.RELEASE_TAG == 'v0.11.0'
+        run: |
+          node -e "const fs = require('node:fs'); const path = 'src-tauri/tauri.release.conf.json'; const config = JSON.parse(fs.readFileSync(path)); config.build = { beforeBuildCommand: 'pnpm run build' }; fs.writeFileSync(path, JSON.stringify(config));"
       - name: Require signing key
         shell: pwsh
         env:
@@ -57,7 +65,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tauriScript: npm run tauri
+          tauriScript: pnpm run tauri
           tagName: ${{ env.RELEASE_TAG }}
           releaseName: Canapey Launcher v__VERSION__
           releaseBody: "Windows 11 x64. Signed updates. Review the release notes before publishing."
