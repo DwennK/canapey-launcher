@@ -41,6 +41,7 @@ async function verify(browser, url, viewport) {
           if (cmd === 'audio_state') return { outputs: [], defaultId: null, volume: null, muted: false };
           if (cmd === 'check_update') return { state: 'disabled' };
           qa.calls.push({ cmd, args });
+          if (cmd === 'launch_app') return { ...session(args.id), status: 'running', canForce: false };
           return null;
         },
       };
@@ -63,6 +64,16 @@ async function verify(browser, url, viewport) {
     assert.deepEqual(await calls('close_app'), [{ id: 'Beta', force: true }]);
     await page.evaluate(() => qa.emit('sessions', []));
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
+
+    // Keep the menu open while its card disappears from the Favorites filter.
+    await button('Library').click();
+    await button('Favorites').click();
+    await card('Beta').click({ button: 'right' });
+    await button('Remove from favorites').click();
+    await page.getByRole('heading', { name: 'No apps found' }).waitFor();
+    await button('Open').click();
+    await page.waitForFunction(() => qa.calls.some(c => c.cmd === 'launch_app'));
+    assert.deepEqual(await calls('launch_app'), [{ id: 'Beta' }]);
 
     assert.deepEqual(errors, []);
   } finally {

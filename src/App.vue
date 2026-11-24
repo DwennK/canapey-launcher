@@ -675,7 +675,7 @@ async function openQuick(index: number) {
   await openPanel("quick");
 }
 async function openQuickApp() {
-  const tile = tiles.value.find(item => item.id === quickId.value);
+  const tile = movingSilo.value ? siloTile : quickApp.value && appTile(quickApp.value);
   if (!tile) return;
   await closePanel();
   await activate(tile);
