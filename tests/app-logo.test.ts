@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
-import { appLogoCandidates } from '../src/lib/app-logo';
+import { appDescription, appLogoCandidates } from '../src/lib/app-identity';
 import type { Target } from '../src/lib/types';
 
 const target = (kind: Target['kind'], value: string): Target => ({ kind, value, args: [], workingDir: null });
@@ -43,6 +43,20 @@ describe('application card identity', () => {
     ['uri', 'invalid'],
   ] as const)('keeps native icons for unknown apps without guessing from paths: %s %s', (kind, value) => {
     expect(appLogoCandidates('My app', target(kind, value), native)).toEqual([native]);
+  });
+
+  it('keeps distinct Home descriptions for the catalog before and after import', () => {
+    const names = ['Netflix', 'YouTube', 'Spotify', 'Internet', 'LaunchBox', 'Big Box', 'Steam', 'Plezy', 'Silo'];
+    const descriptions = names.map(name => appDescription(name));
+    expect(descriptions).not.toContain('');
+    expect(new Set(descriptions).size).toBe(names.length);
+    for (const name of names) {
+      const executable = name === 'YouTube' ? 'VacuumTube' : name.replaceAll(' ', '');
+      expect(appDescription('Living room', target('executable', `C:/Apps/${executable}.exe`))).toBe(appDescription(name));
+    }
+    expect(appDescription('My music', target('packaged', 'SpotifyAB.SpotifyMusic_123!App'))).toBe(appDescription('Spotify'));
+    expect(appDescription('Personal', target('uri', 'https://youtube.com.example.org/'))).toBe('');
+    expect(appDescription('My game', target('executable', 'C:/Steam/steamapps/common/Game/game.exe'))).toBe('');
   });
 
   it('allows the text fallback when no logo or icon is available', () => {

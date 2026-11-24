@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { t, locale } from '../lib/i18n';
-import { appLogoCandidates } from '../lib/app-logo';
+import { appLogoCandidates } from '../lib/app-identity';
 import { imageUrl, pickTarget, scan } from '../lib/bridge';
 import { isSystemTool } from '../lib/discovery';
 import { focusElement } from '../lib/navigation';

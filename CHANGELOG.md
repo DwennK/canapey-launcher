@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Show app-specific descriptions on Home before and after import. Custom apps show their name alone.
 - Resume up to five in-progress Silo movies and episodes directly from Home with episode artwork and watch progress.
 
 ## 0.11.2 — 2026-11-24

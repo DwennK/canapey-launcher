@@ -7,6 +7,7 @@ import { categories, categoryFor, homeApps, groupLibraryCards, type AppCategory,
 import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/library-editing";
 import SiloRow from './components/SiloRow.vue';
 import RemovalNotice from "./components/RemovalNotice.vue";
+import { appDescription } from './lib/app-identity';
 import { isVacuumTube, registerYouTube } from './lib/youtube';
 const YouTubeSetup = defineAsyncComponent(() => import('./components/YouTubeSetup.vue'));
 const siloTile: Tile = { id: 'catalog-silo', name: 'Silo', theme: 'silo' };
@@ -534,14 +535,13 @@ const heroTitle = computed(() =>
       ? t('Return to the desktop.')
       : current.value.name,
 );
-const subtitle = computed(() =>
-  current.value.id === siloTile.id ? t('Watch movies and series from your Silo server.') : current.value.catalog ? t('YouTube on your TV, built for a controller.') : current.value.special === "windows"
-    ? t('Canapey stays open in the background.')
-    : current.value.special === 'library' ? t('Find, filter and organize all your apps.')
-    : !config.value.apps.length ? t('Choose the apps you want on your TV.')
-    : !hasHomeSelection.value ? t('Add your favorite apps using their card actions.')
-    : selectedSession.value ? t('Your app is still open.') : t('Your favorites, ready to open.'),
-);
+const subtitle = computed(() => {
+  const tile = current.value;
+  if (tile.special === 'add') return t('Choose the apps you want on your TV.');
+  if (tile.special === 'library') return t('Find, filter and organize all your apps.');
+  if (tile.special === 'windows') return t('Canapey stays open in the background.');
+  return appDescription(tile.name, tile.entry?.target);
+});
 const heroStatus = computed(() =>
   current.value.catalog ? (youtubeDetected.value ? t('READY TO OPEN') : t('INSTALL')) : current.value.suggestion
     ? t('ADD')

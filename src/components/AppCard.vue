@@ -3,7 +3,7 @@ import { t } from '../lib/i18n';
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { CardHold } from "../lib/hold";
 import { cardArtwork } from "../lib/ambiance";
-import { appLogoCandidates } from "../lib/app-logo";
+import { appLogoCandidates } from "../lib/app-identity";
 import Icon from "./Icon.vue";
 import type { Target, Theme } from "../lib/types";
 const props = defineProps<{
