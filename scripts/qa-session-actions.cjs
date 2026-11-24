@@ -13,7 +13,7 @@ async function verify(browser, url, viewport) {
       let next = 0;
       const session = name => ({ appId: name, name, status: 'closing', canForce: true });
       const qa = window.qa = {
-        calls: [], initial: ['Alpha', 'Beta'].map(session),
+        calls: [], checks: [], initial: ['Alpha', 'Beta'].map(session),
         emit: (event, payload) => callbacks.get(events.get(event))({ payload }),
       };
       window.isTauri = true;
@@ -39,7 +39,7 @@ async function verify(browser, url, viewport) {
           if (cmd === 'save_config') return args.config;
           if (cmd === 'list_monitors') return [];
           if (cmd === 'audio_state') return { outputs: [], defaultId: null, volume: null, muted: false };
-          if (cmd === 'check_update') return { state: 'disabled' };
+          if (cmd === 'check_update') return new Promise(resolve => qa.checks.push(resolve));
           qa.calls.push({ cmd, args });
           if (cmd === 'launch_app') return { ...session(args.id), status: 'running', canForce: false };
           return null;
@@ -75,6 +75,19 @@ async function verify(browser, url, viewport) {
     await page.waitForFunction(() => qa.calls.some(c => c.cmd === 'launch_app'));
     assert.deepEqual(await calls('launch_app'), [{ id: 'Beta' }]);
 
+    // Manual and automatic checks share the pending Windows request, then a later check can retry.
+    await button('Settings').click();
+    await button('Updates').click();
+    await page.waitForFunction(() => qa.checks.length === 1, null, { timeout: 25000 });
+    await button('Check for updates').click();
+    await page.getByRole('heading', { name: 'Checking for updates…' }).waitFor();
+    assert.equal(await page.evaluate(() => qa.checks.length), 1);
+    await page.evaluate(() => qa.checks[0]({ state: 'available', version: '0.12.0' }));
+    await page.getByRole('heading', { name: 'Version 0.12.0 available' }).waitFor();
+    await button('Check for updates').click();
+    await page.waitForFunction(() => qa.checks.length === 2);
+    await page.evaluate(() => qa.checks[1]({ state: 'current' }));
+    await page.getByRole('heading', { name: 'You’re up to date.' }).waitFor();
     assert.deepEqual(errors, []);
   } finally {
     await context.close();

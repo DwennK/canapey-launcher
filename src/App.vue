@@ -1466,13 +1466,19 @@ async function imagePick(kind: "card" | "background") {
     if (path && editing.value) editing.value[kind] = path;
   });
 }
+let pendingUpdateCheck: Promise<UpdateInfo> | null = null;
+function fetchUpdate() {
+  pendingUpdateCheck ??= api.checkUpdate().finally(() => { pendingUpdateCheck = null; });
+  return pendingUpdateCheck;
+}
 async function checkUpdates() {
   if (working.value) return;
+  clearTimeout(updateTimer);
   update.value = null;
   updateError.value = "";
   await run(t('Checking for updates'), async () => {
     try {
-      update.value = await api.checkUpdate();
+      update.value = await fetchUpdate();
     } catch (e) {
       updateError.value = e instanceof Error ? e.message : String(e);
     }
@@ -1690,7 +1696,7 @@ onMounted(async () => {
   updateTimer = setTimeout(async () => {
     if (native.value)
       try {
-        update.value = await api.checkUpdate();
+        update.value = await fetchUpdate();
         if (update.value.state === "available")
           notify(
             t('Canapey {0} is available in Settings.', [update.value.version]),
