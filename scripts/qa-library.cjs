@@ -47,7 +47,10 @@ async function verify(browser, url, viewport, installed = false) {
         localStorage.setItem(key, JSON.stringify({ version: 1, apps, selectedId: 'alpha',
           settings: { scale: 1, locale: 'en', motion: false, sound: false,
             library: { favorites: [], categories: {}, sort: 'custom' },
-            remoteBindings: [{ button: 'library', action: 'library', key: { code: 'F8', ctrl: false, alt: false, shift: false }, global: false, appId: null }],
+            remoteBindings: [
+              { button: 'library', action: 'library', key: { code: 'F8', ctrl: false, alt: false, shift: false }, global: false, appId: null },
+              { button: 'red', action: 'launch', key: { code: 'F9', ctrl: false, alt: false, shift: false }, global: true, appId: 'removed-app' },
+            ],
           },
         }));
       }
@@ -131,6 +134,21 @@ async function verify(browser, url, viewport, installed = false) {
     assert.deepEqual(await ids(), ['netflix']);
     await page.setViewportSize(viewport);
     await verifyKeyboard(page);
+    await filter('Settings').click();
+    await filter('Remote').click();
+    await page.getByRole('combobox', { name: 'Button', exact: true }).selectOption('red');
+    const app = page.getByRole('combobox', { name: 'App', exact: true });
+    assert.equal(await app.inputValue(), 'removed-app');
+    const countBefore = (await writes()).length;
+    await filter('Save').click();
+    await page.getByRole('alert').filter({ hasText: 'Choose an app.' }).waitFor();
+    assert.equal((await writes()).length, countBefore);
+    await app.selectOption('steam');
+    await filter('Save').click();
+    await page.getByText('Mapping saved.', { exact: true }).waitFor();
+    const binding = await page.evaluate(() => window.configWrites.at(-1).settings.remoteBindings.find(item => item.button === 'red'));
+    assert.equal(binding.appId, 'steam');
+    assert.equal(binding.key.code, 'F9');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
   } finally {
@@ -148,7 +166,7 @@ async function verify(browser, url, viewport, installed = false) {
       const url = server.resolvedUrls.local[0];
       await verify(browser, url, { width: 1440, height: 900 });
       await verify(browser, url, { width: 390, height: 844 }, true);
-      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search, sorting, resize focus and keyboard selections.');
+      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search and sorting, resize focus, keyboard selections and remote reassignment.');
     } finally {
       await browser.close();
     }

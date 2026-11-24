@@ -120,7 +120,10 @@ async function save(remove = false) {
     if (conflict.value) { error.value = t('This key is already assigned to “{0}”. Program a different key in Flirc or remove that mapping.', [label(conflict.value.button)]); return; }
     if (!global.value && isMediaShortcut(key.value)) { error.value = t('Enable global mode to override the Windows action for this media key.'); return; }
     if (global.value && !validRemoteShortcut(key.value)) { error.value = t('This key is reserved by the system or is unsupported. Choose another key.'); return; }
-    if (action.value === 'launch' && !appId.value) { error.value = t('Choose an app.'); return; }
+    if (action.value === 'launch' && !props.apps.some(app => app.id === appId.value)) {
+      error.value = t('Choose an app.');
+      return;
+    }
   }
   busy.value = true;
   try {
