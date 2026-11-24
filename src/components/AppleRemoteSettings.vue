@@ -5,15 +5,31 @@ import { appleRemoteStatus, pairAppleRemote, cancelApplePairing, forgetAppleRemo
 const props = defineProps<{ native: boolean; settings?: AppleRemoteSettings; saveSettings: (settings: AppleRemoteSettings) => Promise<boolean> }>();
 const draft = ref({ ...(props.settings ?? defaultAppleRemote()) });
 const status = ref(emptyAppleRemoteStatus());
-const busy = ref(false), error = ref(''), receivedStatus = ref(false);
-let alive = true, timer: ReturnType<typeof setInterval> | undefined, stop: (() => void) | undefined;
+const busy = ref(false), error = ref(''), readError = ref(''), receivedStatus = ref(false);
+let alive = true, timer: ReturnType<typeof setTimeout> | undefined, stop: (() => void) | undefined;
 watch(() => props.settings, value => { draft.value = { ...(value ?? defaultAppleRemote()) }; }, { deep: true });
 const enabled = computed(() => props.settings?.enabled ?? false);
 const supported = computed(() => props.native && status.value.available);
 const checking = computed(() => props.native && !receivedStatus.value);
-const label = computed(() => checking.value ? (error.value ? t('Needs attention') : t('Checking connection…')) : !supported.value ? t('Available on Windows') : !enabled.value ? t('Disabled') : status.value.error ? t('Needs attention') : status.value.running ? t('Ready to connect') : t('Starting…'));
-function showStatus(value: AppleRemoteStatus) { if (alive) { status.value = value; receivedStatus.value = true; } }
-async function refresh() { if (props.native && alive) { try { showStatus(await appleRemoteStatus()); } catch (e) { if (alive) error.value = String(e); } } }
+const label = computed(() => readError.value || status.value.error ? t('Needs attention') : checking.value ? t('Checking connection…') : !supported.value ? t('Available on Windows') : !enabled.value ? t('Disabled') : status.value.running ? t('Ready to connect') : t('Starting…'));
+let revision = 0;
+function showStatus(value: AppleRemoteStatus) {
+  if (!alive) return;
+  revision++;
+  status.value = value;
+  receivedStatus.value = true;
+  readError.value = '';
+}
+async function refresh() {
+  if (!props.native || !alive) return;
+  const request = ++revision;
+  try {
+    const value = await appleRemoteStatus();
+    if (request === revision) showStatus(value);
+  } catch (e) {
+    if (alive && request === revision) readError.value = String(e);
+  }
+}
 async function run(action: () => Promise<unknown>) { if (busy.value) return; busy.value = true; error.value = ''; try { await action(); await refresh(); } catch (e) { error.value = String(e); } finally { busy.value = false; } }
 async function save() {
   await run(async () => {
@@ -25,17 +41,21 @@ async function save() {
 async function toggle(event: Event) { draft.value.enabled = (event.target as HTMLInputElement).checked; await save(); }
 onMounted(async () => {
   if (!props.native) return;
-  try { const unsubscribe = await onAppleRemoteStatus(showStatus); if (!alive) unsubscribe(); else stop = unsubscribe; } catch (e) { error.value = String(e); }
-  if (alive) { await refresh(); timer = setInterval(() => void refresh(), 1000); }
+  try { const unsubscribe = await onAppleRemoteStatus(showStatus); if (!alive) unsubscribe(); else stop = unsubscribe; } catch (e) { if (alive) readError.value = String(e); }
+  async function poll() {
+    await refresh();
+    if (alive) timer = setTimeout(poll, 1000);
+  }
+  await poll();
 });
-onUnmounted(() => { alive = false; clearInterval(timer); stop?.(); if (props.native && status.value.pairing.pin) void cancelApplePairing().catch(() => {}); });
+onUnmounted(() => { alive = false; clearTimeout(timer); stop?.(); if (props.native && status.value.pairing.pin) void cancelApplePairing().catch(() => {}); });
 </script>
 
 <template>
-  <section class="apple-remote" :aria-busy="checking && !error" aria-labelledby="apple-remote-title">
+  <section class="apple-remote" :aria-busy="checking && !readError" aria-labelledby="apple-remote-title">
     <header class="apple-heading">
       <div><span class="apple-eyebrow">{{ t('IPHONE · EXPERIMENTAL') }}</span><h3 id="apple-remote-title">{{ t('Your iPhone, your remote.') }}</h3><p>{{ t('Use Apple TV Remote from Control Center. No app to install.') }}</p></div>
-      <span class="apple-state" :class="{ ready: status.running }" role="status">{{ label }}</span>
+      <span class="apple-state" :class="{ ready: status.running && !status.error && !readError }" role="status">{{ label }}</span>
     </header>
     <label class="setting-row apple-enable"><span>{{ t('Enable iPhone remote') }}<small>{{ t('On the same private local network as your PC.') }}</small></span><input type="checkbox" role="switch" :checked="enabled" :disabled="!supported || busy" @change="toggle" /></label>
     <p v-if="!checking && !supported" class="apple-note">{{ t('iPhone connectivity is available in Canapey on Windows. This preview does not start a network service.') }}</p>
@@ -61,7 +81,7 @@ onUnmounted(() => { alive = false; clearInterval(timer); stop?.(); if (props.nat
       </details>
       <div v-if="status.pairing.devices.length" class="apple-devices"><h4>{{ t('Paired devices') }}</h4><div v-for="(device, index) in status.pairing.devices" :key="device.id" class="apple-device"><div><strong>{{ t('Device') }} {{ index + 1 }}</strong><span>{{ device.connected ? t('Connected') : t('Remembered') }}</span><code :title="device.id">{{ device.id }}</code></div><button class="small-button" :disabled="busy" :aria-label="t('Unpair device {0}', [index + 1])" @click="run(() => forgetAppleRemote(device.id))">{{ t('Unpair') }}</button></div></div>
     </template>
-    <p v-if="error || status.error" class="apple-error" role="alert">{{ error || status.error }}</p>
+    <p v-if="error || readError || status.error" class="apple-error" role="alert">{{ error || readError || status.error }}</p>
     <div class="apple-controls"><h4>{{ t('Gestures at a glance') }}</h4><dl><div><dt>{{ t('Swipe') }}</dt><dd>{{ t('Navigate') }}</dd></div><div><dt>{{ t('Tap') }}</dt><dd>{{ t('Confirm') }}</dd></div><div><dt>{{ t('Back') }}</dt><dd>{{ t('Go back') }}</dd></div><div><dt>{{ t('TV button') }}</dt><dd>{{ t('Return to Canapey') }}</dd></div><div><dt>{{ t('Playback and volume') }}</dt><dd>{{ t('Control the PC') }}</dd></div></dl><p>{{ t('In other apps, gestures send arrow keys, Enter and Escape. Support depends on the app.') }}</p></div>
     <details v-if="supported && enabled" class="apple-diagnostic"><summary>{{ t('My iPhone cannot find Canapey') }}</summary><p>{{ t('Connect both devices to the same local network. In Windows, set the network profile to Private. Guest networks and some VPNs block discovery.') }}</p><p>{{ t('In Windows Firewall, allow Canapey on private networks only: TCP on the displayed port and mDNS discovery (UDP 5353).') }}</p><p v-if="status.address">{{ t('Listening address:') }} <code>{{ status.address }}</code></p><p>{{ t('Navigation cannot control administrator windows or interfaces that ignore Windows key messages. Canapey must stay open; waking the PC is not supported.') }}</p></details>
   </section>
