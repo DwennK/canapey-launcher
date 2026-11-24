@@ -174,7 +174,7 @@ async fn supervise(app: tauri::AppHandle) {
     let mut desired = state.desired.subscribe();
     let mut stop = state.stop.subscribe();
     let mut server: Option<Server> = None;
-    let mut active: Option<(String, String)> = None;
+    let mut active: Option<(String, String, String)> = None;
     let mut timer = tokio::time::interval(Duration::from_secs(3));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     loop {
@@ -183,9 +183,12 @@ async fn supervise(app: tauri::AppHandle) {
         }
         let settings = desired.borrow_and_update().clone();
         if settings.enabled {
-            let found = tauri::async_runtime::spawn_blocking(windows::networks)
-                .await
-                .unwrap_or_else(|_| Err("Windows networks unavailable.".into()));
+            let endpoint = active.as_ref().map(|(id, ip, _)| (id.clone(), ip.clone()));
+            let found = tauri::async_runtime::spawn_blocking(move || {
+                windows::networks(endpoint.as_ref().map(|(id, ip)| (id.as_str(), ip.as_str())))
+            })
+            .await
+            .unwrap_or_else(|_| Err("Windows networks unavailable.".into()));
             let (networks, error) = match found {
                 Ok(n) => (n, None),
                 Err(e) => (vec![], Some(e)),
@@ -193,7 +196,7 @@ async fn supervise(app: tauri::AppHandle) {
             let network = networks
                 .iter()
                 .find(|n| settings.interface.as_ref().is_none_or(|id| id == &n.id));
-            let target = network.map(|n| (n.address.clone(), settings.name.clone()));
+            let target = network.map(|n| (n.id.clone(), n.address.clone(), settings.name.clone()));
             if active != target {
                 if let Some(old) = server.take() {
                     old.stop().await;
@@ -212,7 +215,7 @@ async fn supervise(app: tauri::AppHandle) {
                     ))
                 });
             }
-            if let Some((ip, name)) = target {
+            if let Some((id, ip, name)) = target {
                 if server.is_none() {
                     if state.hub.lock().unwrap().is_none() {
                         let path = app
@@ -268,7 +271,7 @@ async fn supervise(app: tauri::AppHandle) {
                                     "apple_remote_bind_ms={}",
                                     bind_started.elapsed().as_millis()
                                 );
-                                active = Some((ip, name));
+                                active = Some((id, ip, name));
                                 server = Some(new);
                                 state.status.lock().unwrap().error = None;
                             }

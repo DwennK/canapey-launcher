@@ -9,7 +9,38 @@ use windows_sys::Win32::{
     Security::Cryptography::*,
 };
 
-pub fn networks() -> std::result::Result<Vec<Network>, String> {
+struct Candidate {
+    network: Network,
+    has_gateway: bool,
+    metric: u32,
+}
+
+fn preferred_networks(
+    mut candidates: Vec<Candidate>,
+    active: Option<(&str, &str)>,
+) -> Vec<Network> {
+    candidates.sort_by(|a, b| {
+        let rank = |c: &Candidate| {
+            (
+                active != Some((c.network.id.as_str(), c.network.address.as_str())),
+                !c.has_gateway,
+                c.metric,
+            )
+        };
+        rank(a)
+            .cmp(&rank(b))
+            .then_with(|| a.network.id.cmp(&b.network.id))
+            .then_with(|| a.network.address.cmp(&b.network.address))
+    });
+    let mut seen = std::collections::HashSet::new();
+    candidates
+        .into_iter()
+        .map(|c| c.network)
+        .filter(|n| seen.insert(n.id.clone()))
+        .collect()
+}
+
+pub fn networks(active: Option<(&str, &str)>) -> std::result::Result<Vec<Network>, String> {
     unsafe {
         CoInitializeEx(None, COINIT_MULTITHREADED)
             .ok()
@@ -62,9 +93,13 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
         }
         let mut size = 16384;
         let mut buffer = vec![0u64; (size as usize).div_ceil(8)];
+        let flags = GAA_FLAG_SKIP_ANYCAST
+            | GAA_FLAG_SKIP_MULTICAST
+            | GAA_FLAG_SKIP_DNS_SERVER
+            | GAA_FLAG_INCLUDE_GATEWAYS;
         let mut code = GetAdaptersAddresses(
             AF_INET as u32,
-            GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+            flags,
             std::ptr::null(),
             buffer.as_mut_ptr().cast(),
             &mut size,
@@ -73,7 +108,7 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
             buffer.resize((size as usize).div_ceil(8), 0);
             code = GetAdaptersAddresses(
                 AF_INET as u32,
-                GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER,
+                flags,
                 std::ptr::null(),
                 buffer.as_mut_ptr().cast(),
                 &mut size,
@@ -113,10 +148,14 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
                             let v4 = &*addr.cast::<SOCKADDR_IN>();
                             let ip = Ipv4Addr::from(v4.sin_addr.S_un.S_addr.to_ne_bytes());
                             if !ip.is_loopback() && !ip.is_unspecified() && !ip.is_link_local() {
-                                result.push(Network {
-                                    id: id.clone(),
-                                    label: label.clone(),
-                                    address: ip.to_string(),
+                                result.push(Candidate {
+                                    network: Network {
+                                        id: id.clone(),
+                                        label: label.clone(),
+                                        address: ip.to_string(),
+                                    },
+                                    has_gateway: !a.FirstGatewayAddress.is_null(),
+                                    metric: a.Ipv4Metric,
                                 });
                             }
                         }
@@ -126,9 +165,7 @@ pub fn networks() -> std::result::Result<Vec<Network>, String> {
             }
             adapter = a.Next;
         }
-        result.sort_by(|a, b| (&a.id, &a.address).cmp(&(&b.id, &b.address)));
-        result.dedup_by(|a, b| a.id == b.id);
-        Ok(result)
+        Ok(preferred_networks(result, active))
     }
 }
 fn protect(data: &[u8], encrypt: bool) -> Result<Vec<u8>> {
@@ -209,6 +246,38 @@ pub fn persistence(path: std::path::PathBuf) -> crate::apple_remote::Persist {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn private_network_selection_preserves_a_live_endpoint_and_ranks_fallbacks() {
+        let candidates = || {
+            [
+                ("virtual", "10.0.0.1", false, 1),
+                ("wifi", "192.168.1.10", true, 50),
+                ("wifi", "192.168.1.20", true, 50),
+                ("lan", "192.168.2.2", true, 10),
+            ]
+            .into_iter()
+            .map(|(id, address, has_gateway, metric)| Candidate {
+                network: Network {
+                    id: id.into(),
+                    label: id.into(),
+                    address: address.into(),
+                },
+                has_gateway,
+                metric,
+            })
+            .collect()
+        };
+        let options = preferred_networks(candidates(), Some(("wifi", "192.168.1.20")));
+        assert_eq!(options.len(), 3);
+        assert_eq!(options[0].address, "192.168.1.20");
+        assert_eq!(
+            options.iter().find(|n| n.id == "lan").unwrap().address,
+            "192.168.2.2"
+        );
+        for active in [None, Some(("gone", "192.168.2.2"))] {
+            assert_eq!(preferred_networks(candidates(), active)[0].id, "lan");
+        }
+    }
     #[test]
     fn dpapi_round_trip_corruption_and_revocation_persist() {
         let dir = tempfile::tempdir().unwrap();
