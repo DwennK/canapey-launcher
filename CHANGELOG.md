@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.2 — 2026-11-24
+
+- Keep iPhone discovery on the current private Windows network while its address remains available. Companion sessions now stay connected across NoOp frames, and iPhone Settings clears temporary status errors when the connection recovers.
+- Move the Silo card on Home and change the Silo server address from the card's actions even while the old server is reachable.
+- Keep library search focused when resizing the window, improve directional navigation and filtering, and place the on-screen keyboard cursor at the edge of selected text on the first arrow press.
+- Keep app actions tied to the selected app across session and favorite changes. Remote shortcuts now require an app that is still in the library.
+- Preserve mute presses during audio refreshes, share simultaneous update checks, and recover a missing launcher configuration from its backup.
+
 ## 0.11.1 — 2026-11-23
 
 - Use Left and Right to rewind or fast-forward the current Silo episode with the controls hidden or the timeline focused. Use the visible transport row to select episodes, audio and subtitles.
