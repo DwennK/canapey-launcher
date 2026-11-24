@@ -454,6 +454,7 @@ let stopNative = () => {};
 let resizeObserver: ResizeObserver;
 let saveRequest = 0;
 let saveChain: Promise<boolean> = Promise.resolve(true);
+let selectionSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let lastSaved = defaults();
 let audioContext: AudioContext | undefined;
 const youtubeTile: Tile = { id: 'catalog-youtube', name: 'YouTube', theme: 'youtube', catalog: true, suggestion: true };
@@ -649,7 +650,7 @@ function keyboardUp(e: KeyboardEvent) {
   if (e.key === "Enter") releaseAccept("keyboard");
 }
 function visibilityChanged() {
-  if (document.hidden) cancelHold();
+  if (document.hidden) { cancelHold(); void flushSelectionSave(); }
 }
 async function openQuick(index: number) {
   if (panel.value || working.value || !hasCardActions(tiles.value[index])) return;
@@ -756,6 +757,11 @@ function persist() {
   return queueSave();
 }
 function queueSave(options: api.SaveOptions = {}, feedback = panel.value === 'settings') {
+  // The preview's sound toggle writes only its own key; all other saves include the selection.
+  if (native.value || !options.navigationSoundUpdate) {
+    clearTimeout(selectionSaveTimer);
+    selectionSaveTimer = undefined;
+  }
   const request = ++saveRequest;
   if (feedback) settingsSaveStatus.value = t('Saving…');
   const snapshot = JSON.parse(JSON.stringify(config.value));
@@ -776,12 +782,21 @@ function queueSave(options: api.SaveOptions = {}, feedback = panel.value === 'se
   return saveChain;
 }
 
+function flushSelectionSave() {
+  if (selectionSaveTimer !== undefined) return queueSave({}, false);
+  return saveChain;
+}
+async function quitLauncher() {
+  await flushSelectionSave();
+  await api.quit();
+}
 function selectionChanged() {
   const id = current.value.entry?.id;
   // Utility cards must not erase the last application to restore on startup.
   if (!id || id === config.value.selectedId) return;
   config.value.selectedId = id;
-  void queueSave({}, false);
+  clearTimeout(selectionSaveTimer);
+  selectionSaveTimer = setTimeout(flushSelectionSave, 350);
 }
 function sound() {
   if (!config.value.settings.sound || config.value.settings.soundVolume <= 0) return;
@@ -1185,7 +1200,7 @@ function keyboard(e: KeyboardEvent) {
       t('Quit Canapey?'),
       t('Your apps will stay open.'),
       t('Quit'),
-      api.quit,
+      quitLauncher,
     );
     return;
   }
@@ -1536,13 +1551,14 @@ watch(lastSettingsPage, () => {
   void queueSave({}, false);
 });
 watch(() => tiles.value.map(tile => tile.id), (ids, previous) => {
-  const id = previous?.[selected.value];
+  const id = loaded.value ? previous?.[selected.value] : config.value.selectedId;
   selected.value = reconcileSelection(ids, id ?? config.value.selectedId);
   if (!panel.value && cardsFocused.value) void focusCard();
 }, { flush: 'pre' });
 onMounted(async () => {
   document.addEventListener("keydown", keyboard);
   document.addEventListener("keyup", keyboardUp);
+  window.addEventListener("pagehide", flushSelectionSave);
   window.addEventListener("blur", cancelHold);
   window.addEventListener("blur", closePhoneSearch);
   window.addEventListener("focus", syncPhoneSearch);
@@ -1666,6 +1682,8 @@ onUnmounted(() => {
   cancelHold();
   document.removeEventListener("keydown", keyboard);
   document.removeEventListener("keyup", keyboardUp);
+  void flushSelectionSave();
+  window.removeEventListener("pagehide", flushSelectionSave);
   window.removeEventListener("blur", cancelHold);
   window.removeEventListener("blur", closePhoneSearch);
   window.removeEventListener("focus", syncPhoneSearch);
@@ -2428,7 +2446,7 @@ onUnmounted(() => {
                         t('Quit Canapey?'),
                         t('Your apps will stay open.'),
                         t('Quit'),
-                        api.quit,
+                        quitLauncher,
                       )
                     "
                   > {{ t('Quit Canapey') }} </button></template
@@ -2587,7 +2605,7 @@ onUnmounted(() => {
                     t('Quit Canapey?'),
                     t('Your apps will stay open.'),
                     t('Quit'),
-                    api.quit,
+                    quitLauncher,
                   )
                 "
               >
