@@ -21,6 +21,11 @@ async function configureSilo(error = '', editAddress = !error) {
   await nextTick();
   focusElement(panelRoot.value?.querySelector<HTMLElement>('[data-silo-primary]') ?? undefined);
 }
+async function editSiloAddress() {
+  await closePanel();
+  siloAddress.value = localStorage.getItem(siloKey) ?? '';
+  await configureSilo();
+}
 async function openSilo() {
   if (siloOpening.value) return;
   if (!siloAddress.value.trim()) return configureSilo();
@@ -2067,6 +2072,9 @@ onUnmounted(() => {
               </button>
               <button @click="openPanel('move')">
                 <Icon name="right" /><span>{{ movingSilo ? t('Move on Home') : t('Move') }}</span>
+              </button>
+              <button v-if="movingSilo" @click="editSiloAddress">
+                <Icon name="edit" /><span>{{ t('Change server address') }}</span>
               </button>
               <button v-if="quickApp" class="danger action-remove" @click="removeQuick">
                 <Icon name="trash" /><span>{{ t('Remove card') }}</span>
