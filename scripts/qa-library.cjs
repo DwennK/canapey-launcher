@@ -2,6 +2,34 @@
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
+async function verifyKeyboard(page) {
+  await page.getByRole('button', { name: 'Library keyboard' }).click();
+  const field = page.locator('.keyboard-panel textarea');
+  const left = page.getByRole('button', { name: 'Cursor left' });
+  const right = page.getByRole('button', { name: 'Cursor right' });
+  const range = () => field.evaluate(el => [el.selectionStart, el.selectionEnd]);
+  await field.fill('ABCDE');
+  for (const [arrow, expected] of [[left, 1], [right, 3]]) {
+    await field.focus();
+    await field.evaluate(el => el.setSelectionRange(1, 1));
+    await field.press('Shift+ArrowRight');
+    await field.press('Shift+ArrowRight');
+    assert.deepEqual(await range(), [1, 3]);
+    await arrow.click();
+    assert.deepEqual(await range(), [expected, expected]);
+  }
+  await field.fill('💙');
+  await left.click();
+  assert.deepEqual(await range(), [0, 0]);
+  await left.click();
+  assert.deepEqual(await range(), [0, 0]);
+  await right.click();
+  assert.deepEqual(await range(), [2, 2]);
+  await right.click();
+  assert.deepEqual(await range(), [2, 2]);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+}
+
 async function verify(browser, url, viewport, installed = false) {
   const context = await browser.newContext({ viewport });
   try {
@@ -102,6 +130,7 @@ async function verify(browser, url, viewport, installed = false) {
     assert.equal(await search.inputValue(), 'net');
     assert.deepEqual(await ids(), ['netflix']);
     await page.setViewportSize(viewport);
+    await verifyKeyboard(page);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
   } finally {
@@ -119,7 +148,7 @@ async function verify(browser, url, viewport, installed = false) {
       const url = server.resolvedUrls.local[0];
       await verify(browser, url, { width: 1440, height: 900 });
       await verify(browser, url, { width: 390, height: 844 }, true);
-      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search, sorting and resize focus.');
+      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search, sorting, resize focus and keyboard selections.');
     } finally {
       await browser.close();
     }

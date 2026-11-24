@@ -54,12 +54,13 @@ async function change(insertion: string | null) {
   field.value?.setSelectionRange(result.cursor, result.cursor);
 }
 function caret(delta: number) {
-  const before =
-    Array.from(draft.value.slice(0, start.value)).at(-1)?.length ?? 0;
-  const after = Array.from(draft.value.slice(end.value))[0]?.length ?? 0;
-  start.value = end.value =
-    delta < 0 ? start.value - before : end.value + after;
-  field.value?.setSelectionRange(start.value, end.value);
+  let cursor = delta < 0 ? start.value : end.value;
+  if (start.value === end.value) {
+    if (delta < 0) cursor -= Array.from(draft.value.slice(0, cursor)).at(-1)?.length ?? 0;
+    else cursor += Array.from(draft.value.slice(cursor))[0]?.length ?? 0;
+  }
+  start.value = end.value = cursor;
+  field.value?.setSelectionRange(cursor, cursor);
 }
 function clear() {
   start.value = 0;
