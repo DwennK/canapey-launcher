@@ -51,8 +51,8 @@ const emit = defineEmits<{
       <button
         class="audio-mute"
         :aria-pressed="state?.muted ?? false"
-        :aria-disabled="busy || state?.volume == null"
-        @click="!busy && state?.volume != null && emit('mute')"
+        :aria-disabled="switching || state?.volume == null"
+        @click="!switching && state?.volume != null && emit('mute')"
       >
         <Icon :name="state?.muted ? 'muted' : 'volume'" />
         <span

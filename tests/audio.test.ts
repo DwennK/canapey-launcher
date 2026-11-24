@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAudioControls } from "../src/lib/audio";
-import type { AudioState } from "../src/lib/types";
+import type { AudioState, AudioChange } from "../src/lib/types";
 const snapshot = (volume = 40, defaultId = "tv"): AudioState => ({
   outputs: [
     { id: "tv", name: "TV" },
@@ -68,6 +68,32 @@ describe("audio commands", () => {
     });
     expect(audio.error.value).toBe("Sortie modifiée");
     expect(audio.volume.value).toBe(30);
+  });
+  it("applies each mute press to the refreshed state of the original output", async () => {
+    const read = deferred<AudioState>();
+    const api = {
+      audioState: vi.fn().mockResolvedValueOnce(snapshot()).mockReturnValueOnce(read.promise),
+      changeAudio: vi.fn(async (change: AudioChange) => ({ ...snapshot(), muted: change.kind === "mute" && change.value })),
+    };
+    const audio = createAudioControls(api);
+    await audio.refresh();
+    const polling = audio.refresh();
+    audio.toggleMute();
+    audio.toggleMute();
+    expect(api.changeAudio).not.toHaveBeenCalled();
+    read.resolve({ ...snapshot(), muted: true });
+    await polling;
+    await settle();
+    expect(api.changeAudio.mock.calls.flat()).toEqual([
+      { kind: "mute", id: "tv", value: false },
+      { kind: "mute", id: "tv", value: true },
+    ]);
+    api.audioState.mockResolvedValueOnce(snapshot(50, "headset"));
+    const nextPoll = audio.refresh();
+    audio.toggleMute();
+    await nextPoll;
+    await settle();
+    expect(api.changeAudio).toHaveBeenCalledTimes(2);
   });
   it("does not allow volume on a device during an output switch", async () => {
     const change = deferred<AudioState>();

@@ -1,6 +1,8 @@
 import { computed, ref } from "vue";
 import type { AudioChange, AudioState } from "./types";
 
+type AudioRequest = AudioChange | { kind: "toggleMute"; id: string };
+
 // One IPC operation at a time. Consecutive slider changes coalesce; a slow read
 // cannot overwrite newer input and queued volume always retains its device ID.
 export function createAudioControls(api: {
@@ -11,11 +13,10 @@ export function createAudioControls(api: {
   const error = ref("");
   const busy = ref(false);
   const volume = ref(0);
-  const pending = ref<AudioChange[]>([]);
+  const pending = ref<AudioRequest[]>([]);
   const changingOutput = computed(() =>
     pending.value.some((c) => c.kind === "output"),
   );
-  let active: AudioChange | null = null;
   const switching = ref(false);
   let refreshing: Promise<void> | null = null;
   let draining = false;
@@ -54,7 +55,15 @@ export function createAudioControls(api: {
     busy.value = true;
     try {
       while (pending.value.length) {
-        active = pending.value.shift()!;
+        const request = pending.value.shift()!;
+        let active: AudioChange;
+        if (request.kind === "toggleMute") {
+          const current = state.value;
+          if (!current || current.defaultId !== request.id || current.volume === null) continue;
+          active = { kind: "mute", id: request.id, value: !current.muted };
+        } else {
+          active = request;
+        }
         switching.value = active.kind === "output";
         try {
           apply(await api.changeAudio(active));
@@ -71,13 +80,12 @@ export function createAudioControls(api: {
         }
       }
     } finally {
-      active = null;
       switching.value = false;
       busy.value = false;
       draining = false;
     }
   }
-  function change(value: AudioChange) {
+  function change(value: AudioRequest) {
     const last = pending.value.at(-1);
     if (
       value.kind === "volume" &&
@@ -104,11 +112,10 @@ export function createAudioControls(api: {
     });
   }
   function toggleMute() {
-    if (!state.value?.defaultId || busy.value) return;
+    if (!state.value?.defaultId || state.value.volume === null || switching.value || changingOutput.value) return;
     change({
-      kind: "mute",
+      kind: "toggleMute",
       id: state.value.defaultId,
-      value: !state.value.muted,
     });
   }
   function setOutput(id: string) {
