@@ -156,17 +156,12 @@ export const imageUrl = (path: string | null | undefined) =>
         ? convertFileSrc(path)
         : ""
     : "";
-export interface LibrarySearchField { id: string; text: string }
-export const setAppleLibrarySearch = (field: LibrarySearchField | null) =>
-  invoke<boolean>('apple_library_search', { field });
 export const openSilo = (server: string): Promise<void> =>
   native ? invoke('open_silo', { server }) : unavailable();
 export async function subscribe(handlers: {
   siloUnavailable: () => void;
   navigationSound: (enabled: boolean) => void;
   action: (v: Action) => void;
-  libraryText: (field: LibrarySearchField) => void;
-  appleService: (running: boolean) => void;
   appleInput: (v: {action: Action; connection: number}) => void;
   controller: (v: string | null) => void;
   sessions: (v: Session[]) => void;
@@ -187,8 +182,6 @@ export async function subscribe(handlers: {
   }
   const stops = await Promise.all([
     listen('silo-unavailable', handlers.siloUnavailable),
-    listen<LibrarySearchField>('apple-library-text', e => handlers.libraryText(e.payload)),
-    listen<{running: boolean}>('apple-remote-status', e => handlers.appleService(e.payload.running)),
     listen<{action: Action; connection: number}>("apple-input", e => handlers.appleInput(e.payload)),
     listen<Action>("input", (e) => handlers.action(e.payload)),
     listen<string>("update-status", (e) => handlers.updateStatus(e.payload)),

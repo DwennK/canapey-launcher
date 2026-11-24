@@ -2,7 +2,7 @@
 
 ## Flow
 
-The **YouTube** card appears on Home and in the library even before installation. It respects search and the Video filter. Its labels are **YouTube**, **Install YouTube** and **Open YouTube**.
+The **YouTube** card appears on Home and in the library even before installation. It appears under the Video filter. Its labels are **YouTube**, **Install YouTube** and **Open YouTube**.
 
 Opening the card checks existing installations. A detected installation is saved and opened fullscreen. Otherwise, the panel shows the latest stable version and download size. Install downloads the installer and opens the standard Windows wizard; when it exits, Canapey checks again and saves the card. Open becomes available only after successful detection.
 

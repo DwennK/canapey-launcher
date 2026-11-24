@@ -24,7 +24,6 @@ export function normalizeLibrary(value: unknown): LibraryPreferences {
   if (input.sort && ['custom', 'name', 'category'].includes(input.sort)) result.sort = input.sort;
   return result;
 }
-const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
 
 export function categoryFor(app: AppEntry, preferences: LibraryPreferences): AppCategory {
   if (Object.hasOwn(preferences.categories, app.id)) return preferences.categories[app.id]!;
@@ -40,13 +39,10 @@ interface LibraryCard {
   name: string;
   category: AppCategory;
   favorite: boolean;
-  searchAlias?: string;
 }
 
-export function groupLibraryCards<T extends LibraryCard>(cards: readonly T[], sort: LibrarySort, query: string) {
-  const text = normalize(query.trim());
-  const all = cards.filter(card => normalize(card.name).includes(text) ||
-    (card.searchAlias && normalize(card.searchAlias).includes(text)));
+export function groupLibraryCards<T extends LibraryCard>(cards: readonly T[], sort: LibrarySort) {
+  const all = [...cards];
   const byName = (a: T, b: T) => a.name.localeCompare(b.name, locale.value, { numeric: true, sensitivity: 'base' });
   if (sort === 'name') all.sort(byName);
   if (sort === 'category') all.sort((a, b) =>

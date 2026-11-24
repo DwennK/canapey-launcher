@@ -31,7 +31,7 @@ async (page) => {
   };
   await capture('docs/images/home.png');
   await page.getByRole('navigation',{name:"Main navigation"}).getByRole('button',{name:"Library",exact:true}).click();
-  await page.getByRole('searchbox',{name:"Search the library"}).waitFor();
+  await page.getByRole('group',{name:"Filter the library"}).waitFor();
   await capture('docs/images/library.png');
   await page.getByRole('navigation',{name:"Main navigation"}).getByRole('button',{name:"Home",exact:true}).click();
   await page.locator('.app-card').filter({hasText:'Spotify'}).focus();

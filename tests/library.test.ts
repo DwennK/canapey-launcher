@@ -24,14 +24,12 @@ describe('living-room library', () => {
     expect(homeApps(many, defaultLibrary(), [])).toEqual(many.slice(0, 6));
     expect(homeApps([], defaultLibrary(), [])).toEqual([]);
   });
-  it('combines accent-insensitive search, filters and sorting without reordering storage', () => {
+  it('combines filters and sorting without reordering storage', () => {
     const preferences = { ...defaultLibrary(), sort: 'name' as const, favorites: ['game'] };
     const cards = apps.map(app => ({ ...app, category: categoryFor(app, preferences), favorite: preferences.favorites.includes(app.id) }));
-    const groups = groupLibraryCards(cards, preferences.sort, '');
+    const groups = groupLibraryCards(cards, preferences.sort);
     expect(groups.favorites.map(app => app.id)).toEqual(['game']);
     expect(groups.all.map(app => app.id)).toEqual(['other', 'video', 'music', 'game']);
-    expect(groupLibraryCards(cards, 'name', ' editeur ').all.map(app => app.id)).toEqual(['other']);
-    expect(groupLibraryCards(cards, 'name', 'Netflix').favorites).toEqual([]);
     expect(apps.map(app => app.id)).toEqual(['music', 'game', 'video', 'other']);
   });
   it('honors category overrides without using decorative artwork as identity', () => {
@@ -42,16 +40,15 @@ describe('living-room library', () => {
     expect(categoryFor(renamed, preferences)).toBe('games');
     expect(categoryFor(apps[3]!, preferences)).toBe('games');
   });
-  it('includes catalog cards in video counts, name sorting and alias searches', () => {
+  it('includes catalog cards in video counts and name sorting', () => {
     const cards = [
       { name: 'VLC', category: 'video', favorite: true },
-      { name: 'YouTube', category: 'video', favorite: false, searchAlias: 'VacuumTube' },
+      { name: 'YouTube', category: 'video', favorite: false },
       { name: 'Silo', category: 'video', favorite: false },
     ] as const;
-    const groups = groupLibraryCards(cards, 'name', '');
+    const groups = groupLibraryCards(cards, 'name');
     expect(groups.all).toEqual([cards[2], cards[0], cards[1]]);
     expect(groups.video).toEqual(groups.all);
     expect(groups.favorites).toEqual([cards[0]]);
-    expect(groupLibraryCards(cards, 'custom', ' vacuum ').video).toEqual([cards[1]]);
   });
 });

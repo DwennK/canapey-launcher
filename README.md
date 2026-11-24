@@ -48,8 +48,8 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/library.png" alt="Canapey library with search, category counts, sorting, favorite web shortcuts and the YouTube installation card" width="100%">
-      <p><strong>Your space, at a glance.</strong><br><sub>Find your apps with search, favourites, categories and sorting.</sub></p>
+      <img src="docs/images/library.png" alt="Canapey library with category counts, sorting, favorite web shortcuts and the YouTube installation card" width="100%">
+      <p><strong>Your space, at a glance.</strong><br><sub>Browse your apps by favourite, category or sort order.</sub></p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/images/ambience.png" alt="A Spotify web shortcut selected in Canapey, with a green-lit turntable backdrop" width="100%">
@@ -150,13 +150,13 @@ Roku TV support includes compatible TCL, Hisense and Roku-branded TVs. Compatibi
 
 In **Settings → iPhone**, enable the receiver and choose **Pair an iPhone**. Open Apple TV Remote in the iPhone Control Centre, select your PC and enter the PIN displayed by Canapey. Pairing stays open for two minutes. Both devices must be on the same private local network.
 
-Swipe to navigate, tap to select and use TV to return to Canapey. Focus **Library → Search the library** to type a search from the paired iPhone. Leaving the field closes the keyboard session. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
+Swipe to navigate, tap to select and use TV to return to Canapey. Playback and volume control Windows. Outside Canapey, navigation targets the active app's window without activating the launcher. The runtime is entirely Rust: **no Python, sidecar or additional iOS app is installed**. pyatv is used only in development and CI interoperability tests.
 
 This feature remains experimental: real Windows/iPhone compatibility and wake-from-sleep recovery have not yet been validated. Mouse mode, Siri, AirPlay, playback information and waking the PC are outside this version. See [implementation, upstream tracking and hardware checks](docs/APPLE_REMOTE.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ### Home, library and settings
 
-Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with accent-insensitive search, favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
+Home shows running apps first, followed by favorites without duplicates. Before favorites are selected, it offers up to six apps. Use **Actions → Add to favorites**, or the favorite control in **Settings → Apps**. **Library** contains all apps, with favorite/category filters and custom, alphabetical or category ordering. Set a category in the app editor; changing artwork does not change categorization. **Return to the Windows desktop** is in the power menu and **Startup and system**.
 
 **Locate application** repairs a missing executable or Windows shortcut. Choose a matching installed app or browse for its file, then confirm **Use this location**. **Find a setting** filters the sidebar by page or task, including HDMI, volume and pairing. Press Ctrl+F to search.
 
@@ -185,7 +185,7 @@ In **Settings → Controllers → Xbox / Steam Input troubleshooting**, test Xbo
 
 - Arrow keys move focus between controls. A / Cross on a text field opens the on-screen QWERTY keyboard, with uppercase, numbers, symbols and caret controls. Choose **Done** to apply the draft or B / Circle to cancel; focus returns to the field. Search and name fields also have a **Keyboard** button. Physical typing remains available. Enter starts or ends physical text editing; Enter / A / Cross starts or ends selector and slider editing.
 - While editing text, arrows move the caret and **Backspace deletes text**. Esc / B / Circle ends editing without closing the menu. Shift + Enter adds a line in the arguments field. Outside editing, Backspace returns to the previous menu.
-- From the carousel, Up reaches the main action and then the header. From the first library row, Up reaches search and filters. The power menu remains available in the header. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
+- From the carousel, Up reaches the main action and then the header. From the first library row, Up focuses the selected filter. The power menu remains available in the header. Tab stays inside an open dialog. Confirmations focus **Cancel**, and going back restores the original control.
 - Settings, multi-app import, ordering, themes, confirmations and power controls support controller navigation. Paths and arguments can also use the on-screen keyboard; choosing files still uses a Windows dialog.
 - **Steam Input** can intercept Start/Back or map a controller to keyboard/mouse input through its Desktop Layout. Disable that mapping for Canapey or choose the alternative shortcut. Canapey does not automatically disable duplicate Steam Input and native input.
 - Controllers must be exposed to Windows in a format supported by gilrs / Windows Gaming Input. Canapey does not install PlayStation drivers.

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
 async function verifyKeyboard(page) {
-  await page.getByRole('button', { name: 'Library keyboard' }).click();
+  await page.getByRole('button', { name: 'Search keyboard' }).click();
   const field = page.locator('.keyboard-panel textarea');
   const left = page.getByRole('button', { name: 'Cursor left' });
   const right = page.getByRole('button', { name: 'Cursor right' });
@@ -27,7 +27,7 @@ async function verifyKeyboard(page) {
   assert.deepEqual(await range(), [2, 2]);
   await right.click();
   assert.deepEqual(await range(), [2, 2]);
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.locator('.keyboard-panel').getByRole('button', { name: 'Cancel', exact: true }).click();
 }
 
 async function verify(browser, url, viewport, installed = false) {
@@ -83,7 +83,7 @@ async function verify(browser, url, viewport, installed = false) {
     assert.equal(await selectedId(), 'app:alpha');
 
     await card('library').click();
-    const search = page.getByRole('searchbox');
+    assert.equal(await page.getByRole('searchbox').count(), 0);
     const sort = page.getByRole('combobox', { name: 'Sort' });
     const filter = name => page.getByRole('button', { name, exact: true });
     const youtube = installed ? 'youtube' : 'catalog-youtube';
@@ -101,47 +101,50 @@ async function verify(browser, url, viewport, installed = false) {
     assert.deepEqual(await ids(), ['steam', 'alpha', 'zulu', 'netflix', 'catalog-silo', youtube]);
     await filter('Video').click();
     assert.deepEqual(await ids(), ['netflix', 'catalog-silo', youtube]);
-    await search.fill('silo');
-    assert.deepEqual(await ids(), ['catalog-silo']);
-    assert.equal(await filter('Video').getAttribute('aria-description'), '1 app');
-    assert.equal(await page.locator('.section-count').innerText(), '1 app of 6');
-    await search.fill('missing application');
+    assert.equal(await page.locator('.section-count').innerText(), '3 apps of 6');
+    await card('netflix').focus();
+    await page.keyboard.press('ArrowUp');
+    assert(await filter('Video').evaluate(el => el === document.activeElement));
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await selectedId(), 'app:netflix');
+    await filter('Favorites').click();
     await page.getByRole('heading', { name: 'No apps found' }).waitFor();
     assert.equal(await page.locator('.section-count').innerText(), '0 apps of 6');
+    await filter('Clear filters').click();
+    assert(await filter('All').evaluate(el => el === document.activeElement));
+    assert.deepEqual(await ids(), ['steam', 'alpha', 'zulu', 'netflix', 'catalog-silo', youtube]);
+    await filter('Favorites').click();
     await filter('Home').click();
     await page.locator('.app-card:focus').waitFor();
     await page.keyboard.press('ArrowDown');
-    assert.equal(await search.inputValue(), '');
     assert.equal(await filter('All').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('.grid .app-card:focus').count(), 1);
     await filter('Video').click();
-    await search.fill('missing application');
     await filter('Video').focus();
     await page.keyboard.press('F8');
-    assert.equal(await search.inputValue(), '');
     assert.equal(await filter('All').getAttribute('aria-pressed'), 'true');
     assert.equal((await ids()).length, 6);
     assert.equal(await page.locator('.app-card:focus').count(), 1);
-    if (!installed) {
-      await search.fill('vacuumtube');
-      assert.deepEqual(await ids(), [youtube]);
-    }
     await filter('Favorites').click();
     await filter('Home').click();
     await card('library').click();
-    assert.equal(await search.inputValue(), '');
     assert.equal(await filter('All').getAttribute('aria-pressed'), 'true');
     await sort.selectOption('custom');
     assert.deepEqual(await ids(), custom);
-    await search.fill('ne');
+    await filter('Add').click();
+    const picker = page.getByRole('dialog', { name: 'Add apps' });
+    const search = picker.getByRole('searchbox', { name: 'Search for an app' });
+    await search.fill('spo');
     await page.setViewportSize({ width: viewport.width - 30, height: viewport.height - 80 });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert(await search.evaluate(el => el === document.activeElement));
     await page.keyboard.type('t');
-    assert.equal(await search.inputValue(), 'net');
-    assert.deepEqual(await ids(), ['netflix']);
+    assert.equal(await search.inputValue(), 'spot');
+    assert.equal(await picker.locator('[data-app-row]').count(), 1);
+    assert.match(await picker.locator('[data-app-row]').innerText(), /Spotify/);
     await page.setViewportSize(viewport);
     await verifyKeyboard(page);
+    await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
     await filter('Settings').click();
     await filter('Remote').click();
     await page.getByRole('combobox', { name: 'Button', exact: true }).selectOption('red');
@@ -184,7 +187,7 @@ async function verify(browser, url, viewport, installed = false) {
       const url = server.resolvedUrls.local[0];
       await verify(browser, url, { width: 1440, height: 900 });
       await verify(browser, url, { width: 390, height: 844 }, true);
-      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search and sorting, resize focus, keyboard selections and remote reassignment.');
+      console.log('PASS: selection writes and restoration, mapped Library, category and favorite filters, sorting, Add search and resize focus, keyboard selections and remote reassignment.');
     } finally {
       await browser.close();
     }

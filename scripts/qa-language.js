@@ -40,15 +40,12 @@ async (page) => {
   await page.screenshot({path:'output/playwright/language-remote-photo.png'});
   await page.getByRole('button',{name:'Close settings'}).click();
   await page.getByRole('navigation',{name:'Main navigation'}).getByRole('button',{name:'Library',exact:true}).click();
-  await page.getByRole('searchbox',{name:'Search the library'}).focus();
-  await page.keyboard.press('F2');
-  if(await page.locator('.keyboard-panel').count()===0){
-    await page.getByRole('button',{name:'Library keyboard',exact:true}).click();
-  }
+  await page.getByRole('button',{name:'Add',exact:true}).click();
+  await page.getByRole('button',{name:'Search keyboard',exact:true}).click();
   await page.locator('.keyboard-panel').waitFor();
   verify((await page.locator('.keyboard-row').first().innerText()).replace(/\s/g,'')==='qwertyuiop','English QWERTY layout');
   await page.screenshot({path:'output/playwright/language-keyboard.png'});
-  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.locator('.keyboard-panel').getByRole('button',{name:'Cancel',exact:true}).click();
   await page.reload();
   await page.locator('.launcher.ready').waitFor();
   verify(await page.evaluate(()=>JSON.parse(localStorage.getItem('canapey-ui-preview-v1')).settings.locale)==='en','Language persists after reload');

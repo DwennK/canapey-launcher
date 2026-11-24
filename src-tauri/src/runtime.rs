@@ -1215,7 +1215,6 @@ pub fn run() {
             crate::tv_desktop::tv_standby,
             run_remote_action,
             crate::apple_remote_desktop::apple_remote_status,
-            crate::apple_remote_desktop::apple_library_search,
             crate::apple_remote_desktop::apple_remote_pair,
             crate::apple_remote_desktop::apple_remote_cancel_pairing,
             crate::apple_remote_desktop::apple_remote_forget,

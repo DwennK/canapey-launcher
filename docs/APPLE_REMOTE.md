@@ -19,12 +19,6 @@ The initial name is `Canapey — <COMPUTERNAME>`. **Name and network** changes i
 
 **My iPhone cannot find Canapey** explains Private profiles, VPNs, guest networks and private firewall permissions: TCP on the displayed port and mDNS UDP 5353. It does not inspect actual firewall rules or automatically add exceptions.
 
-## Library search keyboard (v0.9.0)
-
-Pair the iPhone and open **Library**. Focus **Search the library** to advertise that field to the authenticated Apple TV Remote session. Text edits filter the library immediately. Moving focus away or switching windows closes the text session. Other fields and external applications receive no text from this integration.
-
-The pyatv interoperability check covers focus notifications, reading, appending, replacing and clearing Unicode text over encrypted Companion frames. It also checks that input is ignored after blur. Opening and using the native keyboard in Control Center still needs verification on a physical iPhone with the Windows receiver.
-
 ## Provenance and tracking
 
 | Source | Latest reviewed reference | Ported / used reference |
