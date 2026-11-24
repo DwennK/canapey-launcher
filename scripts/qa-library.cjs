@@ -94,6 +94,14 @@ async function verify(browser, url, viewport, installed = false) {
     assert.equal(await filter('All').getAttribute('aria-pressed'), 'true');
     await sort.selectOption('custom');
     assert.deepEqual(await ids(), custom);
+    await search.fill('ne');
+    await page.setViewportSize({ width: viewport.width - 30, height: viewport.height - 80 });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert(await search.evaluate(el => el === document.activeElement));
+    await page.keyboard.type('t');
+    assert.equal(await search.inputValue(), 'net');
+    assert.deepEqual(await ids(), ['netflix']);
+    await page.setViewportSize(viewport);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
   } finally {
@@ -111,7 +119,7 @@ async function verify(browser, url, viewport, installed = false) {
       const url = server.resolvedUrls.local[0];
       await verify(browser, url, { width: 1440, height: 900 });
       await verify(browser, url, { width: 390, height: 844 }, true);
-      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search and sorting.');
+      console.log('PASS: selection writes and restoration, mapped Library, catalog counts, search, sorting and resize focus.');
     } finally {
       await browser.close();
     }

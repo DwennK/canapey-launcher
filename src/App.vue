@@ -827,7 +827,10 @@ async function focusCard() {
     '[aria-pressed="true"]',
   );
   card?.focus({ preventScroll: true });
-  card?.scrollIntoView({
+  if (card) scrollCardIntoView(card);
+}
+function scrollCardIntoView(card: Element) {
+  card.scrollIntoView({
     block: "nearest",
     inline: "nearest",
     behavior:
@@ -1540,12 +1543,10 @@ watch(audioState, async () => {
     restoreFocus(panelRoot.value, bookmark);
   }
 });
-watch(
-  () => config.value.settings.scale,
-  () => {
-    if (!panel.value) void focusCard();
-  },
-);
+watch([width, height, () => config.value.settings.scale], () => {
+  const focused = document.activeElement;
+  if (focused && cardsRoot.value?.contains(focused)) scrollCardIntoView(focused);
+}, { flush: 'post' });
 watch(lastSettingsPage, () => {
   if (!loaded.value) return;
   config.value.settings.lastSettingsTab = lastSettingsPage.value;
@@ -1570,7 +1571,6 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(() => {
     width.value = window.innerWidth;
     height.value = window.innerHeight;
-    if (!panel.value) void focusCard();
   });
   resizeObserver.observe(document.documentElement);
   clockTimer = setInterval(() => {
