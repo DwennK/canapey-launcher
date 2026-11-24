@@ -14,19 +14,33 @@ impl ConfigStore {
     }
     pub fn load(&self) -> (Config, Option<String>) {
         let p = self.dir.join("config.json");
-        if !p.exists() {
+        let backup = self.dir.join("config.backup.json");
+        if let Ok(config) = Self::read(&p) {
+            return (config, None);
+        }
+        if p.exists() {
+            let stamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
+            let _ = fs::rename(&p, self.dir.join(format!("config.invalid-{stamp}.json")));
+        } else if !backup.exists() {
             return (Config::default(), None);
         }
-        if let Ok(c) = Self::read(&p) {
-            return (c, None);
+        match Self::read(&backup) {
+            Ok(config) => {
+                // Restore the primary without rotating or replacing the known-good backup.
+                if !p.exists() && self.save(&config).is_ok() {
+                    (config, Some("Configuration restored from backup.".into()))
+                } else {
+                    (config, Some("Using the configuration backup. The primary file could not be restored.".into()))
+                }
+            }
+            Err(_) => (
+                Config::default(),
+                Some("Could not recover the configuration. Using default settings.".into()),
+            ),
         }
-        let stamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis();
-        let _ = fs::rename(&p, self.dir.join(format!("config.invalid-{stamp}.json")));
-        let restored = Self::read(&self.dir.join("config.backup.json")).unwrap_or_default();
-        (restored,Some("Damaged configuration: restored a backup or default settings. The original file is preserved.".into()))
     }
     fn read(p: &Path) -> Result<Config, String> {
         let meta = fs::metadata(p).map_err(|e| e.to_string())?;
@@ -291,6 +305,31 @@ mod tests {
             serde_json::to_value(config).unwrap()
         );
     }
+    #[test]
+    fn missing_primary_restores_backup_across_restarts() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(d.path().into());
+        let mut config = Config::default();
+        config.settings.sound = false;
+        store.save(&config).unwrap();
+        fs::rename(
+            d.path().join("config.json"),
+            d.path().join("config.backup.json"),
+        )
+        .unwrap();
+        let backup = fs::read(d.path().join("config.backup.json")).unwrap();
+        let (restored, warning) = store.load();
+        assert!(warning.is_some());
+        assert!(!restored.settings.sound);
+        assert_eq!(
+            fs::read(d.path().join("config.backup.json")).unwrap(),
+            backup
+        );
+        let (reloaded, warning) = store.load();
+        assert!(warning.is_none());
+        assert!(!reloaded.settings.sound);
+    }
+
     #[test]
     fn absent_corrupt_backup_atomic() {
         let d = tempfile::tempdir().unwrap();
