@@ -448,6 +448,7 @@ const editing = ref<AppEntry | null>(null),
 const confirmTitle = ref(""),
   confirmText = ref(""),
   confirmLabel = ref(t('Confirm'));
+const forceTarget = ref<string | null>(null);
 let confirmAction: () => Promise<unknown> = async () => {};
 let toastTimer: ReturnType<typeof setTimeout>,
   clockTimer: ReturnType<typeof setInterval>,
@@ -532,6 +533,8 @@ const columns = computed(() =>
 const selectedSession = computed(() =>
   sessions.value.find((s) => s.appId === current.value.id),
 );
+const sessionPanelId = ref<string | null>(null);
+const panelSession = computed(() => sessions.value.find(session => session.appId === sessionPanelId.value));
 const inputLabels = computed(() => controllerLabels(controller.value));
 const time = computed(() =>
   clock.value.toLocaleTimeString(locale.value, {
@@ -714,8 +717,6 @@ function trapFocus(e: KeyboardEvent) {
 const sleepPc = () => api.power("sleep"),
   restartPc = () => api.power("restart"),
   shutdownPc = () => api.power("shutdown");
-const resumeCurrent = () => api.resume(current.value.id),
-  forceCurrent = () => api.closeApp(current.value.id, true);
 const resumeSession = (id: string) => run(t('Resuming'), () => api.resume(id));
 function closeSession(id: string, dismissMenu = false) {
   const origin = panel.value;
@@ -723,15 +724,19 @@ function closeSession(id: string, dismissMenu = false) {
     await api.closeApp(id);
     if (dismissMenu && panel.value === origin &&
         ((origin === "quick" && quickId.value === id) ||
-         (origin === "session" && current.value.id === id))) await closePanel();
+         (origin === "session" && sessionPanelId.value === id))) await closePanel();
   });
 }
-const forceSession = (id: string) =>
+const forceSession = (id: string, text = t('Unsaved data in this app may be lost.')) =>
   confirm(
     t('Force close?'),
-    t('Unsaved data in this app may be lost.'),
+    text,
     t('Force close'),
-    () => api.closeApp(id, true),
+    async () => {
+      if (sessions.value.some(session => session.appId === id && session.canForce))
+        await api.closeApp(id, true);
+    },
+    id,
   );
 function notify(message: unknown) {
   toast.value = message instanceof Error ? message.message : String(message);
@@ -886,7 +891,7 @@ async function closePanel() {
   const previous = panelHistory.pop();
   if (!previous?.panel && panelRoot.value) panelRoot.value.inert = true;
   panel.value = previous?.panel ?? "";
-  if (panel.value === "session" && !selectedSession.value) return closePanel();
+  if (panel.value === "session" && !panelSession.value) return closePanel();
   if (["quick", "move"].includes(panel.value) && !quickCard.value)
     return closePanel();
   await nextTick();
@@ -909,7 +914,9 @@ function confirm(
   text: string,
   label: string,
   action: () => Promise<unknown>,
+  forceAppId: string | null = null,
 ) {
+  forceTarget.value = forceAppId;
   confirmTitle.value = title;
   confirmText.value = text;
   confirmLabel.value = label;
@@ -918,8 +925,9 @@ function confirm(
 }
 async function acceptConfirm() {
   await run(confirmLabel.value, async () => {
-    await confirmAction();
-    await closePanel();
+    const action = confirmAction;
+    await action();
+    if (panel.value === "confirm" && confirmAction === action) await closePanel();
   });
 }
 async function activate(tile = current.value, youtubeChecked = false) {
@@ -963,7 +971,10 @@ async function activate(tile = current.value, youtubeChecked = false) {
   const session = sessions.value.find((s) => s.appId === tile.id);
   if (session) {
     if (session.status === "running") await resumeSession(tile.id);
-    else void openPanel("session");
+    else {
+      sessionPanelId.value = session.appId;
+      void openPanel("session");
+    }
     return;
   }
   await run(t('Launching'), async () => {
@@ -1531,7 +1542,11 @@ watch([panel, settingsRoute, showControllerTest], () => {
   if (panel.value !== "settings" || settingsRoute.value !== "controls" || !showControllerTest.value)
     leaveControllerTest();
 });
-watch(selectedSession, (session) => {
+watch(() => panel.value === 'confirm' && forceTarget.value !== null &&
+  !sessions.value.some(session => session.appId === forceTarget.value && session.canForce), invalid => {
+  if (invalid) void closePanel();
+});
+watch(panelSession, (session) => {
   if (!session && panel.value === "session") {
     void closePanel();
   }
@@ -1981,7 +1996,7 @@ onUnmounted(() => {
                               : panel === "power"
                                 ? t('Power')
                                 : panel === "session"
-                                  ? current.name
+                                  ? panelSession?.name
                                   : confirmTitle
                 }}
               </h2>
@@ -2624,42 +2639,37 @@ onUnmounted(() => {
                 ><Icon name="right" :size="18" />
               </button></div
           ></template>
-          <template v-else-if="panel === 'session'"
+          <template v-else-if="panel === 'session' && panelSession"
             ><p class="panel-intro">
               {{
-                selectedSession?.status === "untracked"
+                panelSession.status === "untracked"
                   ? t('This launch uses a shared or unidentified window. Switch to it with Alt + Tab.')
                   : t('Your app is still open.')
               }}
             </p>
             <div class="power-options">
               <button
-                :disabled="selectedSession?.status === 'untracked'"
-                @click="run(t('Resuming'), resumeCurrent)"
+                :disabled="panelSession.status === 'untracked'"
+                @click="resumeSession(panelSession.appId)"
               >
                 <Icon name="play" /><span>{{ t('Resume') }}</span></button
-              ><button @click="closeSession(current.id, true)">
+              ><button @click="closeSession(panelSession.appId, true)">
                 <Icon name="close" /><span>{{
-                  selectedSession?.status === "untracked"
+                  panelSession.status === "untracked"
                     ? t('Stop tracking this launch')
                     : t('Close normally')
                 }}</span></button
               ><button
-                v-if="selectedSession?.canForce"
+                v-if="panelSession.canForce"
                 class="danger"
                 @click="
-                  confirm(
-                    t('Force close?'),
-                    t('Unsaved data in this app may be lost. Only processes launched and identified by Canapey will be stopped.'),
-                    t('Force close'),
-                    forceCurrent,
-                  )
+                  forceSession(panelSession.appId, t('Unsaved data in this app may be lost. Only processes launched and identified by Canapey will be stopped.'))
                 "
               >
                 <Icon name="power" /><span>{{ t('Force close') }}</span>
               </button>
             </div>
-            <p v-if="selectedSession?.status === 'closing'" class="note"> {{ t('Close requested. If the app does not respond, a force-close option appears after 5 seconds.') }} </p></template
+            <p v-if="panelSession.status === 'closing'" class="note"> {{ t('Close requested. If the app does not respond, a force-close option appears after 5 seconds.') }} </p></template
           >
           <template v-else-if="panel === 'confirm'"
             ><p class="confirm-copy">{{ confirmText }}</p>
