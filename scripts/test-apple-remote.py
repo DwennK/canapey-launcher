@@ -79,6 +79,9 @@ async def main():
             atv = await pyatv.connect(config(credentials), asyncio.get_running_loop())
         assert len(protocols) == 1
         protocol = protocols[0]
+        # Empty NoOp frames do not advance the cipher. Nonempty ones do.
+        protocol.connection.send(FrameType.NoOp, b"")
+        protocol.connection.send(FrameType.NoOp, b"ping")
         # pyatv preserves decoded integer width. Check actual encrypted replies,
         # since matching the unsigned numeric ID alone would miss this regression.
         xid_cases = [

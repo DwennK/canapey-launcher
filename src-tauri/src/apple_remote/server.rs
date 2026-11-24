@@ -20,6 +20,7 @@ use tokio::{
     task::{JoinHandle, JoinSet},
 };
 static CONNECTION: AtomicU64 = AtomicU64::new(1);
+const NO_OP: u8 = 1;
 const SERVICE: &str = "_companion-link._tcp.local.";
 pub struct Server {
     pub address: SocketAddr,
@@ -204,10 +205,6 @@ async fn connection(
             return Err(Error::Auth);
         }
         let frame = header[0];
-        if let Some(cipher) = cipher.as_mut() {
-            bytes = cipher.decrypt(&header, &bytes)?;
-        }
-        let message = codec::decode(&bytes)?;
         if bucket.elapsed() >= Duration::from_secs(1) {
             bucket = Instant::now();
             frames = 0;
@@ -216,6 +213,17 @@ async fn connection(
         if frames > 256 {
             return Err(Error::Limit);
         }
+        // Empty Companion NoOp frames carry no authentication tag and consume no nonce.
+        if frame == NO_OP && bytes.is_empty() {
+            continue;
+        }
+        if let Some(cipher) = cipher.as_mut() {
+            bytes = cipher.decrypt(&header, &bytes)?;
+        }
+        if frame == NO_OP {
+            continue;
+        }
+        let message = codec::decode(&bytes)?;
         if matches!(frame, 3..=6) {
             let pin = if frame == 3 || frame == 4 {
                 Some(zeroize::Zeroizing::new(hub.pin(frame == 3, &mut ticket)?))
@@ -312,7 +320,7 @@ async fn read_frame(
         .await
         .map_err(|_| Error::Io)??;
     let length = u32::from_be_bytes([0, header[1], header[2], header[3]]) as usize;
-    if length == 0 || length > codec::MAX_FRAME {
+    if (length == 0 && header[0] != NO_OP) || length > codec::MAX_FRAME {
         return Err(Error::Limit);
     }
     let mut bytes = vec![0; length];
