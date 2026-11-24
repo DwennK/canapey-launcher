@@ -3,10 +3,10 @@ import { t, locale, languageOptions, setLocale, type Locale } from './lib/i18n';
 import {
   computed, defineAsyncComponent, ref, watch, onMounted, onUnmounted, nextTick,
 } from "vue";
-import { categories, categoryFor, homeApps, libraryApps, type AppCategory, type LibraryFilter } from "./lib/library";
+import { categories, categoryFor, homeApps, groupLibraryCards, type AppCategory, type LibraryFilter } from "./lib/library";
 import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/library-editing";
 import RemovalNotice from "./components/RemovalNotice.vue";
-import { isVacuumTube, registerYouTube, showYouTubeSuggestion } from './lib/youtube';
+import { isVacuumTube, registerYouTube } from './lib/youtube';
 const YouTubeSetup = defineAsyncComponent(() => import('./components/YouTubeSetup.vue'));
 const siloTile: Tile = { id: 'catalog-silo', name: 'Silo', theme: 'silo' };
 const siloKey = 'canapey-silo-server';
@@ -150,7 +150,7 @@ function executeRemote(binding: RemoteBinding) {
   const action = binding.action;
   if (action === 'escape') dispatch('back');
   else if (['up','down','left','right','accept','back','menu','options'].includes(action)) dispatch(action as Action);
-  else if (action === 'library') { dismissPanels(); view.value = 'grid'; void focusCard(); }
+  else if (action === 'library') { dismissPanels(); showLibrary(); }
   else if (action === 'audio') void openAudio();
   else if (action === 'power') void openPanel('power');
   else if (action === 'home' && !native.value) dispatch('home');
@@ -382,9 +382,6 @@ watch([searchInput, panel, keyboardTarget, choiceTarget, view], syncPhoneSearch,
 const libraryFilter = ref<LibraryFilter>('all');
 const libraryFilters = computed(() => ({ all: t('All'), favorites: t('Favorites'), ...categories }));
 const libraryFiltered = computed(() => !!libraryQuery.value.trim() || libraryFilter.value !== 'all');
-const filterCounts = computed(() => Object.fromEntries(Object.keys(libraryFilters.value).map(key => [key,
-  libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, key as LibraryFilter).length + Number(showYouTubeSuggestion(config.value.apps, libraryQuery.value, key as LibraryFilter)),
-])));
 const removedApp = ref<RemovedApp | null>(null);
 const restoreBusy = ref(false), restoreError = ref('');
 const editingCategory = ref<AppCategory | 'auto'>('auto');
@@ -493,25 +490,30 @@ const homeTiles = computed(() => {
   const visible = apps.length ? homeApps(apps, settings.library, sessions.value).map(appTile) : initialTiles();
   const youtube = apps.find(isVacuumTube);
   if (youtube && !visible.some(tile => tile.id === youtube.id)) visible.push(appTile(youtube));
-  if (apps.length && showYouTubeSuggestion(apps, '', 'all')) visible.push(youtubeTile);
+  if (apps.length && !youtube) visible.push(youtubeTile);
   const position = Math.min(settings.library.siloHomePosition ?? visible.length, visible.length);
   visible.splice(position, 0, siloTile);
   return visible;
 });
+const libraryCards = computed(() => {
+  const { apps, settings } = config.value;
+  const cards: (Tile & { category: AppCategory; favorite: boolean; searchAlias?: string })[] =
+    apps.map(app => ({ ...appTile(app), category: categoryFor(app, settings.library), favorite: favorite(app.id) }));
+  if (!apps.some(isVacuumTube)) cards.push({ ...youtubeTile, category: 'video', favorite: false, searchAlias: 'VacuumTube' });
+  cards.push({ ...siloTile, category: 'video', favorite: false });
+  return cards;
+});
+const libraryGroups = computed(() =>
+  groupLibraryCards(libraryCards.value, config.value.settings.library.sort, libraryQuery.value));
 const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(app.id) || sessions.value.some(session => session.appId === app.id)));
 const tiles = computed<Tile[]>(() => {
-  const { apps, settings } = config.value;
+  const { apps } = config.value;
   if (view.value === 'carousel') {
     if (!apps.length) return homeTiles.value;
     return [...homeTiles.value, { id: 'library', name: t('All apps'), theme: 'home', special: 'library' }];
   }
   if (!apps.length) return [...initialTiles(), siloTile];
-  const query = libraryQuery.value;
-  const filter = libraryFilter.value;
-  const result = libraryApps(apps, settings.library, query, filter).map(appTile);
-  if (showYouTubeSuggestion(apps, query, filter)) result.push(youtubeTile);
-  if (['all', 'video'].includes(filter) && 'silo'.includes(query.trim().toLowerCase())) result.push(siloTile);
-  return result;
+  return libraryGroups.value[libraryFilter.value];
 });
 const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
   ?? { id: 'empty', get name() { return t('No results'); }, theme: 'home', special: 'empty' });
@@ -1821,7 +1823,7 @@ onUnmounted(() => {
                 : hasHomeSelection ? t('Running and favorites') : t('Get started')
           }}</span>
           <span v-if="!empty" class="section-count" role="status">{{
-            t('{0} app{1}{2}', [tiles.filter(tile => !tile.special).length, tiles.filter(tile => !tile.special).length > 1 ? "s" : "", view === 'grid' && libraryFiltered ? t(' of {0}', [config.apps.length + 1 + Number(!config.apps.some(isVacuumTube))]) : ''])
+            t('{0} app{1}{2}', [tiles.filter(tile => !tile.special).length, tiles.filter(tile => !tile.special).length !== 1 ? "s" : "", view === 'grid' && libraryFiltered ? t(' of {0}', [libraryCards.length]) : ''])
           }}</span>
         </div>
         <button v-if="view === 'grid'" class="small-button" @click="openAdd()"><Icon name="plus" :size="20" />{{ t('Add') }}</button>
@@ -1830,7 +1832,7 @@ onUnmounted(() => {
         <div class="library-search"><label class="search-field"><Icon name="search" :size="20" /><input ref="searchInput" v-model="libraryQuery" @focus="syncPhoneSearch" @blur="closePhoneSearch" @input="syncPhoneSearch" type="search" :aria-label="t('Search the library')" :placeholder="t('Search for an app')" /></label><button v-if="libraryQuery" class="small-button" :aria-label="t('Clear search')" @click="clearLibraryQuery"><Icon name="close" :size="20" /></button><button class="small-button" :aria-label="t('Library keyboard')" @click="keyboardFor('.library-tools input')"><Icon name="keyboard" :size="20" /></button></div>
         <label class="library-sort">{{ t('Sort') }}<select v-model="config.settings.library.sort" @change="persist"><option value="custom">{{ t('My order') }}</option><option value="name">{{ t('Name A–Z') }}</option><option value="category">{{ t('Category') }}</option></select></label>
         <small v-if="phoneSearchId" class="phone-search-hint">{{ t('Type with your paired iPhone while search is focused.') }}</small>
-        <div class="library-filters" role="group" :aria-label="t('Filter the library')"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="t('{0} app{1}', [filterCounts[key], filterCounts[key] === 1 ? '' : 's'])" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ filterCounts[key] }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
+        <div class="library-filters" role="group" :aria-label="t('Filter the library')"><button v-for="(label, key) in libraryFilters" :key="key" :aria-label="label" :aria-description="t('{0} app{1}', [libraryGroups[key].length, libraryGroups[key].length === 1 ? '' : 's'])" :aria-pressed="libraryFilter === key" @click="libraryFilter = key">{{ label }} <span aria-hidden="true">{{ libraryGroups[key].length }}</span></button><button v-if="libraryFiltered && tiles.length" class="reset-filters" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
       </div>
       <div v-if="view === 'grid' && !empty && !tiles.length" class="library-empty"><h2>{{ t('No apps found') }}</h2><p>{{ libraryFilter === 'favorites' && !config.settings.library.favorites.length ? t('Add favorites from a card’s Actions menu.') : libraryQuery.trim() ? t('No results for “{0}”{1}.', [libraryQuery.trim(), libraryFilter === 'all' ? '' : t(' in {0}', [libraryFilters[libraryFilter]])]) : t('No apps in {0}. Change a card’s category from its actions.', [libraryFilters[libraryFilter]]) }}</p><button class="small-button" @click="resetLibrary">{{ t('Clear filters') }}</button></div>
       <div

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defaults, type AppEntry } from '../src/lib/types';
-import { isVacuumTube, registerYouTube, showYouTubeSuggestion } from '../src/lib/youtube';
+import { isVacuumTube, registerYouTube } from '../src/lib/youtube';
 const detected: AppEntry = {id:'canapey-vacuumtube',name:'YouTube',theme:'youtube',target:{kind:'executable',value:'C:\\Apps\\VacuumTube\\VacuumTube.exe',args:['--fullscreen'],workingDir:'C:\\Apps\\VacuumTube'},card:null,background:null,icon:null,source:'Application Windows'};
 describe('YouTube catalog and installation registration',()=>{
  it('recognizes executable identity, not a label or unrelated web shortcut',()=>{
@@ -8,14 +8,6 @@ describe('YouTube catalog and installation registration',()=>{
   expect(isVacuumTube({...detected,target:{...detected.target,value:'C:/Apps/VACUUMTUBE.EXE'}})).toBe(true);
   expect(isVacuumTube({...detected,target:{...detected.target,value:'C:\\Apps\\not-vacuumtube.exe'}})).toBe(false);
   expect(isVacuumTube({...detected,target:{...detected.target,kind:'uri'}})).toBe(false);
- });
- it('offers installation in the full library and video category even with existing apps',()=>{
-  const other={...detected,target:{...detected.target,value:'C:/Other.exe'}};
-  expect(showYouTubeSuggestion([other],'you','all')).toBe(true);
-  expect(showYouTubeSuggestion([other],'vacuum','video')).toBe(true);
-  expect(showYouTubeSuggestion([other],'','favorites')).toBe(false);
-  expect(showYouTubeSuggestion([other],'','music')).toBe(false);
-  expect(showYouTubeSuggestion([detected],'','all')).toBe(false);
  });
  it('adds a detected installation once and preserves web shortcuts',()=>{
   const initial=defaults();initial.apps=[{...detected,id:'web',target:{...detected.target,kind:'uri',value:'https://youtube.com'}}];

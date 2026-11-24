@@ -36,13 +36,27 @@ export function categoryFor(app: AppEntry, preferences: LibraryPreferences): App
   return 'other';
 }
 
-export function libraryApps(apps: AppEntry[], preferences: LibraryPreferences, query = '', filter: LibraryFilter = 'all') {
+interface LibraryCard {
+  name: string;
+  category: AppCategory;
+  favorite: boolean;
+  searchAlias?: string;
+}
+
+export function groupLibraryCards<T extends LibraryCard>(cards: readonly T[], sort: LibrarySort, query: string) {
   const text = normalize(query.trim());
-  const result = apps.filter(app => normalize(app.name).includes(text) &&
-    (filter === 'all' || (filter === 'favorites' ? preferences.favorites.includes(app.id) : categoryFor(app, preferences) === filter)));
-  if (preferences.sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name, locale.value, { numeric: true, sensitivity: 'base' }));
-  if (preferences.sort === 'category') result.sort((a, b) => categories[categoryFor(a, preferences)].localeCompare(categories[categoryFor(b, preferences)], locale.value) || a.name.localeCompare(b.name, locale.value));
-  return result;
+  const all = cards.filter(card => normalize(card.name).includes(text) ||
+    (card.searchAlias && normalize(card.searchAlias).includes(text)));
+  const byName = (a: T, b: T) => a.name.localeCompare(b.name, locale.value, { numeric: true, sensitivity: 'base' });
+  if (sort === 'name') all.sort(byName);
+  if (sort === 'category') all.sort((a, b) =>
+    categories[a.category].localeCompare(categories[b.category], locale.value) || byName(a, b));
+  const groups: Record<LibraryFilter, T[]> = { all, favorites: [], games: [], video: [], music: [], other: [] };
+  for (const card of all) {
+    groups[card.category].push(card);
+    if (card.favorite) groups.favorites.push(card);
+  }
+  return groups;
 }
 
 export function homeApps(apps: AppEntry[], preferences: LibraryPreferences, sessions: Session[]) {

@@ -1,12 +1,7 @@
 import { t } from './i18n';
 import { targetKey, type AppEntry, type Config } from './types';
-import type { LibraryFilter } from './library';
 
 export const isVacuumTube = (app: AppEntry) => app.target.kind === 'executable' && /(?:^|[\\/])vacuumtube\.exe$/i.test(app.target.value);
-export function showYouTubeSuggestion(apps: AppEntry[], query: string, filter: LibraryFilter) {
-  return !apps.some(isVacuumTube) && ['all', 'video'].includes(filter) &&
-    ['youtube', 'vacuumtube'].some(name => name.includes(query.trim().toLocaleLowerCase()));
-}
 export function registerYouTube(config: Config, detected: AppEntry): { config: Config; app: AppEntry } {
   if (!isVacuumTube(detected)) throw new Error(t('Unexpected detected app.'));
   const existing = config.apps.find(isVacuumTube) ?? config.apps.find(app => targetKey(app.target) === targetKey(detected.target));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryFor, defaultLibrary, normalizeLibrary, homeApps, libraryApps } from '../src/lib/library';
+import { categoryFor, defaultLibrary, normalizeLibrary, homeApps, groupLibraryCards } from '../src/lib/library';
 import type { AppEntry, Session } from '../src/lib/types';
 
 const app = (id: string, name: string): AppEntry => ({ id, name, target: { kind: 'uri', value: `https://example.com/${id}`, args: [], workingDir: null }, theme: 'home', card: null, background: null, icon: null, source: 'test' });
@@ -26,10 +26,12 @@ describe('living-room library', () => {
   });
   it('combines accent-insensitive search, filters and sorting without reordering storage', () => {
     const preferences = { ...defaultLibrary(), sort: 'name' as const, favorites: ['game'] };
-    expect(libraryApps(apps, preferences, ' editeur ').map(app => app.id)).toEqual(['other']);
-    expect(libraryApps(apps, preferences, '', 'games').map(app => app.id)).toEqual(['game']);
-    expect(libraryApps(apps, preferences, 'Netflix', 'favorites')).toEqual([]);
-    expect(libraryApps(apps, preferences).map(app => app.id)).toEqual(['other', 'video', 'music', 'game']);
+    const cards = apps.map(app => ({ ...app, category: categoryFor(app, preferences), favorite: preferences.favorites.includes(app.id) }));
+    const groups = groupLibraryCards(cards, preferences.sort, '');
+    expect(groups.favorites.map(app => app.id)).toEqual(['game']);
+    expect(groups.all.map(app => app.id)).toEqual(['other', 'video', 'music', 'game']);
+    expect(groupLibraryCards(cards, 'name', ' editeur ').all.map(app => app.id)).toEqual(['other']);
+    expect(groupLibraryCards(cards, 'name', 'Netflix').favorites).toEqual([]);
     expect(apps.map(app => app.id)).toEqual(['music', 'game', 'video', 'other']);
   });
   it('honors category overrides without using decorative artwork as identity', () => {
@@ -38,6 +40,18 @@ describe('living-room library', () => {
     expect(categoryFor(renamed, preferences)).toBe('other');
     preferences.categories.other = 'games';
     expect(categoryFor(renamed, preferences)).toBe('games');
-    expect(libraryApps(apps, preferences, '', 'games').map(app => app.id)).toEqual(['game', 'other']);
+    expect(categoryFor(apps[3]!, preferences)).toBe('games');
+  });
+  it('includes catalog cards in video counts, name sorting and alias searches', () => {
+    const cards = [
+      { name: 'VLC', category: 'video', favorite: true },
+      { name: 'YouTube', category: 'video', favorite: false, searchAlias: 'VacuumTube' },
+      { name: 'Silo', category: 'video', favorite: false },
+    ] as const;
+    const groups = groupLibraryCards(cards, 'name', '');
+    expect(groups.all).toEqual([cards[2], cards[0], cards[1]]);
+    expect(groups.video).toEqual(groups.all);
+    expect(groups.favorites).toEqual([cards[0]]);
+    expect(groupLibraryCards(cards, 'custom', ' vacuum ').video).toEqual([cards[1]]);
   });
 });
