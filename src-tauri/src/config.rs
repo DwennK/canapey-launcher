@@ -83,6 +83,18 @@ mod tests {
         assert_eq!(restored.settings.general_ambiance, "launchbox");
     }
     #[test]
+    fn silo_home_position_survives_save_and_reload() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new(directory.path().into());
+        let mut config = Config::default();
+        config.settings.library.silo_home_position = Some(0);
+        store.save(&config).unwrap();
+        let (restored, warning) = store.load();
+        assert!(warning.is_none());
+        assert_eq!(restored.settings.library.silo_home_position, Some(0));
+    }
+
+    #[test]
     fn tv_tab_survives_save_and_reload() {
         let directory = tempfile::tempdir().unwrap();
         let store = ConfigStore::new(directory.path().into());

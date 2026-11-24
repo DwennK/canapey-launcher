@@ -9,6 +9,7 @@ export interface LibraryPreferences {
   favorites: string[];
   categories: Record<string, AppCategory>;
   sort: LibrarySort;
+  siloHomePosition?: number;
 }
 export const defaultLibrary = (): LibraryPreferences => ({ favorites: [], categories: {}, sort: 'custom' });
 export function normalizeLibrary(value: unknown): LibraryPreferences {
@@ -19,6 +20,7 @@ export function normalizeLibrary(value: unknown): LibraryPreferences {
   if (input.categories && typeof input.categories === 'object' && !Array.isArray(input.categories)) {
     result.categories = Object.fromEntries(Object.entries(input.categories).filter(([id, category]) => id.length > 0 && id.length <= 100 && Object.hasOwn(categories, category)).slice(0, 250));
   }
+  if (typeof input.siloHomePosition === 'number' && Number.isSafeInteger(input.siloHomePosition) && input.siloHomePosition >= 0) result.siloHomePosition = input.siloHomePosition;
   if (input.sort && ['custom', 'name', 'category'].includes(input.sort)) result.sort = input.sort;
   return result;
 }

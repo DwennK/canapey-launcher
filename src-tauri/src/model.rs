@@ -41,6 +41,8 @@ pub struct LibraryPreferences {
     pub favorites: Vec<String>,
     pub categories: HashMap<String, String>,
     pub sort: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub silo_home_position: Option<usize>,
 }
 impl Default for LibraryPreferences {
     fn default() -> Self {
@@ -48,6 +50,7 @@ impl Default for LibraryPreferences {
             favorites: vec![],
             categories: HashMap::new(),
             sort: "custom".into(),
+            silo_home_position: None,
         }
     }
 }

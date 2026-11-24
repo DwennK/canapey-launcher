@@ -187,6 +187,71 @@ async function playback(browser, width, height) {
   }
 }
 
+async function checkSiloOrder(page) {
+  const silo = page.getByRole('button', { name: 'Silo', exact: true });
+  const cards = page.locator('.app-card');
+  async function remote(action, pressed = true) {
+    await page.evaluate(({ action, pressed }) => qa.emit('remote-action', {
+      binding: { action, button: action }, pressed,
+    }), { action, pressed });
+  }
+  async function ok() {
+    await remote('accept');
+    await remote('accept', false);
+  }
+  const labels = () => cards.evaluateAll(els => els.map(el => el.getAttribute('aria-label')));
+  const before = await labels();
+  await remote('accept');
+  const actions = page.getByRole('dialog', { name: 'Actions for Silo' });
+  await actions.waitFor();
+  await remote('accept', false);
+  const move = actions.getByRole('button', { name: 'Move on Home' });
+  await remote('down');
+  assert(await move.evaluate(el => el === document.activeElement));
+  await ok();
+  const earlier = page.getByRole('button', { name: 'Move earlier' });
+  await earlier.waitFor();
+  for (let i = before.indexOf('Silo'); i > 0; i--) {
+    await ok();
+    await page.waitForFunction(index => document.querySelectorAll('.app-card')[index]?.getAttribute('aria-label') === 'Silo', i - 1);
+  }
+  assert(await earlier.isDisabled());
+  if (process.env.SILO_QA_SHOTS) {
+    await page.screenshot({ path: process.env.SILO_QA_SHOTS + '/silo-order-' + page.viewportSize().width + '.png' });
+  }
+  await remote('back');
+  await actions.waitFor();
+  await remote('back');
+  await silo.and(page.locator(':focus')).waitFor();
+  assert.deepEqual(await labels(), ['Silo', ...before.filter(name => name !== 'Silo')]);
+  await page.reload();
+  await cards.first().waitFor();
+  assert.equal(await cards.first().getAttribute('aria-label'), 'Silo');
+
+  // A first-run position also applies after adding apps and choosing favorites.
+  await page.evaluate(() => {
+    const config = JSON.parse(sessionStorage.getItem('saved-config'));
+    config.apps = ['Video', 'Music', 'Games'].map(name => ({
+      id: name, name, theme: 'home', source: 'test', card: null, background: null, icon: null,
+      target: { kind: 'uri', value: 'https://example.com/' + name, args: [], workingDir: null },
+    }));
+    config.settings.library.favorites = ['Music', 'Games'];
+    config.settings.library.sort = 'name';
+    sessionStorage.setItem('saved-config', JSON.stringify(config));
+  });
+  await page.reload();
+  await cards.first().and(silo).waitFor();
+  await silo.click({button:'right'});
+  await move.click();
+  await page.getByRole('button', { name: 'Move later' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.app-card')[1]?.getAttribute('aria-label') === 'Silo');
+  await page.reload();
+  await cards.nth(1).and(silo).waitFor();
+  assert.equal(await cards.first().getAttribute('aria-label'), 'Music');
+  assert.equal(await cards.last().getAttribute('aria-label'), 'All apps');
+  assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('saved-config')).settings.library.sort), 'name');
+}
+
 async function launcher(browser, url, width, height) {
   const context = await browser.newContext({ viewport: { width, height } });
   try {
@@ -283,6 +348,7 @@ async function launcher(browser, url, width, height) {
       await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => qa.calls[0] === 'http://silo.test:8090/');
+    await checkSiloOrder(page);
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Remote', exact: true }).click();
     const picker = page.getByRole('combobox', { name: 'Button', exact: true });

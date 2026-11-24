@@ -456,6 +456,7 @@ let saveRequest = 0;
 let saveChain: Promise<boolean> = Promise.resolve(true);
 let lastSaved = defaults();
 let audioContext: AudioContext | undefined;
+const youtubeTile: Tile = { id: 'catalog-youtube', name: 'YouTube', theme: 'youtube', catalog: true, suggestion: true };
 const examples: Tile[] = [
   {
     id: "suggest-netflix",
@@ -463,12 +464,7 @@ const examples: Tile[] = [
     theme: "netflix",
     suggestion: true,
   },
-  {
-    id: "suggest-youtube",
-    name: "YouTube",
-    theme: "youtube",
-    suggestion: true,
-  },
+  youtubeTile,
   {
     id: "suggest-spotify",
     name: "Spotify",
@@ -484,21 +480,38 @@ const examples: Tile[] = [
   { id: "suggest-launchbox", name: "LaunchBox", theme: "launchbox", suggestion: true },
   { id: "suggest-steam", name: "Steam", theme: "steam", suggestion: true },
   { id: "suggest-plezy", name: "Plezy", theme: "plezy", suggestion: true },
-  siloTile,
 ];
-const visibleApps = computed(() => {
-  if (view.value !== 'carousel') return libraryApps(config.value.apps, config.value.settings.library, libraryQuery.value, libraryFilter.value);
-  const apps = homeApps(config.value.apps, config.value.settings.library, sessions.value);
-  const youtube = config.value.apps.find(isVacuumTube);
-  return youtube && !apps.includes(youtube) ? [...apps, youtube] : apps;
+function appTile(entry: AppEntry): Tile {
+  return { id: entry.id, name: entry.name, theme: entry.theme, entry };
+}
+function initialTiles(): Tile[] {
+  return [{ id: 'add', name: t('Add apps'), theme: 'home', special: 'add' }, ...examples];
+}
+const homeTiles = computed(() => {
+  const { apps, settings } = config.value;
+  const visible = apps.length ? homeApps(apps, settings.library, sessions.value).map(appTile) : initialTiles();
+  const youtube = apps.find(isVacuumTube);
+  if (youtube && !visible.some(tile => tile.id === youtube.id)) visible.push(appTile(youtube));
+  if (apps.length && showYouTubeSuggestion(apps, '', 'all')) visible.push(youtubeTile);
+  const position = Math.min(settings.library.siloHomePosition ?? visible.length, visible.length);
+  visible.splice(position, 0, siloTile);
+  return visible;
 });
 const hasHomeSelection = computed(() => config.value.apps.some(app => favorite(app.id) || sessions.value.some(session => session.appId === app.id)));
-const tiles = computed<Tile[]>(() => config.value.apps.length
-  ? [...visibleApps.value.map(entry => ({ id: entry.id, name: entry.name, theme: entry.theme, entry })),
-     ...(showYouTubeSuggestion(config.value.apps, view.value === 'carousel' ? '' : libraryQuery.value, view.value === 'carousel' ? 'all' : libraryFilter.value) ? [{id:'catalog-youtube',name:'YouTube',theme:'youtube' as const,catalog:true,suggestion:true}] : []),
-     ...(view.value === 'carousel' || (['all', 'video'].includes(libraryFilter.value) && 'silo'.includes(libraryQuery.value.trim().toLowerCase())) ? [siloTile] : []),
-     ...(view.value === 'carousel' ? [{ id: 'library', get name() { return t('All apps'); }, theme: 'home' as const, special: 'library' }] : [])]
-  : [{ id: 'add', get name() { return t('Add apps'); }, theme: 'home', special: 'add' }, ...examples.map(tile => tile.id === 'suggest-youtube' ? {...tile,id:'catalog-youtube',catalog:true} : tile)]);
+const tiles = computed<Tile[]>(() => {
+  const { apps, settings } = config.value;
+  if (view.value === 'carousel') {
+    if (!apps.length) return homeTiles.value;
+    return [...homeTiles.value, { id: 'library', name: t('All apps'), theme: 'home', special: 'library' }];
+  }
+  if (!apps.length) return [...initialTiles(), siloTile];
+  const query = libraryQuery.value;
+  const filter = libraryFilter.value;
+  const result = libraryApps(apps, settings.library, query, filter).map(appTile);
+  if (showYouTubeSuggestion(apps, query, filter)) result.push(youtubeTile);
+  if (['all', 'video'].includes(filter) && 'silo'.includes(query.trim().toLowerCase())) result.push(siloTile);
+  return result;
+});
 const current = computed<Tile>(() => tiles.value[Math.max(0, Math.min(selected.value, tiles.value.length - 1))]
   ?? { id: 'empty', get name() { return t('No results'); }, theme: 'home', special: 'empty' });
 const empty = computed(() => config.value.apps.length === 0);
@@ -588,12 +601,20 @@ watch(() => [panel.value, width.value, height.value], async () => {
 const quickApp = computed(() =>
   config.value.apps.find((a) => a.id === quickId.value),
 );
+const movingSilo = computed(() => quickId.value === siloTile.id);
+const quickCard = computed(() => movingSilo.value ? siloTile : quickApp.value);
+function hasCardActions(tile?: Tile) {
+  return !!tile && (!!tile.entry || tile.id === siloTile.id);
+}
 const quickSession = computed(() =>
   sessions.value.find((s) => s.appId === quickId.value),
 );
 const quickIndex = computed(() =>
-  config.value.apps.findIndex((a) => a.id === quickId.value),
+  movingSilo.value
+    ? homeTiles.value.findIndex(tile => tile.id === siloTile.id)
+    : config.value.apps.findIndex(app => app.id === quickId.value),
 );
+const moveCount = computed(() => movingSilo.value ? homeTiles.value.length : config.value.apps.length);
 const cardHold = new CardHold((holding) => (holdingCard.value = holding));
 const cancelHold = () => cardHold.cancel();
 function beginAccept(source: string) {
@@ -609,7 +630,7 @@ function beginAccept(source: string) {
   if (
     !panel.value &&
     !working.value &&
-    current.value.entry &&
+    hasCardActions(current.value) &&
     cardsRoot.value?.contains(document.activeElement)
   ) {
     const id = current.value.id;
@@ -631,7 +652,7 @@ function visibilityChanged() {
   if (document.hidden) cancelHold();
 }
 async function openQuick(index: number) {
-  if (panel.value || working.value || !tiles.value[index]?.entry) return;
+  if (panel.value || working.value || !hasCardActions(tiles.value[index])) return;
   cancelHold();
   select(index);
   quickId.value = current.value.id;
@@ -659,9 +680,14 @@ function removeQuick() {
   );
 }
 async function moveQuick(delta: number) {
-  await moveApp(quickIndex.value, delta);
+  if (movingSilo.value) {
+    const position = quickIndex.value + delta;
+    if (position < 0 || position >= moveCount.value) return;
+    config.value.settings.library.siloHomePosition = position;
+    await persist();
+  } else await moveApp(quickIndex.value, delta);
   await nextTick();
-  if (panelRoot.value && document.activeElement?.matches(":disabled"))
+  if (panel.value === "move" && panelRoot.value && (!panelRoot.value.contains(document.activeElement) || document.activeElement?.matches(":disabled")))
     focusElement(
       panelRoot.value.querySelector<HTMLElement>("[data-move-done]") ??
         undefined,
@@ -836,7 +862,7 @@ async function closePanel() {
   if (!previous?.panel && panelRoot.value) panelRoot.value.inert = true;
   panel.value = previous?.panel ?? "";
   if (panel.value === "session" && !selectedSession.value) return closePanel();
-  if (["quick", "move"].includes(panel.value) && !quickApp.value)
+  if (["quick", "move"].includes(panel.value) && !quickCard.value)
     return closePanel();
   await nextTick();
   const root = panel.value ? panelRoot.value : launcherRoot.value;
@@ -1812,7 +1838,7 @@ onUnmounted(() => {
           :target="tile.entry?.target"
           :selected="selected === i"
           :holding="selected === i && holdingCard"
-          :has-options="!!tile.entry"
+          :has-options="hasCardActions(tile)"
           @options="openQuick(i)"
           :favorite="favorite(tile.id)"
           :running="sessions.some((s) => s.appId === tile.id)"
@@ -1840,7 +1866,7 @@ onUnmounted(() => {
           >{{ t('Settings') }}</span
         >
       </div>
-      <span v-if="current.entry" class="quick-hint"
+      <span v-if="hasCardActions(current)" class="quick-hint"
         >{{ t('Hold') }} {{ inputLabels.acceptName }} ·
         Actions</span
       >
@@ -1893,7 +1919,7 @@ onUnmounted(() => {
             panel === 'silo' ? 'Silo' : panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === 'audio'
               ? t('Quick controls')
               : panel === 'quick'
-                ? t('Actions for {0}', [quickApp?.name])
+                ? t('Actions for {0}', [quickCard?.name])
                 : panel === 'move'
                   ? t('Move card')
                   : panel === 'settings'
@@ -1912,8 +1938,8 @@ onUnmounted(() => {
         >
           <div v-if="panel !== 'settings' && panel !== 'add'" class="panel-heading">
             <div class="panel-identity">
-              <img v-if="(panel === 'quick' || panel === 'move') && quickApp"
-                class="quick-app-art" :src="api.imageUrl(quickApp.card) || `/art/${quickApp.theme}-card.webp`" alt="" />
+              <img v-if="(panel === 'quick' || panel === 'move') && quickCard"
+                class="quick-app-art" :src="api.imageUrl(quickApp?.card) || `/art/${quickCard.theme}-card.webp`" alt="" />
               <div class="panel-title">
               <span class="eyebrow">{{ panel === 'quick' || panel === 'move' ? 'APPLICATION' : 'CANAPEY' }}</span>
               <h2>
@@ -1921,7 +1947,7 @@ onUnmounted(() => {
                   panel === 'silo' ? 'Silo' : panel === 'repair' ? t('Locate application') : panel === 'youtube' ? 'YouTube' : panel === "audio"
                     ? t('Quick controls')
                     : panel === "quick"
-                      ? quickApp?.name
+                      ? quickCard?.name
                       : panel === "move"
                         ? t('Move card')
                         : panel === "edit"
@@ -1986,10 +2012,10 @@ onUnmounted(() => {
             @output="audio.setOutput"
             @refresh="audio.refresh(true)"
           />
-          <template v-else-if="panel === 'quick' && quickApp">
+          <template v-else-if="panel === 'quick' && quickCard">
             <div class="quick-actions power-options">
               <button v-if="!quickSession" @click="openQuickApp"><Icon name="play" /><span>{{ t('Open') }}</span></button>
-              <template v-if="quickSession">
+              <template v-if="quickSession && quickApp">
                 <button
                   :disabled="quickSession.status === 'untracked'"
                   @click="resumeSession(quickApp.id)"
@@ -2012,32 +2038,32 @@ onUnmounted(() => {
                 </button>
               </template>
               <p v-if="quickSession?.status === 'untracked'" class="note"> {{ t('Shared or unidentified window: switch to it with Alt + Tab.') }} </p>
-              <button :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? t('Remove from favorites') : t('Add to favorites') }}</span></button>
-              <button class="action-group-start" @click="edit(quickApp)">
+              <button v-if="quickApp" :aria-pressed="favorite(quickApp.id)" @click="toggleFavorite(quickApp.id)"><Icon name="home" /><span>{{ favorite(quickApp.id) ? t('Remove from favorites') : t('Add to favorites') }}</span></button>
+              <button v-if="quickApp" class="action-group-start" @click="edit(quickApp)">
                 <Icon name="edit" /><span>{{ t('Edit') }}</span>
               </button>
-              <button v-if="native && !quickSession && ['executable', 'shortcut'].includes(quickApp.target.kind)" @click="startRepair(quickApp)">
+              <button v-if="quickApp && native && !quickSession && ['executable', 'shortcut'].includes(quickApp.target.kind)" @click="startRepair(quickApp)">
                 <Icon name="search" /><span>{{ t('Locate application') }}</span>
               </button>
               <button @click="openPanel('move')">
-                <Icon name="right" /><span>{{ t('Move') }}</span>
+                <Icon name="right" /><span>{{ movingSilo ? t('Move on Home') : t('Move') }}</span>
               </button>
-              <button class="danger action-remove" @click="removeQuick">
+              <button v-if="quickApp" class="danger action-remove" @click="removeQuick">
                 <Icon name="trash" /><span>{{ t('Remove card') }}</span>
               </button>
             </div>
           </template>
-          <template v-else-if="panel === 'move' && quickApp">
+          <template v-else-if="panel === 'move' && quickCard">
             <p class="panel-intro">
-              {{ quickApp.name }} · Position {{ quickIndex + 1 }} {{ t('of') }} {{ config.apps.length }}
+              {{ quickCard.name }} · Position {{ quickIndex + 1 }} {{ t('of') }} {{ moveCount }}
             </p>
-            <p class="note">{{ t('Moving a card switches sorting to “My order”.') }}</p>
+            <p v-if="!movingSilo" class="note">{{ t('Moving a card switches sorting to “My order”.') }}</p>
             <div class="quick-actions power-options">
               <button :disabled="quickIndex <= 0" @click="moveQuick(-1)">
                 <Icon name="back" /><span>{{ t('Move earlier') }}</span>
               </button>
               <button
-                :disabled="quickIndex >= config.apps.length - 1"
+                :disabled="quickIndex >= moveCount - 1"
                 @click="moveQuick(1)"
               >
                 <Icon name="right" /><span>{{ t('Move later') }}</span>
@@ -2411,7 +2437,7 @@ onUnmounted(() => {
           </template>
           <AddApps v-else-if="panel === 'add'" ref="appPicker"
             :native="native" :initial-query="importQuery" :library="config.apps" :discovered="discoveredApps"
-            :samples="examples.filter(tile => tile.id !== 'suggest-youtube' && tile.id !== siloTile.id)" :save="addEntries"
+            :samples="examples.filter(tile => !tile.catalog)" :save="addEntries"
             @discovered="discoveredApps = $event" @keyboard="openKeyboard" @close="closePanel" />
           <template v-else-if="panel === 'edit' && editing">
             <div class="edit-layout">

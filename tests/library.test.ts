@@ -8,6 +8,8 @@ const apps = [app('music', 'Spotify'), app('game', 'Steam'), app('video', 'Netfl
 describe('living-room library', () => {
   it('recovers malformed browser preferences and does not inherit category keys', () => {
     expect(normalizeLibrary(null)).toEqual(defaultLibrary());
+    expect(normalizeLibrary({ siloHomePosition: 0 }).siloHomePosition).toBe(0);
+    expect(normalizeLibrary({ siloHomePosition: -1 })).toEqual(defaultLibrary());
     expect(normalizeLibrary({ favorites: ['a', 'a', 7], categories: { a: 'bad', b: 'music' }, sort: 'bad' })).toEqual({favorites:['a'],categories:{b:'music'},sort:'custom'});
     expect(categoryFor(app('constructor', 'Unknown'), defaultLibrary())).toBe('other');
   });
