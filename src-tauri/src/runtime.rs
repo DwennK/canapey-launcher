@@ -1200,6 +1200,7 @@ pub fn run() {
         .invoke_handler({
             let main_commands: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             crate::silo::open_silo,
+            crate::silo::silo_continue_watching,
             crate::tv_desktop::tv_status,
             crate::tv_desktop::tv_discover,
             crate::tv_desktop::tv_inspect,

@@ -5,12 +5,15 @@ import {
 } from "vue";
 import { categories, categoryFor, homeApps, groupLibraryCards, type AppCategory, type LibraryFilter } from "./lib/library";
 import { removeLibraryApp, restoreLibraryApp, type RemovedApp } from "./lib/library-editing";
+import SiloRow from './components/SiloRow.vue';
 import RemovalNotice from "./components/RemovalNotice.vue";
 import { isVacuumTube, registerYouTube } from './lib/youtube';
 const YouTubeSetup = defineAsyncComponent(() => import('./components/YouTubeSetup.vue'));
 const siloTile: Tile = { id: 'catalog-silo', name: 'Silo', theme: 'silo' };
 const siloKey = 'canapey-silo-server';
 const siloAddress = ref(localStorage.getItem(siloKey) ?? '');
+const siloRow = ref<InstanceType<typeof SiloRow>>();
+const siloServer = ref(siloAddress.value);
 const siloError = ref('');
 const siloEditing = ref(false);
 const siloOpening = ref(false);
@@ -26,7 +29,11 @@ async function editSiloAddress() {
   siloAddress.value = localStorage.getItem(siloKey) ?? '';
   await configureSilo();
 }
-async function openSilo() {
+function resumeSilo(contentId: string) {
+  siloAddress.value = siloServer.value;
+  void openSilo(contentId);
+}
+async function openSilo(contentId?: string) {
   if (siloOpening.value) return;
   if (!siloAddress.value.trim()) return configureSilo();
   let url: URL;
@@ -41,9 +48,10 @@ async function openSilo() {
   siloOpening.value = true;
   try {
     localStorage.setItem(siloKey, url.href);
+    siloServer.value = url.href;
     siloAddress.value = url.href;
     if (panel.value === 'silo') await closePanel();
-    await api.openSilo(url.href);
+    await api.openSilo(url.href, contentId);
   } catch (error) {
     await configureSilo(native.value ? t('Could not open your Silo server.') : String(error instanceof Error ? error.message : error));
   } finally { siloOpening.value = false; }
@@ -1115,6 +1123,7 @@ function dispatch(action: Action) {
     else void activate();
     return;
   }
+  if (siloRow.value?.navigate(action)) return;
   if (!cardsRoot.value?.contains(element)) {
     if (element.closest("footer") && action === "up") {
       void focusCard();
@@ -1135,7 +1144,10 @@ function dispatch(action: Action) {
     if (launcherRoot.value) focusDirection(launcherRoot.value, action);
     return;
   }
-  if (view.value === 'carousel' && action === 'down') { showLibrary(); return; }
+  if (view.value === 'carousel' && action === 'down') {
+    if (!siloRow.value?.enter(element)) showLibrary();
+    return;
+  }
   if (view.value === 'grid' && action === 'up' && selected.value < columns.value && filterBar.value) {
     focusLibraryFilter();
     return;
@@ -1620,7 +1632,9 @@ onMounted(async () => {
         }
       },
       home: (preservePanel) => {
-        if (!preservePanel || !panel.value) dispatch("home");
+        const returningToEpisode = !panel.value && document.activeElement?.matches('.silo-episode');
+        if (!returningToEpisode && (!preservePanel || !panel.value)) dispatch("home");
+        void siloRow.value?.refresh();
         clock.value = new Date();
         requestAnimationFrame(() =>
           requestAnimationFrame(() => void api.returnReady()),
@@ -1847,6 +1861,8 @@ onUnmounted(() => {
           "
         />
       </div>
+      <SiloRow v-if="view === 'carousel' && native && siloServer" ref="siloRow" :server="siloServer"
+        @resume="resumeSilo" @apps="focusCard" @library="showLibrary" />
     </section>
     <footer class="bottom-bar" :inert="!!panel || !!keyboardTarget || !!choiceTarget">
       <div class="hints" :data-controller-family="inputLabels.family">
@@ -1966,7 +1982,7 @@ onUnmounted(() => {
               <Icon name="close" />
             </button>
           </div>
-          <form v-if="panel === 'silo'" class="silo-setup" @submit.prevent="openSilo">
+          <form v-if="panel === 'silo'" class="silo-setup" @submit.prevent="openSilo()">
             <p v-if="siloError" role="alert">{{ siloError }}</p>
             <template v-if="siloEditing">
               <label for="silo-server">{{ t('Silo server address') }}</label>

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Resume up to five in-progress Silo movies and episodes directly from Home with episode artwork and watch progress.
+
 ## 0.11.2 — 2026-11-24
 
 - Keep iPhone discovery on the current private Windows network while its address remains available. Companion sessions now stay connected across NoOp frames, and iPhone Settings clears temporary status errors when the connection recovers.

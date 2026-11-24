@@ -156,8 +156,25 @@ export const imageUrl = (path: string | null | undefined) =>
         ? convertFileSrc(path)
         : ""
     : "";
-export const openSilo = (server: string): Promise<void> =>
-  native ? invoke('open_silo', { server }) : unavailable();
+export interface SiloCard {
+  id: string; title: string; series: string; season: number | null; episode: number | null;
+  percent: number; image: string;
+}
+export const openSilo = (server: string, contentId?: string): Promise<void> =>
+  native ? invoke('open_silo', { server, contentId }) : unavailable();
+
+export async function siloContinueWatching(server: string): Promise<SiloCard[] | null> {
+  if (!native) return [];
+  const result = await invoke<unknown>('silo_continue_watching', { server });
+  if (result === null) return null;
+  if (!Array.isArray(result)) return [];
+  return result.slice(0, 5).filter((item): item is SiloCard =>
+    item && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.series === 'string' &&
+    [item.season, item.episode].every(n => n === null || Number.isSafeInteger(n)) &&
+    Number.isInteger(item.percent) && item.percent >= 0 && item.percent <= 100
+  ).map(item => ({ ...item, image: typeof item.image === 'string' && item.image.length <= 256000 &&
+    /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(item.image) ? item.image : '' }));
+}
 export async function subscribe(handlers: {
   siloUnavailable: () => void;
   navigationSound: (enabled: boolean) => void;

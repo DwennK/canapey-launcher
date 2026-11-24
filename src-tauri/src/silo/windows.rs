@@ -6,18 +6,20 @@ use webview2_com::{
     NavigationCompletedEventHandler,
 };
 
-pub async fn open(app: &AppHandle, url: &Url) -> Result<(), String> {
+pub async fn open(app: &AppHandle, url: &Url) -> Result<tauri::WebviewWindow, String> {
     let origin = url.origin();
     let script = format!(
-        "if (window === top && location.origin === {}) {{ {} }}",
+        "if (window === top && location.origin === {}) {{ {} {} }}",
         serde_json::to_string(&origin.ascii_serialization()).unwrap(),
-        include_str!("navigation.js")
+        include_str!("navigation.js"),
+        include_str!("continue-watching.js")
     );
     // Install the native error and keyboard handlers before the first network request.
     let blank = Url::parse("about:blank").unwrap();
     let window = WebviewWindowBuilder::new(app, "silo", WebviewUrl::External(blank))
         .title("Silo")
         .visible(false)
+        .focused(false)
         .decorations(false)
         .data_directory(
             app.path()
@@ -40,15 +42,57 @@ pub async fn open(app: &AppHandle, url: &Url) -> Result<(), String> {
                 .set_position(*monitor.position())
                 .map_err(|e| e.to_string())?;
         }
-        window.set_fullscreen(true).map_err(|e| e.to_string())?;
-        super::present(&window)?;
         window.navigate(url.clone()).map_err(|e| e.to_string())
     }
     .await;
     if result.is_err() {
         let _ = window.destroy();
     }
-    result
+    result.map(|()| window)
+}
+
+// Await the Silo page's read without granting remote content access to launcher IPC.
+pub async fn continue_watching(
+    window: &tauri::WebviewWindow,
+    url: &Url,
+) -> Result<serde_json::Value, String> {
+    use ::windows::core::{w, HSTRING};
+    let origin = serde_json::to_string(&url.origin().ascii_serialization()).unwrap();
+    let params = serde_json::json!({
+        "expression": format!("location.origin === {origin} ? (window.canapeyContinueWatching?.() ?? null) : null"),
+        "awaitPromise": true, "returnByValue": true
+    });
+    let (send, mut receive) = tokio::sync::mpsc::unbounded_channel();
+    window
+        .with_webview(move |view| unsafe {
+            let complete = send.clone();
+            let callback = webview2_com::CallDevToolsProtocolMethodCompletedHandler::create(
+                Box::new(move |status, json| {
+                    let _ = complete.send(status.map(|_| json).map_err(|e| e.to_string()));
+                    Ok(())
+                }),
+            );
+            let result = view.controller().CoreWebView2().and_then(|core| {
+                core.CallDevToolsProtocolMethod(
+                    w!("Runtime.evaluate"),
+                    &HSTRING::from(params.to_string()),
+                    &callback,
+                )
+            });
+            if let Err(error) = result {
+                let _ = send.send(Err(error.to_string()));
+            }
+        })
+        .map_err(|e| e.to_string())?;
+    let json = tokio::time::timeout(std::time::Duration::from_secs(9), receive.recv())
+        .await
+        .map_err(|_| "Silo read timed out.")?
+        .ok_or("Silo window closed.")??;
+    let mut response: serde_json::Value = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+    if response.get("exceptionDetails").is_some() {
+        return Err("Silo row unavailable.".into());
+    }
+    Ok(response["result"]["value"].take())
 }
 
 async fn install_handlers(app: &AppHandle, window: &tauri::WebviewWindow) -> Result<(), String> {

@@ -1965,3 +1965,19 @@ summary:focus-visible, :root[data-input-mode="directional"] summary:focus { outl
 .silo-setup p { margin: 0; color: #ffcebd; }
 .silo-address { display: flex; align-items: center; gap: 8px; }
 .silo-address input { flex: 1; min-width: 0; }
+
+.launcher:has(.silo-row) .hero { min-height: 0; flex: 1 0 auto; padding-top: clamp(4px, 1.5vh, 16px); }
+.launcher:has(.silo-row) .hero h1 { margin-block: 9px; }
+.launcher:has(.silo-row) .hero p { margin-bottom: 10px; }
+.launcher:has(.silo-row) .library.carousel { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.silo-row { margin-top: 12px; }
+.silo-row h2 { margin-bottom: 0; }
+.silo-episode .card-caption > span, .silo-episode-detail {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.silo-episode-detail { color: #b7bec8; font-size: calc(13px * var(--ui-scale)); }
+.silo-episode:focus .card-visual:after { border-color: var(--accent); box-shadow: 0 0 12px var(--selected-surface); }
+.silo-progress { position: absolute; inset: auto 10px 9px; height: 4px; background: #101218b8; border-radius: 4px; overflow: hidden; }
+.silo-progress i { display: block; height: 100%; background: #fff; }
+
+.launcher:has(.silo-episode:focus) .quick-hint { visibility: hidden; }

@@ -18,6 +18,25 @@ pub fn address(value: &str) -> Result<Url, String> {
     Ok(url)
 }
 
+pub fn watch_url(server: &Url, id: &str) -> Result<Url, String> {
+    if id.is_empty()
+        || id.len() > 512
+        || id == "."
+        || id == ".."
+        || id
+            .chars()
+            .any(|c| c.is_control() || matches!(c, '/' | '\\'))
+    {
+        return Err("Invalid Silo content ID.".into());
+    }
+    let mut url = server.join("/watch/").map_err(|e| e.to_string())?;
+    url.path_segments_mut()
+        .map_err(|_| "Invalid Silo address.")?
+        .pop_if_empty()
+        .push(id);
+    Ok(url)
+}
+
 #[cfg(any(windows, test))]
 pub fn allows_navigation(origin: &url::Origin, next: &Url) -> bool {
     next.as_str() == "about:blank"
@@ -39,6 +58,19 @@ mod tests {
             "javascript:void(0)",
         ] {
             assert!(address(raw).is_err(), "{raw}");
+        }
+    }
+
+    #[test]
+    fn playback_uses_one_content_segment_on_the_configured_server() {
+        let server = address("https://silo.example:8090/web/").unwrap();
+        let watch = watch_url(&server, "episode:test?x#y").unwrap();
+        assert_eq!(
+            watch.as_str(),
+            "https://silo.example:8090/watch/episode:test%3Fx%23y"
+        );
+        for id in ["", ".", "..", "/other", "https://other.example/"] {
+            assert!(watch_url(&server, id).is_err());
         }
     }
 

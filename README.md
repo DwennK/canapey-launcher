@@ -87,7 +87,7 @@ The current source uses English throughout. First-launch system-language detecti
 | Area | Available in the current implementation |
 | --- | --- |
 | **Home & library** | Full-screen carousel, library grid, contextual backdrops and remembered selection |
-| **Silo** | Open the Silo card, enter your HTTP or HTTPS server address, and sign in on Silo. Arrows move between controls, OK selects, and Back closes menus or returns to the previous poster. Home pauses playback and recalls Canapey. |
+| **Silo** | Open the Silo card, enter your HTTP or HTTPS server address, and sign in on Silo. Arrows move between controls, OK selects, and Back closes menus or returns to the previous poster. Home pauses playback and recalls Canapey. Below the apps, up to five in-progress movies and episodes from the active Silo profile show artwork and progress. Select one and press OK to resume. |
 | **App discovery** | On-demand import from Start menus, desktops, App Paths and Windows packaged-app identities; no whole-drive scan |
 | **Shortcuts** | Executables, Windows shortcuts and supported URIs; add websites with a URL, name and optional image, opening in the default browser |
 | **Quick controls** | Header audio button, Windows master volume/mute, default output selection; controller-accessible side panel |

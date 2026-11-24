@@ -261,6 +261,8 @@ async function launcher(browser, url, width, height) {
         events = new Map();
       window.qa = {
         calls: [],
+        cards: [],
+        resumed: [],
         emit(name, value) {
           callbacks.get(events.get(name))?.({ payload: value });
         },
@@ -286,7 +288,9 @@ async function launcher(browser, url, width, height) {
             events.set(args.event, args.handler);
             return args.handler;
           }
+          if (cmd === 'silo_continue_watching') return window.qa.cards;
           if (cmd === 'open_silo') {
+            if (args.contentId) window.qa.resumed.push(args.contentId);
             window.qa.calls.push(args.server);
             return;
           }
@@ -348,6 +352,32 @@ async function launcher(browser, url, width, height) {
       await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => qa.calls[0] === 'http://silo.test:8090/');
+    const episodes = page.locator('.silo-row button');
+    assert.equal(await episodes.count(), 0);
+    await page.evaluate(() => {
+      qa.cards = Array.from({ length: 6 }, (_, i) => ({
+        id: 'episode-' + i, title: 'Episode ' + i, series: 'Series ' + i,
+        season: 1, episode: i + 1, percent: 30 + i, image: '',
+      }));
+      qa.emit('home', false);
+    });
+    await episodes.first().waitFor();
+    assert.equal(await episodes.count(), 5);
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(() => document.activeElement.matches('.silo-episode'));
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowRight');
+    const picked = page.locator('.silo-episode:focus');
+    const contentId = (await picked.getAttribute('data-focus-key')).slice(5);
+    assert.match(await picked.getAttribute('aria-label'), /S01E0[1-5].*% watched/);
+    assert.equal(await picked.locator('.silo-progress i').evaluate(el => el.style.width),
+      (30 + Number(contentId.split('-')[1])) + '%');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(await page.evaluate(() => qa.resumed), [contentId]);
+    await page.keyboard.press('ArrowUp');
+    await page.locator('.cards .app-card:focus:not(.silo-episode)').waitFor();
+    await page.evaluate(() => { qa.cards = []; qa.emit('home', false); });
+    await episodes.first().waitFor({ state: 'detached' });
     await checkSiloOrder(page);
     // Change a working server directly from Home, cancel a draft, then apply from Library.
     const editAddress = page.getByRole('button', { name: 'Change server address' });
