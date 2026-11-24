@@ -1156,8 +1156,9 @@ function dispatch(action: Action) {
     if (launcherRoot.value) focusDirection(launcherRoot.value, action);
     return;
   }
-  if (view.value === 'grid' && action === 'up' && selected.value < columns.value) {
-    focusElement(launcherRoot.value?.querySelector<HTMLElement>('.library-tools input') ?? undefined);
+  if (view.value === 'carousel' && action === 'down') { showLibrary(); return; }
+  if (view.value === 'grid' && action === 'up' && selected.value < columns.value && searchInput.value) {
+    focusElement(searchInput.value);
     return;
   }
   const next = navigate(

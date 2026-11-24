@@ -108,6 +108,14 @@ async function verify(browser, url, viewport, installed = false) {
     await search.fill('missing application');
     await page.getByRole('heading', { name: 'No apps found' }).waitFor();
     assert.equal(await page.locator('.section-count').innerText(), '0 apps of 6');
+    await filter('Home').click();
+    await page.locator('.app-card:focus').waitFor();
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await search.inputValue(), '');
+    assert.equal(await filter('All').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('.grid .app-card:focus').count(), 1);
+    await filter('Video').click();
+    await search.fill('missing application');
     await filter('Video').focus();
     await page.keyboard.press('F8');
     assert.equal(await search.inputValue(), '');
@@ -149,6 +157,16 @@ async function verify(browser, url, viewport, installed = false) {
     const binding = await page.evaluate(() => window.configWrites.at(-1).settings.remoteBindings.find(item => item.button === 'red'));
     assert.equal(binding.appId, 'steam');
     assert.equal(binding.key.code, 'F9');
+    await page.evaluate(() => {
+      const config = JSON.parse(localStorage.getItem('canapey-ui-preview-v1'));
+      config.apps = [];
+      localStorage.setItem('canapey-ui-preview-v1', JSON.stringify(config));
+    });
+    await page.reload();
+    await filter('Library').click();
+    await page.locator('.grid .app-card:focus').waitFor();
+    await page.keyboard.press('ArrowUp');
+    await page.locator('.carousel .app-card:focus').waitFor();
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
   } finally {
